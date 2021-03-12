@@ -1,4 +1,5 @@
 # misc
+*.nogit
 *.dat
 *.pdf
 *.bak
