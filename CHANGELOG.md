@@ -20,10 +20,5 @@ pip show cfdtools
 
 #### changed
 
-- avoid warnings with `vanalbada` and `vanleer` limiters when uniform flows
-- analytical 1D solution for nozzle flows in `solution.euler_nozzle`
-- improve test coverage
-- optimize some mesh computation
-
 #### fixed
 
