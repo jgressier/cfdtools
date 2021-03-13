@@ -6,15 +6,18 @@ class api_output():
     _available = ['internal', 'error', 'warning', 'standart', 'debug']
     _default = ['internal', 'error', 'warning', 'standart' ]
 
-    def __init__(self, list=_default):
+    def __init__(self, list=None):
         self._api_output = []
-        self.set_modes(list)
+        if list==None:
+            self.set_default()
+        else:
+            self.set_modes(list)
 
-    def set_modes(self, list):
-        list = [].append(list) # ensure list if arg is only an item
-        check = all(mode in self._available for mode in list)
+    def set_modes(self, modes):
+        modelist = modes if type(modes) is list else [modes]
+        check = all([mode in self._available for mode in modelist])
         if check:
-            self._api_output = list
+            self._api_output = modelist
         else:
             self.print('internal','some output modes are unknown')
         return check
@@ -23,8 +26,11 @@ class api_output():
         return self._api_output
 
     def set_default(self):
-        self.set_modes(self.default)
+        self.set_modes(self._default)
 
     def print(self, mode, *args):
         if mode in self._api_output:
             print(mode+': ',*args)
+
+io = api_output()
+#print(io.get_modes())
