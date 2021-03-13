@@ -3,8 +3,8 @@
 class api_output():
     """class to handle library outputs
     """
-    _available = ['internal', 'error', 'warning', 'standart', 'debug']
-    _default = ['internal', 'error', 'warning', 'standart' ]
+    _available = ['internal', 'error', 'warning', 'std', 'debug']
+    _default = ['internal', 'error', 'warning', 'std' ]
 
     def __init__(self, list=None):
         self._api_output = []

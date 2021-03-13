@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+# coding: utf8
 
 # Import modules
 import struct
@@ -6,8 +6,8 @@ import numpy as np
 import numpy.ma as npma
 import collections
 import sys,os
-import ..api as api
-from ._ic3 import *
+import cfdtools.api as api
+from cfdtools.ic3._ic3 import *
 
 class restartSectionHeader():
     '''
@@ -37,8 +37,6 @@ class restartSectionHeader():
         id_list=[]
         for nametype in nametypes:
             id_list.append(ic3_restart_codes[nametype])
-        
-
         if(reset_offset is True): bfile.seek(8, os.SEEK_SET)
         #print self.skip[0],self.skip
         while (self.id[0] not in id_list) and (self.id[0] !=ic3_restart_codes["UGP_IO_EOF"]):
@@ -48,7 +46,7 @@ class restartSectionHeader():
             self.idata  = np.zeros((8,), dtype=np.int64)
             self.rdata  = np.zeros((16,), dtype=np.float64)
             
-            #print "skipping data %d"%self.skip[0]
+            api.io.print('debug', "skipping data %d"%self.skip[0])
             if (self.skip[0]>0):
                 bfile.seek(self.skip[0]-256, os.SEEK_CUR)
             
@@ -75,8 +73,8 @@ class restartSectionHeader():
 
             # Remove trailing space from header name (h.name)
             i = 0
-            while (s[i] != '\x00') and  ( i < range(ic3_restart_codes["UGP_IO_HEADER_NAME_LEN"]) ) : #remove trailing spaces
-                self.name += s[i]
+            while (s[i] != '\x00') and  ( i < ic3_restart_codes["UGP_IO_HEADER_NAME_LEN"] ) : #remove trailing spaces
+                self.name += s[i].decode() # .decode() for python3 portage
                 i += 1
             if(self.name.startswith("DEOF")): break 
             # Store the rest of the tokens in the right namespace
@@ -135,7 +133,7 @@ def BinaryRead(bfile, form, byte_swap, size):
                 break;
             return s.unpack(record)
     except IOError:
-        print "Fatal error. Could not read %d bytes from %s. Exiting."%(size, bfile.name)
+        api.io.print('error', "Fatal error. Could not read %d bytes from %s. Exiting."%(size, bfile.name))
         exit()
 
 ###################################################################################################
@@ -150,13 +148,34 @@ class ReaderRestartIC3():
         input   : IC3 restart file name [type string]
                   whether to check the integrity of the file beforehand [type boolean]
         '''
-
-        print
-        print ":: READER RESTART IC3 ::"
-        print
+        api.io.print('std',":: READER RESTART IC3 ::")
 
         self.filename = filename
         self.check_integrity = cIntegrity
+
+    def __str__(self):
+        s = '  filename: '+self.filename
+        s+= '\nsimulation: '+str(list(self.simulation_state.keys()))
+        s+= '\n    mesh: '+str(list(self.mesh.keys()))
+        s+= '\n    mesh: '+str(list(self.mesh.keys()))
+        return s
+
+    def printinfo(self):
+        print(self)
+        for key,item in self.mesh.items():
+            if key in ['params']:
+                for key2,value in item.items():
+                    print('mesh.'+key+'.'+key2+':',value)
+            elif key in ['connectivity','bocos']:
+                for key2,value in item.items():
+                    print('mesh.'+key+'.'+key2+':'+str(type(value)))
+            else: # at least 'coordinates', 'partition' and others
+                print('mesh.'+key+':'+str(type(value)))
+        for key,item in self.variables.items():
+            for key2,value in item.items():
+                print('variables.'+key+'.'+key2+':'+str(type(value)))
+                # for key3,value3 in value.items():
+                #     print('variables.'+key+'.'+key2+'.'+key3+':'+str(type(value3)))
 
     def read_data(self):
         '''
@@ -168,18 +187,19 @@ class ReaderRestartIC3():
         '''
 
         # Open the file for binary reading
+        api.io.print('debug','reading ',self.filename)
         self.fid = open(self.filename, "rb")
 
-        print "Reading header .."
+        api.io.print('std', "Reading header ..")
         self.__ReadRestartHeader()
         #
-        print "Reading connectivity .."
+        api.io.print('std', "Reading connectivity ..")
         self.__ReadRestartConnectivity()
         #
-        print "Reading informative values .."
+        api.io.print('std', "Reading informative values ..")
         self.__ReadInformativeValues()
         #
-        print "Reading variables .."
+        api.io.print('std', "Reading variables ..")
         self.__ReadRestartVar()
         #
 
@@ -187,7 +207,8 @@ class ReaderRestartIC3():
         self.fid.close()
         del self.fid
 
-        return self.mesh["coordinates"], self.mesh["connectivity"]["e2v"], self.mesh["bocos"], self.variables["nodes"], self.variables["cells"], (self.simulation_state, self.mesh["params"])
+        #return self.mesh["coordinates"], self.mesh["connectivity"]["e2v"], self.mesh["bocos"], self.variables["nodes"], self.variables["cells"], (self.simulation_state, self.mesh["params"])
+        return
 
     def __ReadRestartHeader(self):
         '''
@@ -215,7 +236,7 @@ class ReaderRestartIC3():
             s[1] = aux_struct.unpack(packed_version)[0]
 
         # Some info for the user
-        print "\t Restart file is version %s, current IC3 version is %d."%(str(s[1]).strip(), ic3_restart_codes["UGP_IO_VERSION"])
+        api.io.print('std', "\t Restart file is version %s, current IC3 version is %d."%(str(s[1]).strip(), ic3_restart_codes["UGP_IO_VERSION"]))
 
     def __ReadRestartConnectivity(self):
         '''
@@ -248,49 +269,49 @@ class ReaderRestartIC3():
         if self.check_integrity:
             # Check the restart is whole by counting the global ids of no, fa and cv
             # For nodes
-            print "\t Checking nodes integrity ..",; sys.stdout.flush()
+            api.io.print('std', "\t Checking nodes integrity .."); sys.stdout.flush()
             h = restartSectionHeader()
             if(not h.readVar(self.fid, self.byte_swap,["UGP_IO_NO_CHECK"])): exit()
 
             assert h.idata[0] == self.mesh["params"]["no_count"]
             assert h.id[0] == ic3_restart_codes["UGP_IO_NO_CHECK"]
             nodes_id = np.empty((self.mesh["params"]["no_count"],), dtype=np.int32)
-            for loopi in xrange(self.mesh["params"]["no_count"]):
+            for loopi in range(self.mesh["params"]["no_count"]):  # xrange to range (python3 portage)
                 s = BinaryRead(self.fid, "i", self.byte_swap, type2nbytes["int32"])
                 nodes_id[loopi] = s[0]
             assert np.allclose(nodes_id, np.arange(self.mesh["params"]["no_count"]))
-            print "ok."; sys.stdout.flush()
+            api.io.print('std', "ok.") ; sys.stdout.flush()
             del nodes_id, h
             # For faces
-            print "\t Checking faces integrity ..",; sys.stdout.flush()
+            api.io.print('std', "\t Checking faces integrity .."); sys.stdout.flush()
             h = restartSectionHeader()
             if(not h.readVar(self.fid, self.byte_swap,["UGP_IO_FA_CHECK"])): exit()
             faces_id = np.empty((self.mesh["params"]["fa_count"],), dtype=np.int32)
-            for loopi in xrange(self.mesh["params"]["fa_count"]):
+            for loopi in range(self.mesh["params"]["fa_count"]):  # xrange to range (python3 portage)
                 s = BinaryRead(self.fid, "i", self.byte_swap, type2nbytes["int32"])
                 faces_id[loopi] = s[0]
             assert np.allclose(faces_id, np.arange(self.mesh["params"]["fa_count"]))
-            print "ok."; sys.stdout.flush()
+            api.io.print('std', "ok."); sys.stdout.flush()
             del faces_id, h
             # For nodes
-            print "\t Checking cells integrity ..",; sys.stdout.flush()
+            api.io.print('std', "\t Checking cells integrity .."); sys.stdout.flush()
             h = restartSectionHeader()
             if(not h.readVar(self.fid, self.byte_swap,["UGP_IO_CV_CHECK"])): exit()
             assert h.idata[0] == self.mesh["params"]["cv_count"]
             assert h.id[0] == ic3_restart_codes["UGP_IO_CV_CHECK"]
             cells_id = np.empty((self.mesh["params"]["cv_count"],), dtype=np.int32)
-            for loopi in xrange(self.mesh["params"]["cv_count"]):
+            for loopi in range(self.mesh["params"]["cv_count"]):  # xrange to range (python3 portage)
                 s = BinaryRead(self.fid, "i", self.byte_swap, type2nbytes["int32"])
                 cells_id[loopi] = s[0]
             assert np.allclose(cells_id, np.arange(self.mesh["params"]["cv_count"]))
-            print "ok."; sys.stdout.flush()
+            api.io.print('std', "ok."); sys.stdout.flush()
             del cells_id, h
 
         # The two connectivities now
         #
         #- First, NOOFA
         #
-        print "\t Parsing face to node connectivity ..",; sys.stdout.flush()
+        api.io.print('std', "\t Parsing face to node connectivity .."); sys.stdout.flush()
         h = restartSectionHeader()
         if (not h.readVar(self.fid, self.byte_swap,["UGP_IO_NOOFA_I_AND_V"])): exit()
 
@@ -298,28 +319,28 @@ class ReaderRestartIC3():
         assert h.idata[1] == self.mesh["params"]["noofa_count"]
         # Get the node count per face
         nno_per_face = np.empty((self.mesh["params"]["fa_count"],), dtype=np.int32)
-        for loopi in xrange(self.mesh["params"]["fa_count"]):
+        for loopi in range(self.mesh["params"]["fa_count"]): # xrange to range (python3 portage)
             s = BinaryRead(self.fid, "i", self.byte_swap, type2nbytes["int32"])
             nno_per_face[loopi] = s[0]
         uniq, counts = np.unique(nno_per_face, return_counts=True)
         uniq = [nno2fatype[val] for val in uniq]
-        print "found %s faces .."%(" and ".join(uniq)),; sys.stdout.flush()
+        api.io.print('std', "found %s faces .."%(" and ".join(uniq))); sys.stdout.flush()
         # Initialize the proper connectivity arrays in self.mesh
         self.mesh["connectivity"]["noofa"]["listofStarts_f2v"] = np.concatenate(([0,], np.cumsum(nno_per_face)))
         self.mesh["connectivity"]["noofa"]["face2vertex"] = np.zeros((np.sum(nno_per_face),), dtype=np.int64)
         assert self.mesh["connectivity"]["noofa"]["listofStarts_f2v"][0] == 0
         assert self.mesh["connectivity"]["noofa"]["listofStarts_f2v"][-2] == self.mesh["connectivity"]["noofa"]["face2vertex"].size - nno_per_face[-1]
         # Now loop on the restart file to fill the connectivities
-        for loopi in xrange(self.mesh["params"]["fa_count"]):
+        for loopi in range(self.mesh["params"]["fa_count"]):  # xrange to range (python3 portage)
             sta, sto = self.mesh["connectivity"]["noofa"]["listofStarts_f2v"][loopi], self.mesh["connectivity"]["noofa"]["listofStarts_f2v"][loopi+1]
             s = BinaryRead(self.fid, "i"*nno_per_face[loopi], self.byte_swap, type2nbytes["int32"]*nno_per_face[loopi])
             self.mesh["connectivity"]["noofa"]["face2vertex"][sta:sto] = np.asarray(s).astype(np.int64)
-        print "ok."; sys.stdout.flush()
+        api.io.print('std', "ok."); sys.stdout.flush()
         del nno_per_face, h, uniq, counts
         #
         #- Second, CVOFA
         #
-        print "\t Parsing face to cell connectivity ..",; sys.stdout.flush()
+        api.io.print('std', "\t Parsing face to cell connectivity .."); sys.stdout.flush()
         h = restartSectionHeader()
         if (not h.readVar(self.fid, self.byte_swap,["UGP_IO_CVOFA"])): exit()
 
@@ -328,10 +349,10 @@ class ReaderRestartIC3():
         # Initialize the proper connectivity arrays in self.mesh
         self.mesh["connectivity"]["cvofa"]["cvofa"] = np.zeros((self.mesh["params"]["fa_count"], 2), dtype=np.int64)
         # Now loop on the restart file to fill the connectivities
-        for loopi in xrange(self.mesh["params"]["fa_count"]):
+        for loopi in range(self.mesh["params"]["fa_count"]):  # xrange to range (python3 portage)
             s = BinaryRead(self.fid, "ii", self.byte_swap, type2nbytes["int32"]*self.mesh["connectivity"]["cvofa"]["cvofa"].shape[1])
             self.mesh["connectivity"]["cvofa"]["cvofa"][loopi, :] = np.asarray(s).astype(np.int64)
-        print "ok."; sys.stdout.flush()
+        api.io.print('std', "ok."); sys.stdout.flush()
         del h
         # Checks and a few associations
         assert self.mesh["connectivity"]["cvofa"]["cvofa"].max() < self.mesh["params"]["cv_count"]
@@ -353,36 +374,36 @@ class ReaderRestartIC3():
         #
         #- Convert CVOFA to element2face
         #
-        print "\t Converting CVOFA to an element2face connectivity ..",; sys.stdout.flush()
-        self.mesh["connectivity"]["cvofa"]["cvofa"] += 1
-        uniq, unique_count = np.unique(self.mesh["connectivity"]["cvofa"]["cvofa"], return_counts=True)
-        mask = uniq > 0 # >= 0
-        element2face_size = np.sum(unique_count[mask]) + unique_count[mask].size
-        from getFACEEL import getfaceel
-        e2f = getfaceel(self.mesh["params"]["fa_count"], self.mesh["params"]["cv_count"],
-                        element2face_size,
-                        unique_count[mask],
-                        self.mesh["connectivity"]["cvofa"]["cvofa"][:,0], self.mesh["connectivity"]["cvofa"]["cvofa"][:,1])
-        e2f = np.hstack( ( unique_count[mask][:, None], e2f ) )
-        e2f_ma = npma.masked_where(e2f==-1, e2f)
-        if e2f_ma.mask!=False:
-            print "Masking",e2f_ma.mask
-            element2face = e2f[~e2f_ma.mask].squeeze().ravel()
-        else:
-            element2face = e2f.squeeze().ravel()
+        # api.io.print('std', "\t Converting CVOFA to an element2face connectivity .."); sys.stdout.flush()
+        # self.mesh["connectivity"]["cvofa"]["cvofa"] += 1
+        # uniq, unique_count = np.unique(self.mesh["connectivity"]["cvofa"]["cvofa"], return_counts=True)
+        # mask = uniq > 0 # >= 0
+        # element2face_size = np.sum(unique_count[mask]) + unique_count[mask].size
+        # from getFACEEL import getfaceel
+        # e2f = getfaceel(self.mesh["params"]["fa_count"], self.mesh["params"]["cv_count"],
+        #                 element2face_size,
+        #                 unique_count[mask],
+        #                 self.mesh["connectivity"]["cvofa"]["cvofa"][:,0], self.mesh["connectivity"]["cvofa"]["cvofa"][:,1])
+        # e2f = np.hstack( ( unique_count[mask][:, None], e2f ) )
+        # e2f_ma = npma.masked_where(e2f==-1, e2f)
+        # if e2f_ma.mask!=False:
+        #     api.io.print('std', "Masking",e2f_ma.mask)
+        #     element2face = e2f[~e2f_ma.mask].squeeze().ravel()
+        # else:
+        #     element2face = e2f.squeeze().ravel()
 
-        listofStarts_e2f = np.insert(np.cumsum(unique_count[mask]+1), 0, 0)[:-1]
-        e2f = np.delete(element2face, listofStarts_e2f)
-        self.mesh["connectivity"]["cvofa"]["element2face"] = e2f
-        self.mesh["connectivity"]["cvofa"]["element2face"] -= 1
-        self.mesh["connectivity"]["cvofa"]["listofStarts_e2f"] = listofStarts_e2f - np.arange(len(listofStarts_e2f))
-        self.mesh["connectivity"]["cvofa"]["listofStarts_e2f"] = np.concatenate((self.mesh["connectivity"]["cvofa"]["listofStarts_e2f"], [e2f.shape[0],]))
-        self.mesh["connectivity"]["cvofa"]["cvofa"] -= 1
-        print "ok."; sys.stdout.flush()
-        del uniq, element2face_size, e2f, e2f_ma, element2face, listofStarts_e2f
+        # listofStarts_e2f = np.insert(np.cumsum(unique_count[mask]+1), 0, 0)[:-1]
+        # e2f = np.delete(element2face, listofStarts_e2f)
+        # self.mesh["connectivity"]["cvofa"]["element2face"] = e2f
+        # self.mesh["connectivity"]["cvofa"]["element2face"] -= 1
+        # self.mesh["connectivity"]["cvofa"]["listofStarts_e2f"] = listofStarts_e2f - np.arange(len(listofStarts_e2f))
+        # self.mesh["connectivity"]["cvofa"]["listofStarts_e2f"] = np.concatenate((self.mesh["connectivity"]["cvofa"]["listofStarts_e2f"], [e2f.shape[0],]))
+        # self.mesh["connectivity"]["cvofa"]["cvofa"] -= 1
+        # api.io.print('std', "ok."); sys.stdout.flush()
+        # del uniq, element2face_size, e2f, e2f_ma, element2face, listofStarts_e2f
 
         # The boundary conditions now
-        print "\t Parsing boundary conditions ..",; sys.stdout.flush()
+        api.io.print('std', "\t Parsing boundary conditions .."); sys.stdout.flush()
         while True:
             h = restartSectionHeader()
             if(not h.readVar(self.fid, self.byte_swap,["UGP_IO_FA_ZONE"],reset_offset=False)): break
@@ -403,58 +424,58 @@ class ReaderRestartIC3():
             self.mesh["bocos"][h.name]["slicing"] = np.unique(self.mesh["connectivity"]["noofa"]["face2vertex"][sta:sto])
             if h.idata[0] == 6:
                 break
-        print "ok."; sys.stdout.flush()
+        api.io.print('standard', "ok."); sys.stdout.flush()
 
         # Parse the header of the partition information
-        print "\t Parsing partitioning information ..",; sys.stdout.flush()
+        api.io.print('std', "\t Parsing partitioning information .."); sys.stdout.flush()
         h = restartSectionHeader()
         if(not h.readVar(self.fid, self.byte_swap,["UGP_IO_CV_PART"])): exit()
 
         self.mesh["partition"] = np.zeros((self.mesh["params"]["cv_count"],), dtype=np.int32)
-        for loopi in xrange(self.mesh["params"]["cv_count"]):
+        for loopi in range(self.mesh["params"]["cv_count"]):  # xrange to range (python3 portage)
             s = BinaryRead(self.fid, "i", self.byte_swap, type2nbytes["int32"])
             self.mesh["partition"][loopi] = s[0]
-        print "ok."; sys.stdout.flush()
+        api.io.print('std', "ok."); sys.stdout.flush()
 
         # The coordinates of the vertices finally
-        print "\t Parsing vertices coordinates ..",; sys.stdout.flush()
+        api.io.print('std', "\t Parsing vertices coordinates .."); sys.stdout.flush()
         h = restartSectionHeader()
         if(not h.readVar(self.fid, self.byte_swap,["UGP_IO_X_NO"])): exit()
 
         assert h.idata[0] == self.mesh["params"]["no_count"]
         assert h.idata[1] == 3
         self.mesh["coordinates"] = np.zeros((self.mesh["params"]["no_count"], 3), dtype=np.float64)
-        for loopi in xrange(self.mesh["params"]["no_count"]):
+        for loopi in range(self.mesh["params"]["no_count"]):  # xrange to range (python3 portage)
             s = BinaryRead(self.fid, "ddd", self.byte_swap, type2nbytes["float64"]*self.mesh["coordinates"].shape[1])
             self.mesh["coordinates"][loopi, :] = np.asarray(s)
         self.mesh["coordinates"] = np.ascontiguousarray(self.mesh["coordinates"])
-        print "ok."; sys.stdout.flush()
+        api.io.print('std', "ok."); sys.stdout.flush()
 
         # Convert the two connectivity tables to a classical element2vertex connectivity
-        print "\t Converting element2face and face2vertex to an element2vertex connectivity ..",; sys.stdout.flush()
-        from getNOoCV import getnoocv
-        los_e2v, e2v = getnoocv(self.mesh["params"]["cv_count"], self.mesh["params"]["no_count"], self.mesh["params"]["fa_count"],
-                                self.mesh["connectivity"]["noofa"]["listofStarts_f2v"],
-                                self.mesh["connectivity"]["cvofa"]["listofStarts_e2f"],
-                                self.mesh["connectivity"]["noofa"]["face2vertex"],
-                                self.mesh["connectivity"]["cvofa"]["element2face"],
-                                self.mesh["connectivity"]["cvofa"]["cvofa"][:,0], self.mesh["connectivity"]["cvofa"]["cvofa"][:,1],
-                                self.mesh["coordinates"][:,0], self.mesh["coordinates"][:,1], self.mesh["coordinates"][:,2])
-        _nvTotalperElt = np.diff(los_e2v)
-        nvTotalperElt = np.repeat(_nvTotalperElt, _nvTotalperElt)
-        uniqueNoV = np.unique(nvTotalperElt)
-        connectivities = [None]*len(uniqueNoV)
-        self.mesh["connectivity"]["e2v"] = collections.OrderedDict()
-        self.mesh["connectivity"]["cell_indices"] = collections.OrderedDict()
-        for idx, nov in enumerate(uniqueNoV):
-            self.mesh["connectivity"]["nkeys"] += 1
-            _maskNoV = _nvTotalperElt==nov
-            maskNoV = nvTotalperElt==nov
-            connectivities[idx] = e2v[maskNoV].reshape((-1, nov))
-            el_type = cell_from_nodes[nov]
-            self.mesh["connectivity"]["e2v"][el_type] = connectivities[idx]
-            self.mesh["connectivity"]["cell_indices"][el_type] = np.arange(self.mesh["params"]["cv_count"])[_maskNoV]
-        print "ok."; sys.stdout.flush()
+        # api.io.print('std', "\t Converting element2face and face2vertex to an element2vertex connectivity .."); sys.stdout.flush()
+        # from getNOoCV import getnoocv
+        # los_e2v, e2v = getnoocv(self.mesh["params"]["cv_count"], self.mesh["params"]["no_count"], self.mesh["params"]["fa_count"],
+        #                         self.mesh["connectivity"]["noofa"]["listofStarts_f2v"],
+        #                         self.mesh["connectivity"]["cvofa"]["listofStarts_e2f"],
+        #                         self.mesh["connectivity"]["noofa"]["face2vertex"],
+        #                         self.mesh["connectivity"]["cvofa"]["element2face"],
+        #                         self.mesh["connectivity"]["cvofa"]["cvofa"][:,0], self.mesh["connectivity"]["cvofa"]["cvofa"][:,1],
+        #                         self.mesh["coordinates"][:,0], self.mesh["coordinates"][:,1], self.mesh["coordinates"][:,2])
+        # _nvTotalperElt = np.diff(los_e2v)
+        # nvTotalperElt = np.repeat(_nvTotalperElt, _nvTotalperElt)
+        # uniqueNoV = np.unique(nvTotalperElt)
+        # connectivities = [None]*len(uniqueNoV)
+        # self.mesh["connectivity"]["e2v"] = collections.OrderedDict()
+        # self.mesh["connectivity"]["cell_indices"] = collections.OrderedDict()
+        # for idx, nov in enumerate(uniqueNoV):
+        #     self.mesh["connectivity"]["nkeys"] += 1
+        #     _maskNoV = _nvTotalperElt==nov
+        #     maskNoV = nvTotalperElt==nov
+        #     connectivities[idx] = e2v[maskNoV].reshape((-1, nov))
+        #     el_type = cell_from_nodes[nov]
+        #     self.mesh["connectivity"]["e2v"][el_type] = connectivities[idx]
+        #     self.mesh["connectivity"]["cell_indices"][el_type] = np.arange(self.mesh["params"]["cv_count"])[_maskNoV]
+        # api.io.print('std', "ok."); sys.stdout.flush()
 
     def __ReadInformativeValues(self):
         '''
@@ -508,7 +529,7 @@ class ReaderRestartIC3():
         self.variables = {"nodes":{}, "cells":{}, "faces":{}}
 
         # First come the scalars
-        print "\t First the scalars .."
+        api.io.print('std', "\t First the scalars ..")
         reset_offset=True
         while True:
             h = restartSectionHeader()
@@ -519,12 +540,12 @@ class ReaderRestartIC3():
                 self.variables["nodes"][h.name] = np.zeros((self.mesh["params"]["no_count"],), dtype=np.float64)
                 s = BinaryRead(self.fid, "d"*self.mesh["params"]["no_count"], self.byte_swap, type2nbytes["float64"]*self.mesh["params"]["no_count"])
                 self.variables["nodes"][h.name] = np.asarray(s)
-                print "\t %s%s:\t %+.5e / %+.5e / %+.5e (min/mean/max)."%(h.name, ' '*(20-len(h.name)), np.asarray(s).min(), np.mean(np.asarray(s)), np.asarray(s).max())
+                api.io.print('std', "\t %s%s:\t %+.5e / %+.5e / %+.5e (min/mean/max)."%(h.name, ' '*(20-len(h.name)), np.asarray(s).min(), np.mean(np.asarray(s)), np.asarray(s).max()))
             elif h.idata[0] == self.mesh["params"]["fa_count"]:
                 self.variables["faces"][h.name] = np.zeros((self.mesh["params"]["fa_count"],), dtype=np.float64)
                 s = BinaryRead(self.fid, "d"*self.mesh["params"]["fa_count"], self.byte_swap, type2nbytes["float64"]*self.mesh["params"]["fa_count"])
                 self.variables["faces"][h.name] = np.asarray(s)
-                print "\t %s%s:\t %+.5e / %+.5e / %+.5e (min/mean/max)."%(h.name, ' '*(20-len(h.name)), np.asarray(s).min(), np.mean(np.asarray(s)), np.asarray(s).max())
+                api.io.print('std', "\t %s%s:\t %+.5e / %+.5e / %+.5e (min/mean/max)."%(h.name, ' '*(20-len(h.name)), np.asarray(s).min(), np.mean(np.asarray(s)), np.asarray(s).max()))
             elif h.idata[0] == self.mesh["params"]["cv_count"]:
                 self.variables["cells"][h.name] = np.zeros((self.mesh["params"]["cv_count"],), dtype=np.float64)
                 s = BinaryRead(self.fid, "d"*self.mesh["params"]["cv_count"], self.byte_swap, type2nbytes["float64"]*self.mesh["params"]["cv_count"])
@@ -536,15 +557,15 @@ class ReaderRestartIC3():
                     for uns_type, indices in self.mesh["connectivity"]["cell_indices"].items():
                         self.variables["cells"][h.name] = np.concatenate((self.variables["cells"][h.name],
                                                                           aux[indices]))
-                print "\t %s%s:\t %+.5e / %+.5e / %+.5e (min/mean/max)."%(h.name, ' '*(20-len(h.name)), np.asarray(s).min(), np.mean(np.asarray(s)), np.asarray(s).max())
+                api.io.print('std', "\t %s%s:\t %+.5e / %+.5e / %+.5e (min/mean/max)."%(h.name, ' '*(20-len(h.name)), np.asarray(s).min(), np.mean(np.asarray(s)), np.asarray(s).max()))
             else:
-                print "Fatal error. Incoherence in dataset %s. Exiting."%(h.name)
+                api.io.print('std', "Fatal error. Incoherence in dataset %s. Exiting."%(h.name))
                 exit()
-        print "\t ok."
+        api.io.print('std', "\t ok.")
         
 
         # Then the vectors
-        print "\t Then the vectors .."
+        api.io.print('std', "\t Then the vectors ..")
         reset_offset=True
         while True:
             h = restartSectionHeader()
@@ -555,12 +576,12 @@ class ReaderRestartIC3():
                 self.variables["nodes"][h.name] = np.zeros((self.mesh["params"]["no_count"], 3), dtype=np.float64)
                 s = BinaryRead(self.fid, "ddd"*self.mesh["params"]["no_count"], self.byte_swap, type2nbytes["float64"]*self.mesh["params"]["no_count"]*3)
                 self.variables["nodes"][h.name] = np.asarray(s).reshape((-1, 3))
-                print "\t %s%s:\t %+.5e / %+.5e / %+.5e (min/mean/max)."%(h.name, ' '*(20-len(h.name)), np.asarray(s).min(), np.mean(np.asarray(s)), np.asarray(s).max())
+                api.io.print('std', "\t %s%s:\t %+.5e / %+.5e / %+.5e (min/mean/max)."%(h.name, ' '*(20-len(h.name)), np.asarray(s).min(), np.mean(np.asarray(s)), np.asarray(s).max()))
             elif h.idata[0] == self.mesh["params"]["fa_count"]:
                 self.variables["faces"][h.name] = np.zeros((self.mesh["params"]["fa_count"], 3), dtype=np.float64)
                 s = BinaryRead(self.fid, "ddd"*self.mesh["params"]["fa_count"], self.byte_swap, type2nbytes["float64"]*self.mesh["params"]["fa_count"]*3)
                 self.variables["faces"][h.name] = snp.asarray(s).reshape((-1, 3))
-                print "\t %s%s:\t %+.5e / %+.5e / %+.5e (min/mean/max)."%(h.name, ' '*(20-len(h.name)), np.asarray(s).min(), np.mean(np.asarray(s)), np.asarray(s).max())
+                api.io.print('std', "\t %s%s:\t %+.5e / %+.5e / %+.5e (min/mean/max)."%(h.name, ' '*(20-len(h.name)), np.asarray(s).min(), np.mean(np.asarray(s)), np.asarray(s).max()))
             elif h.idata[0] == self.mesh["params"]["cv_count"]:
                 self.variables["cells"][h.name] = np.zeros((self.mesh["params"]["cv_count"], 3), dtype=np.float64)
                 s = BinaryRead(self.fid, "ddd"*self.mesh["params"]["cv_count"], self.byte_swap, type2nbytes["float64"]*self.mesh["params"]["cv_count"]*3)
@@ -572,15 +593,15 @@ class ReaderRestartIC3():
                     for uns_type, indices in self.mesh["connectivity"]["cell_indices"].items():
                         self.variables["cells"][h.name] = np.concatenate((self.variables["cells"][h.name],
                                                                           aux[indices, :]), axis=0)
-                print "\t %s%s:\t %+.5e / %+.5e / %+.5e (min/mean/max)."%(h.name, ' '*(20-len(h.name)), np.asarray(s).min(), np.mean(np.asarray(s)), np.asarray(s).max())
+                api.io.print('std', "\t %s%s:\t %+.5e / %+.5e / %+.5e (min/mean/max)."%(h.name, ' '*(20-len(h.name)), np.asarray(s).min(), np.mean(np.asarray(s)), np.asarray(s).max()))
             else:
-                print "Fatal error. Incoherence in dataset %s. Exiting."%(h.name)
+                api.io.print('std', "Fatal error. Incoherence in dataset %s. Exiting."%(h.name))
                 exit()
-        print "\t ok."
+        api.io.print('std', "\t ok.")
         
 
         # Then the tensors
-        print "\t Then the tensors .."
+        api.io.print('std', "\t Then the tensors ..")
         reset_offset=True
         while True:
             h = restartSectionHeader()
@@ -598,11 +619,11 @@ class ReaderRestartIC3():
                     for uns_type, indices in self.mesh["connectivity"]["cell_indices"].items():
                         self.variables["cells"][h.name] = np.concatenate((self.variables["cells"][h.name],
                                                                           aux[indices, :, :]), axis=0)
-                print "\t %s%s:\t %+.5e / %+.5e / %+.5e (min/mean/max)."%(h.name, ' '*(20-len(h.name)), np.asarray(s).min(), np.mean(np.asarray(s)), np.asarray(s).max())
+                api.io.print('std', "\t %s%s:\t %+.5e / %+.5e / %+.5e (min/mean/max)."%(h.name, ' '*(20-len(h.name)), np.asarray(s).min(), np.mean(np.asarray(s)), np.asarray(s).max()))
             else:
-                print "Fatal error. Incoherence in dataset %s. Exiting."%(h.name)
+                api.io.print('std', "Fatal error. Incoherence in dataset %s. Exiting."%(h.name))
                 exit()
-        print "\t ok."
+        api.io.print('std', "\t ok.")
         
 
     # def __reachedEOF(self):
@@ -625,167 +646,167 @@ class ReaderRestartIC3():
 
 ###################################################################################################
 
-if __name__ == "__main__":
-    '''
-    The script is supposed to be used with command line arguments
-    but if it is not, it runs a test on a pre-defined file name.
-    '''
+# if __name__ == "__main__":
+#     '''
+#     The script is supposed to be used with command line arguments
+#     but if it is not, it runs a test on a pre-defined file name.
+#     '''
 
-    # Module import for script use
-    import copy
-    import os
-    import sys
-    import vtk as _vtk
-    from vtk.util import numpy_support
+#     # Module import for script use
+#     import copy
+#     import os
+#     import sys
+#     import vtk as _vtk
+#     from vtk.util import numpy_support
 
-    # Parse command line arguments seeking a restart file name
-    defaultFName = "restart_test.out"
-    if len(sys.argv) == 1:
-        fName = defaultFName
-        cIntegrity = False
-        print "Use requires the name of a restart file to be input in argument."
-        print "Using a default name, %s."%(defaultFName)
-    else:
-        fName = defaultFName
-        cIntegrity = False
-        for arg in sys.argv[1:]:
-            if '--restartname' in arg:
-                fName = arg.split('=')[-1]
-            elif '--checkIntegrity' in arg:
-                _cIntegrity = arg.split('=')[-1]
-                if _cIntegrity == "False":
-                    cIntegrity = False
-                elif _cIntegrity == "True":
-                    cIntegrity = True
-    if fName == defaultFName:
-        print "Use requires the name of a restart file to be input in argument."
-        print "Using a default name, %s."%(defaultFName)
+#     # Parse command line arguments seeking a restart file name
+#     defaultFName = "restart_test.out"
+#     if len(sys.argv) == 1:
+#         fName = defaultFName
+#         cIntegrity = False
+#         api.io.print('std', "Use requires the name of a restart file to be input in argument.")
+#         api.io.print('std', "Using a default name, %s."%(defaultFName))
+#     else:
+#         fName = defaultFName
+#         cIntegrity = False
+#         for arg in sys.argv[1:]:
+#             if '--restartname' in arg:
+#                 fName = arg.split('=')[-1]
+#             elif '--checkIntegrity' in arg:
+#                 _cIntegrity = arg.split('=')[-1]
+#                 if _cIntegrity == "False":
+#                     cIntegrity = False
+#                 elif _cIntegrity == "True":
+#                     cIntegrity = True
+#     if fName == defaultFName:
+#         api.io.print('std', "Use requires the name of a restart file to be input in argument.")
+#         api.io.print('std', "Using a default name, %s."%(defaultFName))
 
-    # Check given file name
-    if not os.path.isfile(fName):
-        print "Fatal error: %s cannot be found. Exiting."%(fName)
-        exit()
+#     # Check given file name
+#     if not os.path.isfile(fName):
+#         api.io.print('std', "Fatal error: %s cannot be found. Exiting."%(fName))
+#         exit()
 
-    # Else proceed
-    readr = ReaderRestartIC3(fName, cIntegrity)
-    xyz, co, bocos, simulation_state, nodesvar, cellsvar, params = readr.read_data()
+#     # Else proceed
+#     readr = ReaderRestartIC3(fName, cIntegrity)
+#     xyz, co, bocos, simulation_state, nodesvar, cellsvar, params = readr.read_data()
 
-    ###################################################################################################
+#     ###################################################################################################
 
-    # Now, we can export the data under a more human-friendly format
-    #
-    #- IN VTK
-    #
-    # Build point coordinates for VTK
-    nb_point = xyz.shape[0]
-    if hasattr(_vtk, 'vtkSOADataArrayTemplate'):
-        # VTK 8.1.0+: use SOA coordinate array data structure (zero-copy)
-        points_vtk = _vtk.vtkSOADataArrayTemplate[np.float64]()  # shall avoid copy
-        points_vtk.SetNumberOfComponents(3)
-        points_vtk.charlesx_arrays = []
-        for index in range(3):
-            np_array = copy.deepcopy(xyz[:, index])
-            points_vtk.SetArray(index, np_array, nb_point, True, True)
-            points_vtk.charlesx_arrays.append(np_array)  # record array ref so it won't be gc'ed
-    else:
-        # VTK 8.0.1-: build a new AOS coordinate array
-        points_vtk = numpy_support.numpy_to_vtk(mesh["coordinates"], deep=True)
-    vtkpoints = _vtk.vtkPoints()
-    vtkpoints.SetData(points_vtk)
-    # Build connectivity for VTK
-    vtkprimitive = {
-        'bi': _vtk.vtkLine(),
-        'tri': _vtk.vtkTriangle(),
-        'qua': _vtk.vtkQuad(),
-        'tet': _vtk.vtkTetra(),
-        'hex': _vtk.vtkHexahedron(),
-        'pri': _vtk.vtkWedge(),
-        'pyr': _vtk.vtkPyramid(),
-    }
-    cells = np.empty((0, ), dtype=np.int64)
-    cell_types = np.empty((0, ), dtype=np.int64)
-    offsets = np.empty((0, ), dtype=np.int64)
-    offset_start = 0
-    total_nb_cells = 0
+#     # Now, we can export the data under a more human-friendly format
+#     #
+#     #- IN VTK
+#     #
+#     # Build point coordinates for VTK
+#     nb_point = xyz.shape[0]
+#     if hasattr(_vtk, 'vtkSOADataArrayTemplate'):
+#         # VTK 8.1.0+: use SOA coordinate array data structure (zero-copy)
+#         points_vtk = _vtk.vtkSOADataArrayTemplate[np.float64]()  # shall avoid copy
+#         points_vtk.SetNumberOfComponents(3)
+#         points_vtk.charlesx_arrays = []
+#         for index in range(3):
+#             np_array = copy.deepcopy(xyz[:, index])
+#             points_vtk.SetArray(index, np_array, nb_point, True, True)
+#             points_vtk.charlesx_arrays.append(np_array)  # record array ref so it won't be gc'ed
+#     else:
+#         # VTK 8.0.1-: build a new AOS coordinate array
+#         points_vtk = numpy_support.numpy_to_vtk(mesh["coordinates"], deep=True)
+#     vtkpoints = _vtk.vtkPoints()
+#     vtkpoints.SetData(points_vtk)
+#     # Build connectivity for VTK
+#     vtkprimitive = {
+#         'bi': _vtk.vtkLine(),
+#         'tri': _vtk.vtkTriangle(),
+#         'qua': _vtk.vtkQuad(),
+#         'tet': _vtk.vtkTetra(),
+#         'hex': _vtk.vtkHexahedron(),
+#         'pri': _vtk.vtkWedge(),
+#         'pyr': _vtk.vtkPyramid(),
+#     }
+#     cells = np.empty((0, ), dtype=np.int64)
+#     cell_types = np.empty((0, ), dtype=np.int64)
+#     offsets = np.empty((0, ), dtype=np.int64)
+#     offset_start = 0
+#     total_nb_cells = 0
 
-    for uns_type, connect in co.items():
+#     for uns_type, connect in co.items():
 
-        nb_cells = connect.shape[0]
+#         nb_cells = connect.shape[0]
 
-        # record cell-type for each individual cell
-        if uns_type in vtkprimitive:
-            cell_type = vtkprimitive[uns_type].GetCellType()
-        else:
-            raise ValueError(str_error('Unknown cell type'))
-        cell_types = np.append(cell_types, np.tile(cell_type, (nb_cells, 1)))
+#         # record cell-type for each individual cell
+#         if uns_type in vtkprimitive:
+#             cell_type = vtkprimitive[uns_type].GetCellType()
+#         else:
+#             raise ValueError(str_error('Unknown cell type'))
+#         cell_types = np.append(cell_types, np.tile(cell_type, (nb_cells, 1)))
 
-        # put number of vertices before each cell
-        cells = np.append(cells, np.concatenate((np.tile(nodes_per_cell[uns_type], (nb_cells, 1)), connect),
-                                                axis=1).flat)
+#         # put number of vertices before each cell
+#         cells = np.append(cells, np.concatenate((np.tile(nodes_per_cell[uns_type], (nb_cells, 1)), connect),
+#                                                 axis=1).flat)
 
-        # start offset of each cell in connectivity array
-        offset_stop = offset_start + nb_cells * (nodes_per_cell[uns_type] + 1)
-        offsets = np.append(offsets, np.arange(offset_start, offset_stop, nodes_per_cell[uns_type] + 1))
-        offset_start = offset_stop
-        total_nb_cells += nb_cells
-    idtype_vtk = _vtk.vtkIdTypeArray().GetDataType()
-    uchartype_vtk = _vtk.vtkUnsignedCharArray().GetDataType()
+#         # start offset of each cell in connectivity array
+#         offset_stop = offset_start + nb_cells * (nodes_per_cell[uns_type] + 1)
+#         offsets = np.append(offsets, np.arange(offset_start, offset_stop, nodes_per_cell[uns_type] + 1))
+#         offset_start = offset_stop
+#         total_nb_cells += nb_cells
+#     idtype_vtk = _vtk.vtkIdTypeArray().GetDataType()
+#     uchartype_vtk = _vtk.vtkUnsignedCharArray().GetDataType()
 
-    cells_vtk = numpy_support.numpy_to_vtk(cells, deep=True, array_type=idtype_vtk)
-    cell_array = _vtk.vtkCellArray()
-    cell_array.SetCells(total_nb_cells, cells_vtk)
-    # Build VTK unstructured Grid
-    if len(cell_types) == 1:
-        vtk_obj = _vtk.vtkUnstructuredGrid()
-        vtk_obj.SetPoints(vtkpoints)
-        vtk_obj.SetCells(cell_types[0], cell_array)
-    else:
-        cell_types_vtk = numpy_support.numpy_to_vtk(cell_types, deep=True, array_type=uchartype_vtk)
-        offsets_vtk = numpy_support.numpy_to_vtk(offsets, deep=True, array_type=idtype_vtk)
-        vtk_obj = _vtk.vtkUnstructuredGrid()
-        vtk_obj.SetPoints(vtkpoints)
-        vtk_obj.SetCells(cell_types_vtk, offsets_vtk, cell_array)
+#     cells_vtk = numpy_support.numpy_to_vtk(cells, deep=True, array_type=idtype_vtk)
+#     cell_array = _vtk.vtkCellArray()
+#     cell_array.SetCells(total_nb_cells, cells_vtk)
+#     # Build VTK unstructured Grid
+#     if len(cell_types) == 1:
+#         vtk_obj = _vtk.vtkUnstructuredGrid()
+#         vtk_obj.SetPoints(vtkpoints)
+#         vtk_obj.SetCells(cell_types[0], cell_array)
+#     else:
+#         cell_types_vtk = numpy_support.numpy_to_vtk(cell_types, deep=True, array_type=uchartype_vtk)
+#         offsets_vtk = numpy_support.numpy_to_vtk(offsets, deep=True, array_type=idtype_vtk)
+#         vtk_obj = _vtk.vtkUnstructuredGrid()
+#         vtk_obj.SetPoints(vtkpoints)
+#         vtk_obj.SetCells(cell_types_vtk, offsets_vtk, cell_array)
 
-    elemdata = {
-        "nodes": vtk_obj.GetPointData(),
-        "cells": vtk_obj.GetCellData(),
-    }
-    # And add the variables
-    for var in cellsvar:
-        np_array = cellsvar[var]
-        # cast without copy if possible
-        if np_array.flags.contiguous:
-            np_array = np_array.astype(np.float64, copy=False)
-        else:
-            np_array = np_array.astype(np.float64)
-        # zero-copy if contiguous array
-        vtkarray = numpy_support.numpy_to_vtk(np_array, deep=False)
-        vtkarray.charlesx_array = np_array  # avoid garbage collection
-        vtkarray.SetName(var)
-        #
-        elemdata["cells"].AddArray(vtkarray)
-    for var in nodesvar:
-        np_array = nodesvar[var]
-        # cast without copy if possible
-        if np_array.flags.contiguous:
-            np_array = np_array.astype(np.float64, copy=False)
-        else:
-            np_array = np_array.astype(np.float64)
-        # zero-copy if contiguous array
-        vtkarray = numpy_support.numpy_to_vtk(np_array, deep=False)
-        vtkarray.charlesx_array = np_array  # avoid garbage collection
-        vtkarray.SetName(var)
-        #
-        elemdata["nodes"].AddArray(vtkarray)
-    # Finally, write the file
-    writer = _vtk.vtkXMLUnstructuredGridWriter()
-    if _vtk.vtkVersion.GetVTKMajorVersion() >= 6:
-        writer.SetInputData(vtk_obj)
-    else:
-        writer.SetInput(vtk_obj)
-    filename = "restart.%d"%(simulation_state["step"])
-    writer.SetFileName(filename + '.vtu')
-    writer.SetDataModeToBinary()
-    writer.Write()
+#     elemdata = {
+#         "nodes": vtk_obj.GetPointData(),
+#         "cells": vtk_obj.GetCellData(),
+#     }
+#     # And add the variables
+#     for var in cellsvar:
+#         np_array = cellsvar[var]
+#         # cast without copy if possible
+#         if np_array.flags.contiguous:
+#             np_array = np_array.astype(np.float64, copy=False)
+#         else:
+#             np_array = np_array.astype(np.float64)
+#         # zero-copy if contiguous array
+#         vtkarray = numpy_support.numpy_to_vtk(np_array, deep=False)
+#         vtkarray.charlesx_array = np_array  # avoid garbage collection
+#         vtkarray.SetName(var)
+#         #
+#         elemdata["cells"].AddArray(vtkarray)
+#     for var in nodesvar:
+#         np_array = nodesvar[var]
+#         # cast without copy if possible
+#         if np_array.flags.contiguous:
+#             np_array = np_array.astype(np.float64, copy=False)
+#         else:
+#             np_array = np_array.astype(np.float64)
+#         # zero-copy if contiguous array
+#         vtkarray = numpy_support.numpy_to_vtk(np_array, deep=False)
+#         vtkarray.charlesx_array = np_array  # avoid garbage collection
+#         vtkarray.SetName(var)
+#         #
+#         elemdata["nodes"].AddArray(vtkarray)
+#     # Finally, write the file
+#     writer = _vtk.vtkXMLUnstructuredGridWriter()
+#     if _vtk.vtkVersion.GetVTKMajorVersion() >= 6:
+#         writer.SetInputData(vtk_obj)
+#     else:
+#         writer.SetInput(vtk_obj)
+#     filename = "restart.%d"%(simulation_state["step"])
+#     writer.SetFileName(filename + '.vtu')
+#     writer.SetDataModeToBinary()
+#     writer.Write()
 
 
