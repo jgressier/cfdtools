@@ -13,6 +13,9 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules" ]
 exclude = [ "examples" ]
 
+[tool.poetry.scripts]
+cfdinfo = 'cfdtools._cli:info'
+
 [tool.poetry.dependencies]
 python = "^3.6"
 numpy = "^1.15"
