@@ -1,5 +1,10 @@
 import argparse
 import cfdtools.api as api
+# readers
+import cfdtools.ic3 as ic3
+import cfdtools.gmsh as gmsh
+
+print(api._fileformat_map)
 
 def info(argv=None):
     #api.io.set_modes(api.io._available)
@@ -12,9 +17,9 @@ def info(argv=None):
     args = parser.parse_args(argv)
     print(args)
     #
-    import cfdtools.ic3.readRestartIC3 as ic3r
+    import cfdtools.ic3 as ic3
     #
-    r = ic3r.ReaderRestartIC3(args.filename, False)
+    r = ic3.reader(args.filename, False)
     #xyz, co, bocos, nodesvar, cellsvar, extras = r.read_data()
     r.read_data()
     r.printinfo()

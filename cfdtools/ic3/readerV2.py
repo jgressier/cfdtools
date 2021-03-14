@@ -138,7 +138,8 @@ def BinaryRead(bfile, form, byte_swap, size):
 
 ###################################################################################################
 
-class ReaderRestartIC3():
+@api.fileformat_reader('IC3', '.ic3')
+class reader(api._files):
     '''Implementation of the reader to read IC3 restart files.'''
 
     def __init__(self, filename, cIntegrity=False):
@@ -148,9 +149,7 @@ class ReaderRestartIC3():
         input   : IC3 restart file name [type string]
                   whether to check the integrity of the file beforehand [type boolean]
         '''
-        api.io.print('std',":: READER RESTART IC3 ::")
-
-        self.filename = filename
+        super().__init__(filename)
         self.check_integrity = cIntegrity
 
     def __str__(self):
@@ -185,6 +184,11 @@ class ReaderRestartIC3():
                   the lot of variables stored in the restart file
                   information on the state of the simulation
         '''
+        api.io.print('std',":: READER RESTART IC3 ::")
+
+        if not self._exists:
+            print("Fatal error. File %s cannot be found."%(self.filename))
+            exit()
 
         # Open the file for binary reading
         api.io.print('debug','reading ',self.filename)

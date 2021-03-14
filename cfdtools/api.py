@@ -1,5 +1,26 @@
 import os
 
+_fileformat_map = {}
+
+def fileformat_reader(name, extension):
+    def decorator(thisclass):
+        properties = { 'reader': thisclass, 'ext': extension }
+        if name in _fileformat_map.keys():
+            _fileformat_map[name].update(properties)
+        else: 
+            _fileformat_map[name] = properties
+        return thisclass
+    return decorator
+
+def fileformat_writer(thisclass, name, extension):
+    def decorator(thisclass):
+        properties = { 'writer': thisclass, 'ext': extension }
+        if name in _fileformat_map.keys():
+            _fileformat_map[name].update(properties)
+        else: 
+            _fileformat_map[name] = properties
+        return thisclass
+    return decorator
 class api_output():
     """class to handle library outputs
     """
@@ -36,6 +57,14 @@ io = api_output()
 #print(io.get_modes())
 
 class _files():
+
     def __init__(self, filename):
       self.filename = filename
       self._exists  = os.path.isfile(self.filename)
+
+    def __str__(self):
+        s = '  filename: '+self.filename
+        return s
+
+    def printinfo(self):
+        print(self)

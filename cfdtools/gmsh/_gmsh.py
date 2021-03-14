@@ -38,7 +38,7 @@ nodes_per_cell = {
     "pyr": 5,
 }
 
-
+@api.fileformat_reader('GMSH', '.msh')
 class reader(api._files):
     """Implementation of the reader to read Gmsh meshes."""
 
