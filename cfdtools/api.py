@@ -1,4 +1,4 @@
-
+import os
 
 class api_output():
     """class to handle library outputs
@@ -34,3 +34,8 @@ class api_output():
 
 io = api_output()
 #print(io.get_modes())
+
+class _files():
+    def __init__(self, filename):
+      self.filename = filename
+      self._exists  = os.path.isfile(self.filename)
