@@ -7,6 +7,7 @@ import numpy.ma as npma
 import collections
 import sys,os
 import cfdtools.api as api
+import cfdtools.meshbase._mesh as _mesh
 from cfdtools.ic3._ic3 import *
 
 class restartSectionHeader():
@@ -211,8 +212,11 @@ class reader(api._files):
         self.fid.close()
         del self.fid
 
-        #return self.mesh["coordinates"], self.mesh["connectivity"]["e2v"], self.mesh["bocos"], self.variables["nodes"], self.variables["cells"], (self.simulation_state, self.mesh["params"])
-        return
+        return self.mesh["coordinates"], self.mesh["connectivity"]["e2v"], self.mesh["bocos"], self.variables["nodes"], self.variables["cells"], (self.simulation_state, self.mesh["params"])
+        meshdata = _mesh.mesh(self.mesh["params"]['cv_count'], self.mesh["params"]['no_count'])
+        meshdata.set_face2cell()
+
+        return meshdata
 
     def __ReadRestartHeader(self):
         '''
@@ -297,7 +301,7 @@ class reader(api._files):
             assert np.allclose(faces_id, np.arange(self.mesh["params"]["fa_count"]))
             api.io.print('std', "ok."); sys.stdout.flush()
             del faces_id, h
-            # For nodes
+            # For cells
             api.io.print('std', "\t Checking cells integrity .."); sys.stdout.flush()
             h = restartSectionHeader()
             if(not h.readVar(self.fid, self.byte_swap,["UGP_IO_CV_CHECK"])): exit()

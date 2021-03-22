@@ -3,6 +3,8 @@ import os
 _fileformat_map = {}
 
 def fileformat_reader(name, extension):
+    """decorator to register fileformat properties for given name in api._fileformat_map
+    """
     def decorator(thisclass):
         properties = { 'reader': thisclass, 'ext': extension }
         if name in _fileformat_map.keys():
@@ -13,6 +15,8 @@ def fileformat_reader(name, extension):
     return decorator
 
 def fileformat_writer(thisclass, name, extension):
+    """decorator to register fileformat properties for given name  in api._fileformat_map
+    """
     def decorator(thisclass):
         properties = { 'writer': thisclass, 'ext': extension }
         if name in _fileformat_map.keys():

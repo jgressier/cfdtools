@@ -2,7 +2,7 @@
 
 # Import modules
 import collections
-import os
+#import os
 
 import cfdtools.api as api
 import numpy as np

@@ -1,4 +1,6 @@
 import argparse
+from pathlib import Path
+
 import cfdtools.api as api
 # readers
 import cfdtools.ic3 as ic3
@@ -17,9 +19,16 @@ def info(argv=None):
     args = parser.parse_args(argv)
     print(args)
     #
-    import cfdtools.ic3 as ic3
-    #
-    r = ic3.reader(args.filename, False)
-    #xyz, co, bocos, nodesvar, cellsvar, extras = r.read_data()
-    r.read_data()
-    r.printinfo()
+    ext = Path(args.filename).suffix
+    names= list(filter(lambda n: api._fileformat_map[n]['ext']==ext, api._fileformat_map))
+    print('names',names)
+    if len(names)==0:
+        api.io.print('error','no extension found')
+        exit()
+    elif len(names)>1:
+        api.io.print('error','no extension found')
+        exit()
+    else: # only one name
+        r = api._fileformat_map[names[0]]['reader'](args.filename)
+        r.read_data()
+        r.printinfo()

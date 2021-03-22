@@ -59,6 +59,27 @@ cell_from_nodes = {
     6:'pri',
     5:'pyr',
 }
+faces_per_cell = {
+    'hex': 6,
+    'pri': 5,
+    'pyr': 5,
+    'tet': 4,}
+faces_of_cell = {
+    'hex':['qua']*6,
+    'pri':['tri', 'qua', 'qua', 'qua', 'tri'],
+    'pyr':['qua'] + ['tri']*4,
+    'tet':['tri']*4,}
+ifaces_of_cell = {
+    'hex':[[0,3,2,1], [0,1,5,4], [1,2,6,5], [2,3,7,6], [3,0,4,7], [4,5,6,7]],
+    'pri':[[0,2,1], [0,1,4,3], [1,2,5,4], [2,0,3,5], [3,4,5]],
+    'pyr':[[0,3,2,1], [0,1,4], [1,2,4], [2,3,4], [3,0,4]],
+    'tet':[[0,2,1], [0,1,3], [1,2,3], [2,0,3]],}
+type2zonekind = {"boundary":1,
+                 "periodic_cart":2,
+                 "periodic_cylx":3,
+                 "periodic_cyly":4,
+                 "periodic_cylz":5,
+                 "internal":6}
 # Dictionary to convert zone kind to zone type (as a string)
 zonekind2type = {1:"boundary",
                  2:"periodic_cart",
