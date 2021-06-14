@@ -1,6 +1,7 @@
 [run]
   source = cfdtools
   omit=*/__init__.py
+    *.nogit/*.py
 
 [report]
 exclude_lines =

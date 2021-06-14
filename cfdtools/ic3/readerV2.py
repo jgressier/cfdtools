@@ -212,9 +212,17 @@ class reader(api._files):
         self.fid.close()
         del self.fid
 
-        return self.mesh["coordinates"], self.mesh["connectivity"]["e2v"], self.mesh["bocos"], self.variables["nodes"], self.variables["cells"], (self.simulation_state, self.mesh["params"])
-        meshdata = _mesh.mesh(self.mesh["params"]['cv_count'], self.mesh["params"]['no_count'])
-        meshdata.set_face2cell()
+        #return self.mesh["coordinates"], self.mesh["connectivity"]["e2v"], self.mesh["bocos"], self.variables["nodes"], self.variables["cells"], (self.simulation_state, self.mesh["params"])
+        meshdata = _mesh.mesh(self.mesh['params']['cv_count'], self.mesh['params']['no_count'])
+        meshdata.set_nodescoord_nd(self.mesh['coordinates'])
+        meshdata.set_face2cell(self.mesh['connectivity']['cvofa'])
+        meshdata.set_face2node(self.mesh['connectivity']['noofa'])
+        meshdata.set_bocos(self.mesh['bocos'])
+        meshdata.set_celldata(self.variables['cells'])
+        meshdata.set_nodedata(self.variables['nodes'])
+        meshdata.set_facedata(self.variables['faces'])
+        meshdata.set_params(self.mesh['params'])
+        meshdata.update_params(self.simulation_state)
 
         return meshdata
 

@@ -14,7 +14,7 @@ def fileformat_reader(name, extension):
         return thisclass
     return decorator
 
-def fileformat_writer(thisclass, name, extension):
+def fileformat_writer(name, extension):
     """decorator to register fileformat properties for given name  in api._fileformat_map
     """
     def decorator(thisclass):
@@ -25,6 +25,7 @@ def fileformat_writer(thisclass, name, extension):
             _fileformat_map[name] = properties
         return thisclass
     return decorator
+
 class api_output():
     """class to handle library outputs
     """
