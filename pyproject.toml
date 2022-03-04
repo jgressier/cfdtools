@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cfdtools"
-version = "0.0.1"
+version = "0.0.2"
 description = "Tools for mesh and solution management in CFD"
 authors = ["j.gressier <jeremie.gressier@isae-supaero.fr>"]
 license = "MIT"
