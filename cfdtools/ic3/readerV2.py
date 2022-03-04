@@ -10,6 +10,17 @@ import cfdtools.api as api
 import cfdtools.meshbase._mesh as _mesh
 from cfdtools.ic3._ic3 import *
 
+def _printreadable(string, value):
+    if isinstance(value, (int, float, str, np.int32, np.int64)):
+        print(string+':',value)
+    elif isinstance(value, np.ndarray):
+        if value.size <= 10:
+            print(string+': ndarray',value.shape, value)
+        else:
+            print(string+': ndarray',value.shape)
+    else:
+        print(string+': '+str(type(value)))
+
 class restartSectionHeader():
     '''
     This class is designed to handle the header that is present
@@ -74,7 +85,7 @@ class restartSectionHeader():
 
             # Remove trailing space from header name (h.name)
             i = 0
-            while (s[i] != '\x00') and  ( i < ic3_restart_codes["UGP_IO_HEADER_NAME_LEN"] ) : #remove trailing spaces
+            while (s[i] != b'\x00') and  ( i < ic3_restart_codes["UGP_IO_HEADER_NAME_LEN"] ) : #remove trailing spaces
                 self.name += s[i].decode() # .decode() for python3 portage
                 i += 1
             if(self.name.startswith("DEOF")): break 
@@ -154,26 +165,29 @@ class reader(api._files):
         self.check_integrity = cIntegrity
 
     def __str__(self):
-        s = '  filename: '+self.filename
-        s+= '\nsimulation: '+str(list(self.simulation_state.keys()))
-        s+= '\n    mesh: '+str(list(self.mesh.keys()))
-        s+= '\n    mesh: '+str(list(self.mesh.keys()))
+        s = '    filename: '+self.filename
+        s+= '\n   simulation: '+str(list(self.simulation_state.keys()))
+        s+= '\n    mesh keys: '+str(list(self.mesh.keys()))
+        s+= '\nvariable keys: '+str(list(self.variables.keys()))
         return s
 
     def printinfo(self):
         print(self)
+        print("- mesh properties")
         for key,item in self.mesh.items():
-            if key in ['params']:
-                for key2,value in item.items():
-                    print('mesh.'+key+'.'+key2+':',value)
-            elif key in ['connectivity','bocos']:
-                for key2,value in item.items():
-                    print('mesh.'+key+'.'+key2+':'+str(type(value)))
-            else: # at least 'coordinates', 'partition' and others
-                print('mesh.'+key+':'+str(type(value)))
+            if isinstance(item,dict):
+                for key2,item2 in item.items():
+                    if isinstance(item2,dict):
+                        for key3,item3 in item2.items():
+                            _printreadable('  mesh.'+key+'.'+key2+'.'+key3, item3)
+                    else:
+                        _printreadable('  mesh.'+key+'.'+key2, item2)
+            else:
+                _printreadable('  mesh.'+key, item)
+        print("- variable properties")
         for key,item in self.variables.items():
             for key2,value in item.items():
-                print('variables.'+key+'.'+key2+':'+str(type(value)))
+                _printreadable('variables.'+key+'.'+key2, value)
                 # for key3,value3 in value.items():
                 #     print('variables.'+key+'.'+key2+'.'+key3+':'+str(type(value3)))
 
@@ -330,7 +344,7 @@ class reader(api._files):
         api.io.print('std', "\t Parsing face to node connectivity .."); sys.stdout.flush()
         h = restartSectionHeader()
         if (not h.readVar(self.fid, self.byte_swap,["UGP_IO_NOOFA_I_AND_V"])): exit()
-
+        #
         assert h.idata[0] == self.mesh["params"]["fa_count"]
         assert h.idata[1] == self.mesh["params"]["noofa_count"]
         # Get the node count per face
@@ -338,7 +352,9 @@ class reader(api._files):
         for loopi in range(self.mesh["params"]["fa_count"]): # xrange to range (python3 portage)
             s = BinaryRead(self.fid, "i", self.byte_swap, type2nbytes["int32"])
             nno_per_face[loopi] = s[0]
+        print("nooface:",nno_per_face)
         uniq, counts = np.unique(nno_per_face, return_counts=True)
+        print("uniq:",uniq)
         uniq = [nno2fatype[val] for val in uniq]
         api.io.print('std', "found %s faces .."%(" and ".join(uniq))); sys.stdout.flush()
         # Initialize the proper connectivity arrays in self.mesh
@@ -440,7 +456,8 @@ class reader(api._files):
             self.mesh["bocos"][h.name]["slicing"] = np.unique(self.mesh["connectivity"]["noofa"]["face2vertex"][sta:sto])
             if h.idata[0] == 6:
                 break
-        api.io.print('standard', "ok."); sys.stdout.flush()
+        api.io.print('standard', "ok.")
+        sys.stdout.flush()
 
         # Parse the header of the partition information
         api.io.print('std', "\t Parsing partitioning information .."); sys.stdout.flush()
@@ -451,7 +468,8 @@ class reader(api._files):
         for loopi in range(self.mesh["params"]["cv_count"]):  # xrange to range (python3 portage)
             s = BinaryRead(self.fid, "i", self.byte_swap, type2nbytes["int32"])
             self.mesh["partition"][loopi] = s[0]
-        api.io.print('std', "ok."); sys.stdout.flush()
+        api.io.print('std', "ok.")
+        sys.stdout.flush()
 
         # The coordinates of the vertices finally
         api.io.print('std', "\t Parsing vertices coordinates .."); sys.stdout.flush()
@@ -596,7 +614,7 @@ class reader(api._files):
             elif h.idata[0] == self.mesh["params"]["fa_count"]:
                 self.variables["faces"][h.name] = np.zeros((self.mesh["params"]["fa_count"], 3), dtype=np.float64)
                 s = BinaryRead(self.fid, "ddd"*self.mesh["params"]["fa_count"], self.byte_swap, type2nbytes["float64"]*self.mesh["params"]["fa_count"]*3)
-                self.variables["faces"][h.name] = snp.asarray(s).reshape((-1, 3))
+                self.variables["faces"][h.name] = np.asarray(s).reshape((-1, 3))
                 api.io.print('std', "\t %s%s:\t %+.5e / %+.5e / %+.5e (min/mean/max)."%(h.name, ' '*(20-len(h.name)), np.asarray(s).min(), np.mean(np.asarray(s)), np.asarray(s).max()))
             elif h.idata[0] == self.mesh["params"]["cv_count"]:
                 self.variables["cells"][h.name] = np.zeros((self.mesh["params"]["cv_count"], 3), dtype=np.float64)

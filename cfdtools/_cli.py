@@ -4,9 +4,9 @@ from pathlib import Path
 import cfdtools.api as api
 # readers
 import cfdtools.ic3 as ic3
-import cfdtools.gmsh as gmsh
+#import cfdtools.gmsh as gmsh
 
-print(api._fileformat_map)
+#print(api._fileformat_map)
 
 def info(argv=None):
     #api.io.set_modes(api.io._available)

@@ -23,10 +23,10 @@ class mesh():
             self._nodes[c] = xyz[:,i]
     
     def set_cell2node(self, cell2node):
-        self.cell2node = cell2node
+        self._cell2node = cell2node
 
     def set_face2cell(self, face2cell):
-        self.face2cell = face2cell
+        self._face2cell = face2cell
 
     def set_face2node(self, face2node):
         self._face2node = face2node
@@ -50,7 +50,10 @@ class mesh():
         self._nodedata = nodedata
 
     def printinfo(self):
-        return
+        print("ncell:",self.ncell)
+        print("nnode:",self.nnode)
+        print("nface:",self.nface)
+        print("params:",self._params)
 
     def check(self):
         # check cell2node and cell numbers

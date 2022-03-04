@@ -15,7 +15,7 @@ this->data_set->registerVector<double>("X_NO", NO_DATA, false, false);
 
 ## restart header
 
-- UGP_IO_MAGIC_NUMBER to test byte swap (little endian, big endian)
+- `UGP_IO_MAGIC_NUMBER` to test byte swap (little endian, big endian)
 - version
 
 ## section header
