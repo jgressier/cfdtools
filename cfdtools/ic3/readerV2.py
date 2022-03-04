@@ -154,26 +154,32 @@ class reader(api._files):
         self.check_integrity = cIntegrity
 
     def __str__(self):
-        s = '  filename: '+self.filename
-        s+= '\nsimulation: '+str(list(self.simulation_state.keys()))
-        s+= '\n    mesh: '+str(list(self.mesh.keys()))
-        s+= '\n    mesh: '+str(list(self.mesh.keys()))
+        s = '    filename: '+self.filename
+        s+= '\n   simulation: '+str(list(self.simulation_state.keys()))
+        s+= '\n    mesh keys: '+str(list(self.mesh.keys()))
+        s+= '\nvariable keys: '+str(list(self.variables.keys()))
         return s
 
     def printinfo(self):
         print(self)
+        print("- mesh properties")
         for key,item in self.mesh.items():
             if key in ['params']:
                 for key2,value in item.items():
-                    print('mesh.'+key+'.'+key2+':',value)
+                    print('  mesh.'+key+'.'+key2+':',value)
             elif key in ['connectivity','bocos']:
                 for key2,value in item.items():
-                    print('mesh.'+key+'.'+key2+':'+str(type(value)))
+                    if isinstance(value,dict):
+                        for key3,value3 in value.items():
+                            print('  mesh.'+key+'.'+key2+'.'+key3+': '+str(type(value3)))
+                    else:
+                        print('  mesh.'+key+'.'+key2+': '+str(type(value)))
             else: # at least 'coordinates', 'partition' and others
-                print('mesh.'+key+':'+str(type(value)))
+                print('  mesh.'+key+':'+str(type(value)))
+        print("- variable properties")
         for key,item in self.variables.items():
             for key2,value in item.items():
-                print('variables.'+key+'.'+key2+':'+str(type(value)))
+                print('variables.'+key+'.'+key2+': '+str(type(value)))
                 # for key3,value3 in value.items():
                 #     print('variables.'+key+'.'+key2+'.'+key3+':'+str(type(value3)))
 
@@ -440,7 +446,8 @@ class reader(api._files):
             self.mesh["bocos"][h.name]["slicing"] = np.unique(self.mesh["connectivity"]["noofa"]["face2vertex"][sta:sto])
             if h.idata[0] == 6:
                 break
-        api.io.print('standard', "ok."); sys.stdout.flush()
+        api.io.print('standard', "ok.")
+        sys.stdout.flush()
 
         # Parse the header of the partition information
         api.io.print('std', "\t Parsing partitioning information .."); sys.stdout.flush()
@@ -451,7 +458,8 @@ class reader(api._files):
         for loopi in range(self.mesh["params"]["cv_count"]):  # xrange to range (python3 portage)
             s = BinaryRead(self.fid, "i", self.byte_swap, type2nbytes["int32"])
             self.mesh["partition"][loopi] = s[0]
-        api.io.print('std', "ok."); sys.stdout.flush()
+        api.io.print('std', "ok.")
+        sys.stdout.flush()
 
         # The coordinates of the vertices finally
         api.io.print('std', "\t Parsing vertices coordinates .."); sys.stdout.flush()
@@ -596,7 +604,7 @@ class reader(api._files):
             elif h.idata[0] == self.mesh["params"]["fa_count"]:
                 self.variables["faces"][h.name] = np.zeros((self.mesh["params"]["fa_count"], 3), dtype=np.float64)
                 s = BinaryRead(self.fid, "ddd"*self.mesh["params"]["fa_count"], self.byte_swap, type2nbytes["float64"]*self.mesh["params"]["fa_count"]*3)
-                self.variables["faces"][h.name] = snp.asarray(s).reshape((-1, 3))
+                self.variables["faces"][h.name] = np.asarray(s).reshape((-1, 3))
                 api.io.print('std', "\t %s%s:\t %+.5e / %+.5e / %+.5e (min/mean/max)."%(h.name, ' '*(20-len(h.name)), np.asarray(s).min(), np.mean(np.asarray(s)), np.asarray(s).max()))
             elif h.idata[0] == self.mesh["params"]["cv_count"]:
                 self.variables["cells"][h.name] = np.zeros((self.mesh["params"]["cv_count"], 3), dtype=np.float64)
