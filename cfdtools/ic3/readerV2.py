@@ -3,150 +3,10 @@
 # Import modules
 import struct
 import numpy as np
-import numpy.ma as npma
-import collections
-import sys,os
+import sys
 import cfdtools.api as api
 import cfdtools.meshbase._mesh as _mesh
 from cfdtools.ic3._ic3 import *
-
-def _printreadable(string, value):
-    if isinstance(value, (int, float, str, np.int32, np.int64)):
-        print(string+':',value)
-    elif isinstance(value, np.ndarray):
-        if value.size <= 10:
-            print(string+': ndarray',value.shape, value)
-        else:
-            print(string+': ndarray',value.shape)
-    else:
-        print(string+': '+str(type(value)))
-
-class restartSectionHeader():
-    '''
-    This class is designed to handle the header that is present
-    before every variable/section/category saved into the restart file.
-    '''
-
-    def __init__(self):
-        '''
-        Initialize a section header class, as it is always structured
-        in the same way, i.e. with a name, an id, a skip bytes count,
-        an information array, and an auxiliray array needed in specific
-        cases like periodicity.
-        '''
-
-        self.name   = ""
-        self.id     = np.zeros((1,), dtype=np.int32)
-        self.skip   = np.zeros((1,), dtype=np.int64)
-        self.idata  = np.zeros((8,), dtype=np.int64)
-        self.rdata  = np.zeros((16,), dtype=np.float64)
-
-    def readVar(self, bfile, byte_swap,nametypes, reset_offset=True):
-        '''
-        Once initialization is done, this method actually reads
-        the header data from the packed binary formatted string.
-        '''
-        id_list=[]
-        for nametype in nametypes:
-            id_list.append(ic3_restart_codes[nametype])
-        if(reset_offset is True): bfile.seek(8, os.SEEK_SET)
-        #print self.skip[0],self.skip
-        while (self.id[0] not in id_list) and (self.id[0] !=ic3_restart_codes["UGP_IO_EOF"]):
-            
-            self.name= ""
-            self.id     = np.zeros((1,), dtype=np.int32)
-            self.idata  = np.zeros((8,), dtype=np.int64)
-            self.rdata  = np.zeros((16,), dtype=np.float64)
-            
-            api.io.print('debug', "skipping data %d"%self.skip[0])
-            if (self.skip[0]>0):
-                bfile.seek(self.skip[0]-256, os.SEEK_CUR)
-            
-            self.skip   = np.zeros((1,), dtype=np.int64)
-            # Initialize the format string
-            binstr = ""
-            # Fill it with prior knowledge of its content
-            for i in range(ic3_restart_codes["UGP_IO_HEADER_NAME_LEN"]) :
-                binstr += "c"               # name
-            binstr += "i"                   # id
-            binstr += "q"                   # skip
-            binstr += "qqqqqqqq"            # idata
-            binstr += "dddddddddddddddd"    # rdata
-            # Keep in mind the total byte size of the header
-            self.hsize = ic3_restart_codes["UGP_IO_HEADER_NAME_LEN"] * type2nbytes["char"] +\
-                    type2nbytes["int32"] +\
-                    type2nbytes["int64"] +\
-                    self.idata.size * type2nbytes["int64"] +\
-                    self.rdata.size * type2nbytes["float64"]
-
-
-            # Split the packed binary string into its tokens
-            s = list(BinaryRead(bfile, binstr, byte_swap, self.hsize))
-
-            # Remove trailing space from header name (h.name)
-            i = 0
-            while (s[i] != b'\x00') and  ( i < ic3_restart_codes["UGP_IO_HEADER_NAME_LEN"] ) : #remove trailing spaces
-                self.name += s[i].decode() # .decode() for python3 portage
-                i += 1
-            if(self.name.startswith("DEOF")): break 
-            # Store the rest of the tokens in the right namespace
-            nlen = ic3_restart_codes["UGP_IO_HEADER_NAME_LEN"]
-            self.id[0] = s[nlen]
-            self.skip[0] = s[nlen+self.id.size]
-            for i in range(self.idata.size):
-                self.idata[i] = s[nlen+self.id.size+self.skip.size+i]
-            for i in range(self.rdata.size):
-                self.rdata[i] = s[nlen+self.id.size+self.skip.size+self.idata.size+i]
-            #print(self)
-        return (self.id[0] in id_list)
-        
-    def __str__(self):
-        mystring="Header:\n"
-        mystring +="Name:%s\n"%self.name
-
-        mystring +="Id:%i\n"%self.id
-        mystring +="Skip:%i\n"%self.skip
-        mystring +="idata:("
-        for i in range(8):
-            mystring +="%i,"%(self.idata[i])
-        mystring +=")\n"
-        mystring +="rdata:("
-        for i in range(16):
-            mystring +="%f,"%(self.rdata[i])
-        mystring +=")"
-        return mystring
-
-###################################################################################################
-
-def BinaryRead(bfile, form, byte_swap, size):
-    '''
-    Method to encapsulate the few lines necessary for the translation
-    of a piece of formatted binary onto its components given its format.
-    input   : handle on an open restart file [type file identifier]
-              format of the binary token [type string]
-              endianness flag [type boolean]
-              size of the binary token to be read [type int]
-    '''
-
-    # Choose the right prefix to the format string based on endianness
-    if byte_swap is True: # little-endian
-        form = '<' + form
-    else: # big-endian
-        form = '>' + form
-
-    # Create a "packed-binary reader structure"
-    s = struct.Struct(form)
-
-    # Try to read 'size' bytes from the file otherwise crash
-    try:
-        while True:
-            record = bfile.read(size)
-            if len(record) != size:
-                break;
-            return s.unpack(record)
-    except IOError:
-        api.io.print('error', "Fatal error. Could not read %d bytes from %s. Exiting."%(size, bfile.name))
-        exit()
 
 ###################################################################################################
 
@@ -179,15 +39,15 @@ class reader(api._files):
                 for key2,item2 in item.items():
                     if isinstance(item2,dict):
                         for key3,item3 in item2.items():
-                            _printreadable('  mesh.'+key+'.'+key2+'.'+key3, item3)
+                            api._printreadable('  mesh.'+key+'.'+key2+'.'+key3, item3)
                     else:
-                        _printreadable('  mesh.'+key+'.'+key2, item2)
+                        api._printreadable('  mesh.'+key+'.'+key2, item2)
             else:
-                _printreadable('  mesh.'+key, item)
+                api._printreadable('  mesh.'+key, item)
         print("- variable properties")
         for key,item in self.variables.items():
             for key2,value in item.items():
-                _printreadable('variables.'+key+'.'+key2, value)
+                api._printreadable('variables.'+key+'.'+key2, value)
                 # for key3,value3 in value.items():
                 #     print('variables.'+key+'.'+key2+'.'+key3+':'+str(type(value3)))
 
@@ -266,6 +126,7 @@ class reader(api._files):
             s[1] = aux_struct.unpack(packed_version)[0]
 
         # Some info for the user
+        self.ic3_version = s[1]
         api.io.print('std', "\t Restart file is version %s, current IC3 version is %d."%(str(s[1]).strip(), ic3_restart_codes["UGP_IO_VERSION"]))
 
     def __ReadRestartConnectivity(self):
@@ -404,36 +265,6 @@ class reader(api._files):
         mask = self.mesh["connectivity"]["cvofa"]["cvofa"][:,1] < -1
         self.mesh["connectivity"]["cvofa"]["cvofa"][:,1][mask] = -1
         #
-        #- Convert CVOFA to element2face
-        #
-        # api.io.print('std', "\t Converting CVOFA to an element2face connectivity .."); sys.stdout.flush()
-        # self.mesh["connectivity"]["cvofa"]["cvofa"] += 1
-        # uniq, unique_count = np.unique(self.mesh["connectivity"]["cvofa"]["cvofa"], return_counts=True)
-        # mask = uniq > 0 # >= 0
-        # element2face_size = np.sum(unique_count[mask]) + unique_count[mask].size
-        # from getFACEEL import getfaceel
-        # e2f = getfaceel(self.mesh["params"]["fa_count"], self.mesh["params"]["cv_count"],
-        #                 element2face_size,
-        #                 unique_count[mask],
-        #                 self.mesh["connectivity"]["cvofa"]["cvofa"][:,0], self.mesh["connectivity"]["cvofa"]["cvofa"][:,1])
-        # e2f = np.hstack( ( unique_count[mask][:, None], e2f ) )
-        # e2f_ma = npma.masked_where(e2f==-1, e2f)
-        # if e2f_ma.mask!=False:
-        #     api.io.print('std', "Masking",e2f_ma.mask)
-        #     element2face = e2f[~e2f_ma.mask].squeeze().ravel()
-        # else:
-        #     element2face = e2f.squeeze().ravel()
-
-        # listofStarts_e2f = np.insert(np.cumsum(unique_count[mask]+1), 0, 0)[:-1]
-        # e2f = np.delete(element2face, listofStarts_e2f)
-        # self.mesh["connectivity"]["cvofa"]["element2face"] = e2f
-        # self.mesh["connectivity"]["cvofa"]["element2face"] -= 1
-        # self.mesh["connectivity"]["cvofa"]["listofStarts_e2f"] = listofStarts_e2f - np.arange(len(listofStarts_e2f))
-        # self.mesh["connectivity"]["cvofa"]["listofStarts_e2f"] = np.concatenate((self.mesh["connectivity"]["cvofa"]["listofStarts_e2f"], [e2f.shape[0],]))
-        # self.mesh["connectivity"]["cvofa"]["cvofa"] -= 1
-        # api.io.print('std', "ok."); sys.stdout.flush()
-        # del uniq, element2face_size, e2f, e2f_ma, element2face, listofStarts_e2f
-
         # The boundary conditions now
         api.io.print('std', "\t Parsing boundary conditions .."); sys.stdout.flush()
         while True:
@@ -485,31 +316,7 @@ class reader(api._files):
         self.mesh["coordinates"] = np.ascontiguousarray(self.mesh["coordinates"])
         api.io.print('std', "ok."); sys.stdout.flush()
 
-        # Convert the two connectivity tables to a classical element2vertex connectivity
-        # api.io.print('std', "\t Converting element2face and face2vertex to an element2vertex connectivity .."); sys.stdout.flush()
-        # from getNOoCV import getnoocv
-        # los_e2v, e2v = getnoocv(self.mesh["params"]["cv_count"], self.mesh["params"]["no_count"], self.mesh["params"]["fa_count"],
-        #                         self.mesh["connectivity"]["noofa"]["listofStarts_f2v"],
-        #                         self.mesh["connectivity"]["cvofa"]["listofStarts_e2f"],
-        #                         self.mesh["connectivity"]["noofa"]["face2vertex"],
-        #                         self.mesh["connectivity"]["cvofa"]["element2face"],
-        #                         self.mesh["connectivity"]["cvofa"]["cvofa"][:,0], self.mesh["connectivity"]["cvofa"]["cvofa"][:,1],
-        #                         self.mesh["coordinates"][:,0], self.mesh["coordinates"][:,1], self.mesh["coordinates"][:,2])
-        # _nvTotalperElt = np.diff(los_e2v)
-        # nvTotalperElt = np.repeat(_nvTotalperElt, _nvTotalperElt)
-        # uniqueNoV = np.unique(nvTotalperElt)
-        # connectivities = [None]*len(uniqueNoV)
-        # self.mesh["connectivity"]["e2v"] = collections.OrderedDict()
-        # self.mesh["connectivity"]["cell_indices"] = collections.OrderedDict()
-        # for idx, nov in enumerate(uniqueNoV):
-        #     self.mesh["connectivity"]["nkeys"] += 1
-        #     _maskNoV = _nvTotalperElt==nov
-        #     maskNoV = nvTotalperElt==nov
-        #     connectivities[idx] = e2v[maskNoV].reshape((-1, nov))
-        #     el_type = cell_from_nodes[nov]
-        #     self.mesh["connectivity"]["e2v"][el_type] = connectivities[idx]
-        #     self.mesh["connectivity"]["cell_indices"][el_type] = np.arange(self.mesh["params"]["cv_count"])[_maskNoV]
-        # api.io.print('std', "ok."); sys.stdout.flush()
+
 
     def __ReadInformativeValues(self):
         '''
