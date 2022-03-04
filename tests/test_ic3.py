@@ -14,13 +14,13 @@ def test_reader(filename):
     assert rmesh.check()
 
 @pytest.mark.parametrize("filename", ["Box3x3x2v2.ic3"])
-def test_writer_v2(filename):
+def test_writer_v2_litend(filename):
     _builddir.mkdir(exist_ok = True)
     basefile = _datadir / filename
     outfile = _builddir / filename
     ic3read = ic3readv2.reader(basefile)
     rmesh = ic3read.read_data()
     assert rmesh.check()
-    ic3write = ic3writv2.writer(rmesh)
+    ic3write = ic3writv2.writer(rmesh, endian='little')
     ic3write.write_data(outfile)
     assert filecmp.cmp(basefile, outfile)
