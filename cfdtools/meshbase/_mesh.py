@@ -50,7 +50,9 @@ class mesh():
         self._nodedata = nodedata
 
     def printinfo(self):
-        return
+        print("ncell:",self.ncell)
+        print("nnode:",self.nnode)
+        print("nface:",self.nface)
 
     def check(self):
         # check cell2node and cell numbers

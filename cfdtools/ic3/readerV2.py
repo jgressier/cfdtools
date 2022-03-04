@@ -74,7 +74,7 @@ class restartSectionHeader():
 
             # Remove trailing space from header name (h.name)
             i = 0
-            while (s[i] != '\x00') and  ( i < ic3_restart_codes["UGP_IO_HEADER_NAME_LEN"] ) : #remove trailing spaces
+            while (s[i] != b'\x00') and  ( i < ic3_restart_codes["UGP_IO_HEADER_NAME_LEN"] ) : #remove trailing spaces
                 self.name += s[i].decode() # .decode() for python3 portage
                 i += 1
             if(self.name.startswith("DEOF")): break 
