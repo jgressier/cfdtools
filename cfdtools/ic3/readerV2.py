@@ -10,6 +10,17 @@ import cfdtools.api as api
 import cfdtools.meshbase._mesh as _mesh
 from cfdtools.ic3._ic3 import *
 
+def _printreadable(string, value):
+    if isinstance(value, (int, float, str, np.int32, np.int64)):
+        print(string+':',value)
+    elif isinstance(value, np.ndarray):
+        if value.size <= 10:
+            print(string+': ndarray',value.shape, value)
+        else:
+            print(string+': ndarray',value.shape)
+    else:
+        print(string+': '+str(type(value)))
+
 class restartSectionHeader():
     '''
     This class is designed to handle the header that is present
@@ -164,22 +175,19 @@ class reader(api._files):
         print(self)
         print("- mesh properties")
         for key,item in self.mesh.items():
-            if key in ['params']:
-                for key2,value in item.items():
-                    print('  mesh.'+key+'.'+key2+':',value)
-            elif key in ['connectivity','bocos']:
-                for key2,value in item.items():
-                    if isinstance(value,dict):
-                        for key3,value3 in value.items():
-                            print('  mesh.'+key+'.'+key2+'.'+key3+': '+str(type(value3)))
+            if isinstance(item,dict):
+                for key2,item2 in item.items():
+                    if isinstance(item2,dict):
+                        for key3,item3 in item2.items():
+                            _printreadable('  mesh.'+key+'.'+key2+'.'+key3, item3)
                     else:
-                        print('  mesh.'+key+'.'+key2+': '+str(type(value)))
-            else: # at least 'coordinates', 'partition' and others
-                print('  mesh.'+key+':'+str(type(value)))
+                        _printreadable('  mesh.'+key+'.'+key2, item2)
+            else:
+                _printreadable('  mesh.'+key, item)
         print("- variable properties")
         for key,item in self.variables.items():
             for key2,value in item.items():
-                print('variables.'+key+'.'+key2+': '+str(type(value)))
+                _printreadable('variables.'+key+'.'+key2, value)
                 # for key3,value3 in value.items():
                 #     print('variables.'+key+'.'+key2+'.'+key3+':'+str(type(value3)))
 
@@ -336,7 +344,7 @@ class reader(api._files):
         api.io.print('std', "\t Parsing face to node connectivity .."); sys.stdout.flush()
         h = restartSectionHeader()
         if (not h.readVar(self.fid, self.byte_swap,["UGP_IO_NOOFA_I_AND_V"])): exit()
-
+        #
         assert h.idata[0] == self.mesh["params"]["fa_count"]
         assert h.idata[1] == self.mesh["params"]["noofa_count"]
         # Get the node count per face
@@ -344,7 +352,9 @@ class reader(api._files):
         for loopi in range(self.mesh["params"]["fa_count"]): # xrange to range (python3 portage)
             s = BinaryRead(self.fid, "i", self.byte_swap, type2nbytes["int32"])
             nno_per_face[loopi] = s[0]
+        print("nooface:",nno_per_face)
         uniq, counts = np.unique(nno_per_face, return_counts=True)
+        print("uniq:",uniq)
         uniq = [nno2fatype[val] for val in uniq]
         api.io.print('std', "found %s faces .."%(" and ".join(uniq))); sys.stdout.flush()
         # Initialize the proper connectivity arrays in self.mesh
