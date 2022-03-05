@@ -3,7 +3,7 @@ from pathlib import Path
 
 import cfdtools.api as api
 # readers
-import cfdtools.ic3 as ic3
+#import cfdtools.ic3 as _ic3
 #import cfdtools.gmsh as gmsh
 
 #print(api._fileformat_map)

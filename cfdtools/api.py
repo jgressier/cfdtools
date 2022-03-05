@@ -36,6 +36,7 @@ def _printreadable(string, value):
             print(string+': ndarray',value.shape)
     else:
         print(string+': '+str(type(value)))
+
 class api_output():
     """class to handle library outputs
     """
@@ -44,7 +45,7 @@ class api_output():
 
     def __init__(self, list=None):
         self._api_output = []
-        if list==None:
+        if list is None:
             self.set_default()
         else:
             self.set_modes(list)
