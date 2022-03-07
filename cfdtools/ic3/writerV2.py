@@ -78,7 +78,7 @@ class writer():
         self.bocos.pop("nfa_bp")
         api.io.print('std',"ok.")
 
-    def set_simstate(self, state=None):
+    def set_simstate(self, state={}):
         """
         Set the simulation state for the restart.
         It will be later written to the file using the
@@ -89,11 +89,11 @@ class writer():
 
         # Initialize the current simulation state
         self.simstate = {"wgt":{}, "step":0, "dt":0, "time":0}
-
-        # If the state dictionary is not None then can replace
-        if state is not None:
-            for key, item in state.items():
-                self.simstate[key] = item
+        # update with _mesh._params then state if key exists
+        for refdict in (self._mesh._params, state):
+            for key in self.simstate.keys():
+                if key in refdict.keys():
+                    self.simstate[key] = refdict[key]
 
     def set_vars(self):
         """
@@ -286,20 +286,25 @@ class writer():
         header.write(self.fid, self.endian)
         # Write current number of iteration
         # Header
+        key = "STEP"
         header = restartSectionHeader()
-        header.name = "STEP"
+        header.name = key
+        value = self.simstate[key.lower()]
+        api.io.print("std", "write section for {} parameter: {}".format(key, value))
         header.id = ic3_restart_codes["UGP_IO_I0"]
         header.skip = header.hsize
-        header.idata[0] = self.simstate["step"]
+        header.idata[0] = value
         header.write(self.fid, self.endian)
         # Write the rest, all double values
         # The monomials first
         for key in ["DT", "TIME"]:
+            value = self.simstate[key.lower()]
+            api.io.print("std", "write section for {} parameter: {}".format(key, value))
             header = restartSectionHeader()
             header.name = key
             header.id = ic3_restart_codes["UGP_IO_D0"]
             header.skip = header.hsize
-            header.rdata[0] = self.simstate[key.lower()]
+            header.rdata[0] = value
             header.write(self.fid, self.endian)
         # The second level now
         for key in self.simstate["wgt"].keys():
