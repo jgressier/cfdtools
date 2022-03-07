@@ -83,5 +83,15 @@ class _files():
         s = '  filename: '+self.filename
         return s
 
+    def safe_destination(self, filepath):
+        """Returns safe destination, adding (n) if needed"""
+        safepath = filepath
+        base, extension = os.path.splitext(filepath)
+        i = 0
+        while os.path.exists(safepath):
+            i += 1
+            safepath = '{} ({}){}'.format(base, i, extension)
+        return safepath
+        
     def printinfo(self):
         print(self)

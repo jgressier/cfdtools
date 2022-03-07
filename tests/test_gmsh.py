@@ -1,13 +1,21 @@
 import cfdtools.gmsh as gmsh
+from pathlib import Path
+import pytest
 
-_datadir="./tests/data/"
+_datadir=Path("./tests/data")
 
-def test_reader3dv22():
-    rmesh = gmsh.reader(_datadir+'box3d-v22.msh')
-    rmesh.read_data()
-    assert True
+@pytest.mark.parametrize("filename", ["box3d-v22.msh", "box3d-v41.msh", "test_2d.msh", "test_2d_small.msh", "test_3d.msh"])
+def test_reader(filename):
+    input = gmsh.reader(_datadir.joinpath(filename))
+    rmesh = input.read_data()
+    assert rmesh.check()
 
-def test_reader3dv41():
-    rmesh = gmsh.reader(_datadir+'box3d-v41.msh')
-    rmesh.read_data()
-    assert True
+# def test_reader3dv22():
+#     rmesh = gmsh.reader(_datadir+'box3d-v22.msh')
+#     rmesh = gmshmesh.read_data()
+#     assert rmesh.check()
+
+# def test_reader3dv41():
+#     gmshmesh = gmsh.reader(_datadir+'box3d-v41.msh')
+#     rmesh = gmshmesh.read_data()
+#     assert rmesh.check()
