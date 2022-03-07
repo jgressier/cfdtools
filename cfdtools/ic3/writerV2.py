@@ -153,9 +153,7 @@ class writer():
         input   : handle on an open restart file, [type file identifier]
         """
         # Write the two integers
-        BinaryWrite(self.fid, self.endian, "ii", 
-                                    [ic3_restart_codes["UGP_IO_MAGIC_NUMBER"],
-                                     ic3_restart_codes["UGP_IO_VERSION"]])
+        BinaryWrite(self.fid, self.endian, "ii", [ic3_restart_codes["UGP_IO_MAGIC_NUMBER"], 2])
 
     def __WriteRestartConnectivity(self):
         """
@@ -350,7 +348,8 @@ class writer():
                 pass
 
         # Then the cell based variables
-        for key, item in self.vars["cells"].items():
+        for key, cellitem in self.vars["cells"].items():
+            item = cellitem.data()
             # Scalar
             if item.size == item.shape[0]:
                 # Header
@@ -362,7 +361,8 @@ class writer():
                 header.write(self.fid, self.endian)
                 # Field
                 BinaryWrite(self.fid, self.endian, "d"*self.params["cv_count"], item)
-        for key, item in self.vars["cells"].items():
+        for key, cellitem in self.vars["cells"].items():
+            item = cellitem.data()
             # Vector
             if len(item.shape) == 2:
                 # Header
@@ -375,7 +375,8 @@ class writer():
                 header.write(self.fid, self.endian)
                 # Field
                 BinaryWrite(self.fid, self.endian, "d"*self.params["cv_count"]*3, item.ravel(order='C'))
-        for key, item in self.vars["cells"].items():
+        for key, cellitem in self.vars["cells"].items():
+            item = cellitem.data()
             # Tensor
             if len(item.shape) == 3:
                 # Header

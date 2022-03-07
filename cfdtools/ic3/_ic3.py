@@ -5,7 +5,7 @@ import cfdtools.api as api
 
 # Copy the restart codes from CharlesX to match its restart routine
 ic3_restart_codes = {"UGP_IO_MAGIC_NUMBER":123581321,
-                     "UGP_IO_VERSION":2,
+                     "UGP_IO_VERSION":-1, # not specific here
                      "UGP_IO_HEADER_NAME_LEN":52, # select this to make header size 256 bytes
                      "UGP_IO_NO_FA_CV_NOOFA_COUNTS":10,
                      "UGP_IO_I0":11,

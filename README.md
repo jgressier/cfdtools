@@ -20,3 +20,4 @@ cfdtools
 
 ### Requirements
 
+see [requirements.txt](https://github.com/jgressier/cfdtools/blob/master/requirements.txt)
