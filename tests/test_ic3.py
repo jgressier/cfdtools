@@ -26,7 +26,7 @@ def test_writer_v2_litend(filename):
     ic3write.write_data(outfile)
     assert filecmp.cmp(basefile, outfile)
 
-# @pytest.mark.parametrize("filename", ["siena-sd3.ic3"])
+# @pytest.mark.parametrize("filename", ["sam_sd3.ic3"])
 # def test_writer_v2_litend(filename):
 #     _builddir.mkdir(exist_ok = True)
 #     basefile = _datadir / filename
@@ -36,4 +36,5 @@ def test_writer_v2_litend(filename):
 #     assert rmesh.check()
 #     ic3write = ic3wv3.writer(rmesh, endian='little')
 #     ic3write.write_data(outfile)
-#     assert filecmp.cmp(basefile, outfile)
+#     assert 1 # safe run
+#     #assert filecmp.cmp(basefile, outfile)
