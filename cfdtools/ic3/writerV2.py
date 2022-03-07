@@ -155,21 +155,7 @@ class writer():
         # Write the two integers
         BinaryWrite(self.fid, self.endian, "ii", [ic3_restart_codes["UGP_IO_MAGIC_NUMBER"], 2])
 
-    def __WriteRestartConnectivity(self):
-        """
-        Method writing the connectivities of a restart file.
-        Also the number of nodes, faces and volumes for later checks.
-        """
-        # First the header for counts
-        header = restartSectionHeader()
-        header.name = "NO_FA_CV_NOOFA_COUNTS"
-        header.id = ic3_restart_codes["UGP_IO_NO_FA_CV_NOOFA_COUNTS"]
-        header.skip = header.hsize
-        header.idata[0] = self.params["no_count"]
-        header.idata[1] = self.params["fa_count"]
-        header.idata[2] = self.params["cv_count"]
-        header.idata[3] = self.params["noofa_count"]
-        header.write(self.fid, self.endian)
+    def __WriteRestartConnectivity_check(self):
         # Node check
         # Header
         header = restartSectionHeader()
@@ -200,6 +186,26 @@ class writer():
         header.write(self.fid, self.endian)
         # Write the nodes global ids
         BinaryWrite(self.fid, self.endian, "i"*self.params["cv_count"], range(self.params["cv_count"]))
+
+    def __WriteRestartConnectivity(self):
+        """
+        Method writing the connectivities of a restart file.
+        Also the number of nodes, faces and volumes for later checks.
+        """
+        # First the header for counts
+        header = restartSectionHeader()
+        header.name = "NO_FA_CV_NOOFA_COUNTS"
+        header.id = ic3_restart_codes["UGP_IO_NO_FA_CV_NOOFA_COUNTS"]
+        header.skip = header.hsize
+        header.idata[0] = self.params["no_count"]
+        header.idata[1] = self.params["fa_count"]
+        header.idata[2] = self.params["cv_count"]
+        header.idata[3] = self.params["noofa_count"]
+        header.write(self.fid, self.endian)
+        #
+        # don't really know how useful it was; suppressed in V3
+        self.__WriteRestartConnectivity_check()
+        #
         # Connectivities
         # Faces-to-nodes connectivities
         # Header
