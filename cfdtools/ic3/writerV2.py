@@ -1,119 +1,9 @@
 
 # Import modules
-import struct
 import numpy as np
-import numpy.ma as npma
-import collections
-import sys
 import cfdtools.api as api
 import cfdtools.meshbase._mesh as _mesh
 from cfdtools.ic3._ic3 import *
-
-struct_endian = { 'native':'@', 'little':'<', 'big':'>'}
-
-###################################################################################################
-def BinaryWrite(bfile, endian, form, varargs):
-    '''
-    Method to encapsulate the few lines necessary for the translation
-    of formatted components to a piece of formatted binary.
-    input   : handle on an open file [type file identifier]
-            format of the binary token [type string]
-            list of variables to make the bytearray
-    '''
-
-    # Assume big-endian to write the file - anyways charlesx can swap
-    form = struct_endian[endian] + form
-
-    # Create a packer
-    s = struct.Struct(form)
-    #print(len(form), form,len(varargs),':')
-    # Actually pack the string now
-    packed_ba = s.pack(*varargs)
-
-    # Try to write the bytes to the file otherwise crash
-    try:
-        bfile.write(packed_ba)
-    except IOError:
-        api.io.print('error',"Fatal error. Could not write to %s. Exiting."%(bfile.name))
-        exit()
-
-class restartSectionHeader():
-    '''
-    This class is designed to handle the header that is present
-    before every variable/section/category saved into the restart file.
-    '''
-
-    def __init__(self):
-        """
-        Initialize a section header class, as it is always structured
-        in the same way, i.e. with a name, an id, a skip bytes count,
-        an information array, and an auxiliary array needed in specific
-        cases like periodicity.
-        """
-
-        self.name   = " "*ic3_restart_codes["UGP_IO_HEADER_NAME_LEN"]
-        self.id     = np.zeros((1,), dtype=np.int32)
-        self.skip   = np.zeros((1,), dtype=np.int64)
-        self.idata  = np.zeros((8,), dtype=np.int64)
-        self.rdata  = np.zeros((16,), dtype=np.float64)
-
-        # Initialize the format string
-        self.binstr = ""
-        # Fill it with prior knowledge of its content
-        for i in range(ic3_restart_codes["UGP_IO_HEADER_NAME_LEN"]) :
-            self.binstr += "c"               # name
-        self.binstr += "i"                   # id
-        self.binstr += "q"                   # skip
-        self.binstr += "qqqqqqqq"            # idata (long long)
-        self.binstr += "dddddddddddddddd"    # rdata (double)
-
-        # Keep in mind the total byte size of the header
-        self.hsize = ic3_restart_codes["UGP_IO_HEADER_NAME_LEN"] * type2nbytes["char"] +\
-                type2nbytes["int32"] +\
-                type2nbytes["int64"] +\
-                self.idata.size * type2nbytes["int64"] +\
-                self.rdata.size * type2nbytes["float64"]
-
-    def write(self, bfile, endian):
-        """
-        Once initialization is done, this method actually writes
-        the header data from the packed binary formatted string.
-        """
-
-        # Make a list from all the arguments
-        varargs = []
-        for i in range(ic3_restart_codes["UGP_IO_HEADER_NAME_LEN"]):
-            if i < len(self.name):
-                varargs.append(bytes(self.name[i], 'utf-8'))
-            else:
-                varargs.append(b'\0')
-        # for i in varargs:
-        #     print(">",i, type(i))
-        varargs.append(self.id)
-        varargs.append(self.skip)
-        for kk in range(8):
-            varargs.append(self.idata[kk])
-        for kk in range(16):
-            varargs.append(self.rdata[kk])
-        #print(varargs)
-        # Now write everything at once
-        BinaryWrite(bfile, endian, self.binstr, varargs)
-
-    def __str__(self):
-        mystring="Header:\n"
-        mystring +="Name:%s\n"%self.name
-
-        mystring +="Id:%i\n"%self.id
-        mystring +="Skip:%i\n"%self.skip
-        mystring +="idata:("
-        for i in range(8):
-            mystring +="%i,"%(self.idata[i])
-        mystring +=")\n"
-        mystring +="rdata:("
-        for i in range(16):
-            mystring +="%f,"%(self.rdata[i])
-        mystring +=")"
-        return mystring
 
 ###################################################################################################
 
@@ -188,7 +78,7 @@ class writer():
         self.bocos.pop("nfa_bp")
         api.io.print('std',"ok.")
 
-    def set_simstate(self, state=None):
+    def set_simstate(self, state={}):
         """
         Set the simulation state for the restart.
         It will be later written to the file using the
@@ -199,11 +89,11 @@ class writer():
 
         # Initialize the current simulation state
         self.simstate = {"wgt":{}, "step":0, "dt":0, "time":0}
-
-        # If the state dictionary is not None then can replace
-        if state is not None:
-            for key, item in state.items():
-                self.simstate[key] = item
+        # update with _mesh._params then state if key exists
+        for refdict in (self._mesh._params, state):
+            for key in self.simstate.keys():
+                if key in refdict.keys():
+                    self.simstate[key] = refdict[key]
 
     def set_vars(self):
         """
@@ -263,25 +153,9 @@ class writer():
         input   : handle on an open restart file, [type file identifier]
         """
         # Write the two integers
-        BinaryWrite(self.fid, self.endian, "ii", 
-                                    [ic3_restart_codes["UGP_IO_MAGIC_NUMBER"],
-                                     ic3_restart_codes["UGP_IO_VERSION"]])
+        BinaryWrite(self.fid, self.endian, "ii", [ic3_restart_codes["UGP_IO_MAGIC_NUMBER"], 2])
 
-    def __WriteRestartConnectivity(self):
-        """
-        Method writing the connectivities of a restart file.
-        Also the number of nodes, faces and volumes for later checks.
-        """
-        # First the header for counts
-        header = restartSectionHeader()
-        header.name = "NO_FA_CV_NOOFA_COUNTS"
-        header.id = ic3_restart_codes["UGP_IO_NO_FA_CV_NOOFA_COUNTS"]
-        header.skip = header.hsize
-        header.idata[0] = self.params["no_count"]
-        header.idata[1] = self.params["fa_count"]
-        header.idata[2] = self.params["cv_count"]
-        header.idata[3] = self.params["noofa_count"]
-        header.write(self.fid, self.endian)
+    def __WriteRestartConnectivity_check(self):
         # Node check
         # Header
         header = restartSectionHeader()
@@ -312,6 +186,26 @@ class writer():
         header.write(self.fid, self.endian)
         # Write the nodes global ids
         BinaryWrite(self.fid, self.endian, "i"*self.params["cv_count"], range(self.params["cv_count"]))
+
+    def __WriteRestartConnectivity(self):
+        """
+        Method writing the connectivities of a restart file.
+        Also the number of nodes, faces and volumes for later checks.
+        """
+        # First the header for counts
+        header = restartSectionHeader()
+        header.name = "NO_FA_CV_NOOFA_COUNTS"
+        header.id = ic3_restart_codes["UGP_IO_NO_FA_CV_NOOFA_COUNTS"]
+        header.skip = header.hsize
+        header.idata[0] = self.params["no_count"]
+        header.idata[1] = self.params["fa_count"]
+        header.idata[2] = self.params["cv_count"]
+        header.idata[3] = self.params["noofa_count"]
+        header.write(self.fid, self.endian)
+        #
+        # don't really know how useful it was; suppressed in V3
+        self.__WriteRestartConnectivity_check()
+        #
         # Connectivities
         # Faces-to-nodes connectivities
         # Header
@@ -392,20 +286,25 @@ class writer():
         header.write(self.fid, self.endian)
         # Write current number of iteration
         # Header
+        key = "STEP"
         header = restartSectionHeader()
-        header.name = "STEP"
+        header.name = key
+        value = self.simstate[key.lower()]
+        api.io.print("std", "write section for {} parameter: {}".format(key, value))
         header.id = ic3_restart_codes["UGP_IO_I0"]
         header.skip = header.hsize
-        header.idata[0] = self.simstate["step"]
+        header.idata[0] = value
         header.write(self.fid, self.endian)
         # Write the rest, all double values
         # The monomials first
         for key in ["DT", "TIME"]:
+            value = self.simstate[key.lower()]
+            api.io.print("std", "write section for {} parameter: {}".format(key, value))
             header = restartSectionHeader()
             header.name = key
             header.id = ic3_restart_codes["UGP_IO_D0"]
             header.skip = header.hsize
-            header.rdata[0] = self.simstate[key.lower()]
+            header.rdata[0] = value
             header.write(self.fid, self.endian)
         # The second level now
         for key in self.simstate["wgt"].keys():
@@ -460,7 +359,8 @@ class writer():
                 pass
 
         # Then the cell based variables
-        for key, item in self.vars["cells"].items():
+        for key, cellitem in self.vars["cells"].items():
+            item = cellitem.data()
             # Scalar
             if item.size == item.shape[0]:
                 # Header
@@ -472,7 +372,8 @@ class writer():
                 header.write(self.fid, self.endian)
                 # Field
                 BinaryWrite(self.fid, self.endian, "d"*self.params["cv_count"], item)
-        for key, item in self.vars["cells"].items():
+        for key, cellitem in self.vars["cells"].items():
+            item = cellitem.data()
             # Vector
             if len(item.shape) == 2:
                 # Header
@@ -485,7 +386,8 @@ class writer():
                 header.write(self.fid, self.endian)
                 # Field
                 BinaryWrite(self.fid, self.endian, "d"*self.params["cv_count"]*3, item.ravel(order='C'))
-        for key, item in self.vars["cells"].items():
+        for key, cellitem in self.vars["cells"].items():
+            item = cellitem.data()
             # Tensor
             if len(item.shape) == 3:
                 # Header
