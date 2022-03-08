@@ -31,19 +31,12 @@ class writer(writer_v2):
     def __WriteRestartConnectivity_check(self):
         # nothing to do in V3
         return
-        
+
     def __WriteRestartVar(self):
         """
         Method to write all the variables into a restart file.
         Scalars, vectors and tensors all together.
         """
-
-        # Check the variable dictionary has been set
-        try:
-            self.vars
-        except:
-            self.vars = {"nodes":{}, "cells":{}}
-
         # Start with the node based variables
         for key, item in self.vars["nodes"].items():
             # Scalar

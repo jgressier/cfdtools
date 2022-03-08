@@ -2,7 +2,7 @@
 # Import modules
 import numpy as np
 import cfdtools.api as api
-import cfdtools.meshbase._mesh as _mesh
+#import cfdtools.meshbase._mesh as _mesh
 from cfdtools.ic3._ic3 import *
 
 ###################################################################################################
@@ -20,6 +20,7 @@ class writer():
             raise ValueError("unknown endian key")
         else:
             self.endian = endian
+        self.vars = {"nodes":{}, "cells":{}}
         self._mesh = mesh
         # Initialize the simulation state
         self.set_simstate()
@@ -320,13 +321,6 @@ class writer():
         Method to write all the variables into a restart file.
         Scalars, vectors and tensors all together.
         """
-
-        # Check the variable dictionary has been set
-        try:
-            self.vars
-        except:
-            self.vars = {"nodes":{}, "cells":{}}
-
         # Start with the node based variables
         for key, item in self.vars["nodes"].items():
             # Scalar
