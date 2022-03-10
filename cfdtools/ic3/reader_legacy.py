@@ -8,7 +8,7 @@ import cfdtools.api as api
 import cfdtools.meshbase._mesh as _mesh
 import cfdtools.meshbase._data as _data
 #import cfdtools.ic3._ic3 as ic3b
-from cfdtools.ic3._ic3 import type2nbytes, restartSectionHeader, ic3_restart_codes, BinaryRead, zonekind2type, nno2fatype
+from cfdtools.ic3._ic3 import type2nbytes, restartSectionHeader, ic3_restart_codes, BinaryRead, zonekind2type, nno2fatype, properties_ugpcode
 
 ###################################################################################################
 
@@ -409,24 +409,30 @@ class reader(api._files):
         reset_offset=True
         while True:
             h = restartSectionHeader()
-            if(not h.readVar(self.fid, self.byte_swap,["UGP_IO_NO_D1","UGP_IO_FA_D1","UGP_IO_CV_D1"],reset_offset=reset_offset)): break
+            if (not h.readVar(self.fid, self.byte_swap,
+                ["UGP_IO_NO_D1","UGP_IO_NO_II1","UGP_IO_FA_D1","UGP_IO_CV_D1","UGP_IO_CV_II1"],
+                reset_offset=reset_offset)): break
             reset_offset=False
-
+            #
+            typechar = properties_ugpcode[h.id[0]]['structcode']
+            typesize = properties_ugpcode[h.id[0]]['size']
+            nptype = properties_ugpcode[h.id[0]]['numpytype']
+            #
             if h.idata[0] == self.mesh["params"]["no_count"]:
-                self.variables["nodes"][h.name] = np.zeros((self.mesh["params"]["no_count"],), dtype=np.float64)
-                s = BinaryRead(self.fid, "d"*self.mesh["params"]["no_count"], self.byte_swap, type2nbytes["float64"]*self.mesh["params"]["no_count"])
+                self.variables["nodes"][h.name] = np.zeros((self.mesh["params"]["no_count"],), dtype=nptype)
+                s = BinaryRead(self.fid, typechar*self.mesh["params"]["no_count"], self.byte_swap, typesize*self.mesh["params"]["no_count"])
                 self.variables["nodes"][h.name] = np.asarray(s)
                 api.io.print('std', "\t %s%s:\t %+.5e / %+.5e / %+.5e (min/mean/max)."%(h.name, ' '*(20-len(h.name)), np.asarray(s).min(), np.mean(np.asarray(s)), np.asarray(s).max()))
             elif h.idata[0] == self.mesh["params"]["fa_count"]:
-                self.variables["faces"][h.name] = np.zeros((self.mesh["params"]["fa_count"],), dtype=np.float64)
-                s = BinaryRead(self.fid, "d"*self.mesh["params"]["fa_count"], self.byte_swap, type2nbytes["float64"]*self.mesh["params"]["fa_count"])
+                self.variables["faces"][h.name] = np.zeros((self.mesh["params"]["fa_count"],), dtype=nptype)
+                s = BinaryRead(self.fid, typechar*self.mesh["params"]["fa_count"], self.byte_swap, typesize*self.mesh["params"]["fa_count"])
                 self.variables["faces"][h.name] = np.asarray(s)
                 api.io.print('std', "\t %s%s:\t %+.5e / %+.5e / %+.5e (min/mean/max)."%(h.name, ' '*(20-len(h.name)), np.asarray(s).min(), np.mean(np.asarray(s)), np.asarray(s).max()))
             elif h.idata[0] == ncv:
                 api.io.print("internal", "cell variable section of size {}x{}".format(h.idata[0], h.idata[1]))
                 ndof = self._set_ndof_properties(h.idata[1])
-                pdata = np.zeros((ndof*ncv,), dtype=np.float64)
-                s = BinaryRead(self.fid, "d"*ndof*ncv, self.byte_swap, type2nbytes["float64"]*ndof*ncv)
+                pdata = np.zeros((ndof*ncv,), dtype=nptype)
+                s = BinaryRead(self.fid, typechar*ndof*ncv, self.byte_swap, typesize*ndof*ncv)
                 pdata = np.asarray(s)
                 # If multiple connectivities, gotta order the tables correctly
                 if self.mesh["connectivity"]["nkeys"] > 1:

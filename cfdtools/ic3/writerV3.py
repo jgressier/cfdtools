@@ -47,17 +47,21 @@ class writer(writer_v2):
             # Scalar
             if item.size == item.shape[0]:
                 # Header
+                api.io.print('std', '  write node scalar data '+key)
                 header = restartSectionHeader()
                 header.name = key
-                header.id = ic3_restart_codes["UGP_IO_NO_D1"]
-                header.skip = header.hsize + type2nbytes["float64"] * self.params["no_count"]
+                header.id = {"float64": ic3_restart_codes["UGP_IO_NO_D1"],
+                    "int64": ic3_restart_codes["UGP_IO_NO_II1"]}[item.dtype.name]
+                header.skip = header.hsize + item.itemsize * self.params["no_count"]
                 header.idata[0] = self.params["no_count"]
                 header.write(self.fid, self.endian)
                 # Field
-                BinaryWrite(self.fid, self.endian, "d"*self.params["no_count"], item)
+                chartype = properties_ugpcode[header.id]['structcode']
+                BinaryWrite(self.fid, self.endian, chartype*self.params["no_count"], item)
         for key, item in self.vars["nodes"].items():
             # Vector
             if len(item.shape) == 2:
+                api.io.print('std', '  write node vector data '+key)
                 # Header
                 header = restartSectionHeader()
                 header.name = key
@@ -75,7 +79,6 @@ class writer(writer_v2):
 
         # Then the cell based variables
         for key, item in self.vars["cells"].items():
-            api.io.print("  "+item.__str__())
             ndof = item.ndof()
             npdata = item.data()
             ncv = self.params["cv_count"]
@@ -83,15 +86,18 @@ class writer(writer_v2):
             # Scalar
             if npdata.size == npdata.shape[0]:
                 # Header
+                api.io.print('std', '  write cell scalar data '+key)
                 header = restartSectionHeader()
                 header.name = key
-                header.id = ic3_restart_codes["UGP_IO_CV_D1"]
-                header.skip = header.hsize + type2nbytes["float64"] * totsize
+                header.id = {"float64": ic3_restart_codes["UGP_IO_CV_D1"],
+                    "int64": ic3_restart_codes["UGP_IO_CV_II1"]}[npdata.dtype.name]
+                header.skip = header.hsize + type2nbytes[npdata.dtype.name] * totsize
                 header.idata[0] = ncv
                 header.idata[1] = ndof
                 header.write(self.fid, self.endian)
                 # Field
-                BinaryWrite(self.fid, self.endian, "d"*totsize, npdata)
+                chartype = properties_ugpcode[header.id]['structcode']
+                BinaryWrite(self.fid, self.endian, chartype*totsize, npdata)
         for key, item in self.vars["cells"].items():
             ndof = item.ndof()
             npdata = item.data()
@@ -99,6 +105,7 @@ class writer(writer_v2):
             # Vector
             if len(npdata.shape) == 2:
                 # Header
+                api.io.print('std', '  write cell vector data '+key)
                 header = restartSectionHeader()
                 header.name = key
                 header.id = ic3_restart_codes["UGP_IO_CV_D3"]
@@ -116,6 +123,7 @@ class writer(writer_v2):
             # Tensor
             if len(npdata.shape) == 3:
                 # Header
+                api.io.print('std', '  write cell tensor data '+key)
                 header = restartSectionHeader()
                 header.name = key
                 header.id = ic3_restart_codes["UGP_IO_CV_D33"]
