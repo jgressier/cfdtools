@@ -11,12 +11,17 @@ from cfdtools.ic3.writerV2 import writer as writer_v2
 @api.fileformat_writer('IC3', '.ic3')
 class writer(writer_v2):
     ''' Implementation of the writer to write ic3 restart files '''
+    __version__="3"
+
 
     def __init__(self, mesh, endian='native'):
         """
         Initialization of a ic3 restart file writer.
         """
         super().__init__(mesh, endian)
+
+    def check(self):
+        return True
 
     def __WriteRestartHeader(self):
         """
@@ -70,7 +75,7 @@ class writer(writer_v2):
 
         # Then the cell based variables
         for key, item in self.vars["cells"].items():
-            print(key, item)
+            api.io.print("  "+item.__str__())
             ndof = item.ndof()
             npdata = item.data()
             ncv = self.params["cv_count"]

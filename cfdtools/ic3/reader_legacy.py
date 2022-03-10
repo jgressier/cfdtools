@@ -7,7 +7,8 @@ import sys
 import cfdtools.api as api
 import cfdtools.meshbase._mesh as _mesh
 import cfdtools.meshbase._data as _data
-from cfdtools.ic3._ic3 import *
+#import cfdtools.ic3._ic3 as ic3b
+from cfdtools.ic3._ic3 import type2nbytes, restartSectionHeader, ic3_restart_codes, BinaryRead, zonekind2type, nno2fatype
 
 ###################################################################################################
 
@@ -99,6 +100,8 @@ class reader(api._files):
         meshdata.set_facedata(self.variables['faces'])
         meshdata.set_params(self.mesh['params'])
         meshdata.update_params(self.simulation_state)
+        if 'partition' in self.mesh.keys():
+            meshdata.set_partition(self.mesh['partition'])
 
         return meshdata
 
@@ -217,7 +220,7 @@ class reader(api._files):
             s = BinaryRead(self.fid, "i", self.byte_swap, type2nbytes["int32"])
             nno_per_face[loopi] = s[0]
         uniq, counts = np.unique(nno_per_face, return_counts=True)
-        print("uniq:",uniq)
+        #print("uniq:",uniq)
         uniq = [nno2fatype[val] for val in uniq]
         api.io.print('std', "found %s faces .."%(" and ".join(uniq))); sys.stdout.flush()
         # Initialize the proper connectivity arrays in self.mesh
@@ -248,6 +251,7 @@ class reader(api._files):
             s = BinaryRead(self.fid, "ii", self.byte_swap, type2nbytes["int32"]*self.mesh["connectivity"]["cvofa"]["cvofa"].shape[1])
             self.mesh["connectivity"]["cvofa"]["cvofa"][loopi, :] = np.asarray(s).astype(np.int64)
         api.io.print('std', "ok."); sys.stdout.flush()
+        #print("RA",self.mesh["connectivity"]["cvofa"]["cvofa"])
         del h
         # Checks and a few associations
         assert self.mesh["connectivity"]["cvofa"]["cvofa"].max() < self.mesh["params"]["cv_count"]
@@ -264,8 +268,9 @@ class reader(api._files):
         # Number of periodic boundary faces
         self.mesh["bocos"]["nfa_bp"] = np.count_nonzero(self.mesh["connectivity"]["cvofa"]["cvofa"][:,1] < -1)
         # All periodic boundary faces to -1
-        mask = self.mesh["connectivity"]["cvofa"]["cvofa"][:,1] < -1
-        self.mesh["connectivity"]["cvofa"]["cvofa"][:,1][mask] = -1
+        # mask = self.mesh["connectivity"]["cvofa"]["cvofa"][:,1] < -1
+        # self.mesh["connectivity"]["cvofa"]["cvofa"][:,1][mask] = -1
+        #print("RC",self.mesh["connectivity"]["cvofa"]["cvofa"])
         #
         # The boundary conditions now
         api.io.print('std', "\t Parsing boundary conditions .."); sys.stdout.flush()
@@ -293,14 +298,17 @@ class reader(api._files):
         sys.stdout.flush()
 
         # Parse the header of the partition information
-        api.io.print('std', "\t Parsing partitioning information .."); sys.stdout.flush()
+        api.io.print('std', "\t Parsing partitioning information ..."); sys.stdout.flush()
         h = restartSectionHeader()
         if(not h.readVar(self.fid, self.byte_swap,["UGP_IO_CV_PART"])): exit()
 
-        self.mesh["partition"] = np.zeros((self.mesh["params"]["cv_count"],), dtype=np.int32)
+        self.mesh["partition"] = {}
+        self.mesh["partition"]['npart'] = h.idata[1]
+        self.mesh["partition"]['icvpart'] = np.zeros((self.mesh["params"]["cv_count"],), dtype=np.int32)
         for loopi in range(self.mesh["params"]["cv_count"]):  # xrange to range (python3 portage)
             s = BinaryRead(self.fid, "i", self.byte_swap, type2nbytes["int32"])
-            self.mesh["partition"][loopi] = s[0]
+            self.mesh["partition"]['icvpart'][loopi] = s[0]
+        #print(h)
         api.io.print('std', "ok.")
         sys.stdout.flush()
 
@@ -317,8 +325,6 @@ class reader(api._files):
             self.mesh["coordinates"][loopi, :] = np.asarray(s)
         self.mesh["coordinates"] = np.ascontiguousarray(self.mesh["coordinates"])
         api.io.print('std', "ok."); sys.stdout.flush()
-
-
 
     def __ReadInformativeValues(self):
         '''
@@ -367,8 +373,10 @@ class reader(api._files):
         if self.ic3_version < 0:
             raise ValueError("unknown IC3 version number")
         elif self.ic3_version < 3:
-            if intndof != 0: # 0 is expected value for version 1 and 2
-                api.io.print("warning", "unexpected non zero value for ndof in IC3 version 1 and 2")
+            pass
+            # ignore ints 
+            # if intndof != 0: # 0 is expected value for version 1 and 2
+            #     api.io.print("warning", "unexpected non zero value for ndof in IC3 version 1 and 2")
         else: # version >= 3
             if intndof == 0: # 0 is NOT expected 
                 api.io.print("warning", "unexpected zero value for ndof in IC3 version 3; set to 1 !")
@@ -397,7 +405,7 @@ class reader(api._files):
         self.variables = {"nodes":{}, "cells":{}, "faces":{}}
 
         # First come the scalars
-        api.io.print('std', "\t First the scalars ..")
+        api.io.print('std', "\t First the scalars ...")
         reset_offset=True
         while True:
             h = restartSectionHeader()
@@ -683,5 +691,3 @@ class reader(api._files):
 #     writer.SetFileName(filename + '.vtu')
 #     writer.SetDataModeToBinary()
 #     writer.Write()
-
-
