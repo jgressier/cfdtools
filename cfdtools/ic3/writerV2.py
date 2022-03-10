@@ -10,12 +10,13 @@ from cfdtools.ic3._ic3 import *
 @api.fileformat_writer('IC3', '.ic3')
 class writer():
     ''' Implementation of the writer to write ic3 restart files '''
+    __version__="2"
 
     def __init__(self, mesh, endian='native'):
         """
         Initialization of a ic3 restart file writer.
         """
-        api.io.print('std',"Initialization of IC3 writer")
+        api.io.print('std',"Initialization of IC3 writer V"+self.__version__)
         if not endian in struct_endian.keys():
             raise ValueError("unknown endian key")
         else:
@@ -123,19 +124,23 @@ class writer():
         # Open the file for binary reading
         self.fid = open(self.filename, "wb")
 
-        api.io.print('std',"Writing header ..")
+        api.io.print('std',"> check consistency before writing")
+        if not self.check():
+            raise RuntimeError("Inconsistent data to write")
+
+        api.io.print('std',"> Writing header")
         self.__WriteRestartHeader()
         #
-        api.io.print('std',"Writing connectivity ..")
+        api.io.print('std',"> writing connectivity")
         self.__WriteRestartConnectivity()
         #
-        api.io.print('std',"Writing informative values ..")
+        api.io.print('std',"> writing informative values")
         self.__WriteInformativeValues()
         #
-        api.io.print('std',"Writing variables ..")
+        api.io.print('std',"> writing variables")
         self.__WriteRestartVar()
         #
-        api.io.print('std',"End of file ..")
+        api.io.print('std',"> end of file")
         header = restartSectionHeader()
         header.name = "EOF"
         header.id = ic3_restart_codes["UGP_IO_EOF"]
@@ -145,6 +150,18 @@ class writer():
         # Before returning, close the file
         self.fid.close()
         del self.fid
+
+    def check(self):
+        check = True
+        # bad field size
+        keylist = []
+        for key, cellitem in self.vars["cells"].items():
+            if cellitem.ndof() != 1:
+                keylist.append(key)
+        if len(keylist) >= 1:
+            check_error = False
+            api.io.print('error', 'wrong size (ndof) of cell data: '+keylist.__str__())
+        return check_error
 
     def __WriteRestartHeader(self):
         """
@@ -291,7 +308,7 @@ class writer():
         header = restartSectionHeader()
         header.name = key
         value = self.simstate[key.lower()]
-        api.io.print("std", "write section for {} parameter: {}".format(key, value))
+        api.io.print("std", "  write section for {} parameter: {}".format(key, value))
         header.id = ic3_restart_codes["UGP_IO_I0"]
         header.skip = header.hsize
         header.idata[0] = value
@@ -300,7 +317,7 @@ class writer():
         # The monomials first
         for key in ["DT", "TIME"]:
             value = self.simstate[key.lower()]
-            api.io.print("std", "write section for {} parameter: {}".format(key, value))
+            api.io.print("std", "  write section for {} parameter: {}".format(key, value))
             header = restartSectionHeader()
             header.name = key
             header.id = ic3_restart_codes["UGP_IO_D0"]
