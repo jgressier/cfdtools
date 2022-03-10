@@ -17,6 +17,7 @@ class mesh():
         self._celldata = {}
         self._nodedata = {}
         self._facedata = {}
+        self._cellprop = {}
         
     def set_nodescoord_nd(self, xyz):
         for i,c in enumerate(['x', 'y', 'z']):
@@ -48,6 +49,9 @@ class mesh():
 
     def set_nodedata(self, nodedata):
         self._nodedata = nodedata
+
+    def set_partition(self, partition):
+        self._cellprop['partition'] = partition
 
     def printinfo(self):
         print("ncell:",self.ncell)

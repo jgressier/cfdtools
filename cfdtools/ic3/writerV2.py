@@ -152,7 +152,7 @@ class writer():
         del self.fid
 
     def check(self):
-        check = True
+        check_error = True
         # bad field size
         keylist = []
         for key, cellitem in self.vars["cells"].items():
@@ -249,7 +249,7 @@ class writer():
         header.idata[1] = 2
         header.write(self.fid, self.endian)
         # Flattened face-to-cell connectivity
-        # print(self.f2e)
+        #print("W",self.f2e)
         # print(self.f2e.ravel())
         BinaryWrite(self.fid, self.endian, "i"*self.params["fa_count"]*2, self.f2e.ravel().tolist())
         # Face zones, a.k.a boundary condition patches
@@ -274,10 +274,11 @@ class writer():
         header.id = ic3_restart_codes["UGP_IO_CV_PART"]
         header.skip = header.hsize + type2nbytes["int32"] * self.params["cv_count"]
         header.idata[0] = self.params["cv_count"]
-        header.idata[1] = 1
+        header.idata[1] = self._mesh._cellprop['partition'].get('npart', 1)
         header.write(self.fid, self.endian)
         # The ranks of the processors, default to everybody 0
-        BinaryWrite(self.fid, self.endian, "i"*self.params["cv_count"], np.zeros((self.params["cv_count"],), dtype=np.int32))
+        BinaryWrite(self.fid, self.endian, "i"*self.params["cv_count"], 
+            self._mesh._cellprop['partition'].get('icvpart', np.zeros((self.params["cv_count"],), dtype=np.int32)))
         # Coordinates
         # Header
         header = restartSectionHeader()
