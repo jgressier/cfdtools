@@ -2,6 +2,8 @@
 
 # Import modules
 import collections
+import cfdtools.meshbase._mesh as _mesh
+import cfdtools.meshbase._connectivity as _conn
 #import os
 
 import cfdtools.api as api
@@ -43,7 +45,7 @@ class reader(api._files):
     """Implementation of the reader to read Gmsh meshes."""
 
     def read_data(self):
-        api.io.print('std','=== GMSH reader ===')
+        api.io.print('std',f'GMSH reader: starts reading {self.filename}')
         # Check file exists
         if not self._exists:
             print("Fatal error. File %s cannot be found."%(self.filename))
@@ -179,7 +181,17 @@ class reader(api._files):
             boundaries["int_fluid"]["slicing"]
         )
 
-        return np.array(zip(x, y, z)), connectivity, boundaries, None, None, None
+        meshdata = _mesh.mesh(len(elts), len(x))
+        # np.array(zip(x, y, z)), connectivity, boundaries, None, None, None
+        # meshdata.set_nodescoord_nd(self.mesh['coordinates'])
+        # meshdata.set_face2cell(self.mesh['connectivity']['cvofa'])
+        # meshdata.set_face2node(self.mesh['connectivity']['noofa'])
+        # meshdata.set_bocos(self.mesh['bocos'])
+        # meshdata.set_celldata(self.variables['cells'])
+        # meshdata.set_nodedata(self.variables['nodes'])
+        # meshdata.set_facedata(self.variables['faces'])
+        # meshdata.set_params(self.mesh['params'])        
+        return meshdata
 
     def __create_bnd(self, boundaries, window, family, bctype, connectivity):
 

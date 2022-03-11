@@ -1,1 +1,3 @@
-from cfdtools.ic3.readerV2 import reader
+from cfdtools.ic3.reader_legacy import reader
+import cfdtools.ic3.writerV2
+import cfdtools.ic3.writerV3

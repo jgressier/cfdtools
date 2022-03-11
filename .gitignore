@@ -34,3 +34,9 @@ Untitled*.ipynb
 
 # Visual Studio Code
 .vscode
+
+# misc extension when developing
+*.dump
+*.xdump
+*.log
+*.info

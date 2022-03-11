@@ -16,6 +16,17 @@ pip show cfdtools
 
 ## Versions
 
+### [0.1.0](https://pypi.org/project/cfdtools/) (2022-03-11)
+
+#### new
+
+- command line `cfdwrite_ic3v2`, `cfdwrite_ic3v3`
+- new `v3 IC3` writer
+
+#### changed
+
+- improve IC3 v2 and v3 with parameters and actual partition
+
 ### [0.0.2](https://pypi.org/project/cfdtools/) (2022-03-04)
 
 #### new

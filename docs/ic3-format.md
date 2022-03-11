@@ -206,3 +206,16 @@ order of sections is arbitrary
 ### `NOOFA` face2node connectivity
 
 - header with number of nodes, faces and cells
+
+## parameters
+## variables and fieds
+
+Though the format can be read in any order. The current (v2 and v3) order in IC3 code is
+
+- scalars
+  - double float: nodes, faces, and cells
+  - long int: nodes, faces, and cells
+- vectors
+  - double float: nodes, faces, and cells
+- tensors
+  - double float: cells only

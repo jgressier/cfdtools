@@ -1,4 +1,5 @@
 import os
+import numpy as np
 
 _fileformat_map = {}
 
@@ -26,6 +27,17 @@ def fileformat_writer(name, extension):
         return thisclass
     return decorator
 
+def _printreadable(string, value):
+    if isinstance(value, (int, float, str, np.int32, np.int64)):
+        print(string+':',value)
+    elif isinstance(value, np.ndarray):
+        if value.size <= 10:
+            print(string+': ndarray',value.shape, value)
+        else:
+            print(string+': ndarray',value.shape)
+    else:
+        print(string+': '+str(type(value)))
+
 class api_output():
     """class to handle library outputs
     """
@@ -34,7 +46,7 @@ class api_output():
 
     def __init__(self, list=None):
         self._api_output = []
-        if list==None:
+        if list is None:
             self.set_default()
         else:
             self.set_modes(list)
@@ -71,5 +83,15 @@ class _files():
         s = '  filename: '+self.filename
         return s
 
+    def safe_destination(self, filepath):
+        """Returns safe destination, adding (n) if needed"""
+        safepath = filepath
+        base, extension = os.path.splitext(filepath)
+        i = 0
+        while os.path.exists(safepath):
+            i += 1
+            safepath = '{} ({}){}'.format(base, i, extension)
+        return safepath
+        
     def printinfo(self):
         print(self)
