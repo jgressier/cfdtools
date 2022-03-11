@@ -53,7 +53,8 @@ def info(argv=None):
     parser.parse_args(argv)
     parser.parse_filenameformat()
     #
-    r = parser._reader(parser.args().filename)
+    inputfile = Path(parser.args().filename)
+    r = parser._reader(str(inputfile))
     r.read_data()
     r.printinfo()
     return True # needed for pytest
@@ -64,8 +65,10 @@ def write_ic3v2(argv=None):
     parser.parse_args(argv)
     parser.parse_filenameformat()
     #
-    r = parser._reader(parser.args().filename)
-    r.read_data()
-    output = ic3.writerV2.writer(r)
-    output.write_data()
+    inputfile = Path(parser.args().filename)
+    r = parser._reader(str(inputfile))
+    cfdmesh = r.read_data()
+    outputfile = Path(inputfile.stem).with_suffix('.ic3')
+    output = ic3.writerV2.writer(cfdmesh)
+    output.write_data(str(outputfile))
     return True # needed for pytest

@@ -13,6 +13,9 @@ cfdtools
 
 ### Features
 
+- IC3 v2 to v3 reader
+- IC3 v2 or v3 writer
+- command line: `cfdinfo`
 
 ### Installation and usage
 
