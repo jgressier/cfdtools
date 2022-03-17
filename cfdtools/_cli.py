@@ -59,6 +59,16 @@ def info(argv=None):
     r.printinfo()
     return True # needed for pytest
 
+def ic3brief(argv=None):
+    parser = cli_argparser()
+    parser.addarg_filenameformat()
+    parser.parse_args(argv)
+    parser.parse_filenameformat()
+    #
+    r = ic3.binreader(parser.args().filename)
+    r.read_headers()
+    return True
+
 def write_ic3v2(argv=None):
     parser = cli_argparser()
     parser.addarg_filenameformat()
