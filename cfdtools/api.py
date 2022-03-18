@@ -1,4 +1,4 @@
-import os
+from pathlib import Path 
 import numpy as np
 
 _fileformat_map = {}
@@ -75,23 +75,40 @@ io = api_output()
 
 class _files():
 
-    def __init__(self, filename):
-      self.filename = filename
-      self._exists  = os.path.isfile(self.filename)
+    def __init__(self, filename: str):
+        self._path = Path(filename)
+
+    @property
+    def filename(self):
+        return str(self._path)
+
+    @filename.setter
+    def set_filename(self, filename):
+        self._path = Path(filename)
+
+    def exists(self):
+        return self._path.exists()
 
     def __str__(self):
         s = '  filename: '+self.filename
         return s
 
-    def safe_destination(self, filepath):
+    def remove_dir(self):
+        self._path = Path(self._path.name)
+
+    def change_suffix(self, ext: str):
+        self._path = self._path.with_suffix(ext)
+
+    def find_safe_newfile(self):
         """Returns safe destination, adding (n) if needed"""
-        safepath = filepath
-        base, extension = os.path.splitext(filepath)
+        safepath = self._path
+        stem = safepath.stem
         i = 0
-        while os.path.exists(safepath):
+        while safepath.exists():
             i += 1
-            safepath = '{} ({}){}'.format(base, i, extension)
-        return safepath
-        
+            safepath = safepath.with_stem(s+f'({i})')
+        self._path = safepath
+        return i>0
+            
     def printinfo(self):
         print(self)

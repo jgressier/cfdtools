@@ -64,7 +64,7 @@ class reader(binreader):
         '''
         api.io.print('std',"READER RESTART IC3")
 
-        if not self._exists:
+        if not self.exists():
             print("Fatal error. File %s cannot be found."%(self.filename))
             exit()
 
@@ -72,7 +72,7 @@ class reader(binreader):
         api.io.print('debug','opening ',self.filename)
         self.fid = open(self.filename, "rb")
 
-        api.io.print('std', "Reading header ..")
+        api.io.print('std', "binary file header")
         self._ReadRestartHeader()
         #
         api.io.print('std', "Reading connectivity ..")
@@ -148,7 +148,7 @@ class reader(binreader):
                 s = BinaryRead(self.fid, "i", self.byte_swap, type2nbytes["int32"])
                 nodes_id[loopi] = s[0]
             assert np.allclose(nodes_id, np.arange(self.mesh["params"]["no_count"]))
-            api.io.print('std', "ok.") ; sys.stdout.flush()
+            api.io.print('std', "end of node integrity") ; sys.stdout.flush()
             del nodes_id, h
             # For faces
             api.io.print('std', "\t Checking faces integrity .."); sys.stdout.flush()
@@ -159,7 +159,7 @@ class reader(binreader):
                 s = BinaryRead(self.fid, "i", self.byte_swap, type2nbytes["int32"])
                 faces_id[loopi] = s[0]
             assert np.allclose(faces_id, np.arange(self.mesh["params"]["fa_count"]))
-            api.io.print('std', "ok."); sys.stdout.flush()
+            api.io.print('std', "end of face integrity"); sys.stdout.flush()
             del faces_id, h
             # For cells
             api.io.print('std', "\t Checking cells integrity .."); sys.stdout.flush()
@@ -172,7 +172,7 @@ class reader(binreader):
                 s = BinaryRead(self.fid, "i", self.byte_swap, type2nbytes["int32"])
                 cells_id[loopi] = s[0]
             assert np.allclose(cells_id, np.arange(self.mesh["params"]["cv_count"]))
-            api.io.print('std', "ok."); sys.stdout.flush()
+            api.io.print('std', "end of cell integrity"); sys.stdout.flush()
             del cells_id, h
 
         # The two connectivities now
@@ -204,7 +204,7 @@ class reader(binreader):
             sta, sto = self.mesh["connectivity"]["noofa"]["listofStarts_f2v"][loopi], self.mesh["connectivity"]["noofa"]["listofStarts_f2v"][loopi+1]
             s = BinaryRead(self.fid, "i"*nno_per_face[loopi], self.byte_swap, type2nbytes["int32"]*nno_per_face[loopi])
             self.mesh["connectivity"]["noofa"]["face2vertex"][sta:sto] = np.asarray(s).astype(np.int64)
-        api.io.print('std', "ok."); sys.stdout.flush()
+        api.io.print('std', "end of face/vertex connectivity"); sys.stdout.flush()
         del nno_per_face, h, uniq, counts
         #
         #- Second, CVOFA
@@ -221,7 +221,7 @@ class reader(binreader):
         for loopi in range(self.mesh["params"]["fa_count"]):  # xrange to range (python3 portage)
             s = BinaryRead(self.fid, "ii", self.byte_swap, type2nbytes["int32"]*self.mesh["connectivity"]["cvofa"]["cvofa"].shape[1])
             self.mesh["connectivity"]["cvofa"]["cvofa"][loopi, :] = np.asarray(s).astype(np.int64)
-        api.io.print('std', "ok."); sys.stdout.flush()
+        api.io.print('std', "end of face/cell connectivity"); sys.stdout.flush()
         #print("RA",self.mesh["connectivity"]["cvofa"]["cvofa"])
         del h
         # Checks and a few associations
@@ -265,7 +265,7 @@ class reader(binreader):
             self.mesh["bocos"][h.name]["slicing"] = np.unique(self.mesh["connectivity"]["noofa"]["face2vertex"][sta:sto])
             if h.idata[0] == 6:
                 break
-        api.io.print('standard', "ok.")
+        api.io.print('standard', "end of boco parsing")
         sys.stdout.flush()
 
         # Parse the header of the partition information
@@ -280,7 +280,7 @@ class reader(binreader):
             s = BinaryRead(self.fid, "i", self.byte_swap, type2nbytes["int32"])
             self.mesh["partition"]['icvpart'][loopi] = s[0]
         #print(h)
-        api.io.print('std', "ok.")
+        api.io.print('std', "end of partition")
         sys.stdout.flush()
 
         # The coordinates of the vertices finally
@@ -295,7 +295,7 @@ class reader(binreader):
             s = BinaryRead(self.fid, "ddd", self.byte_swap, type2nbytes["float64"]*self.mesh["coordinates"].shape[1])
             self.mesh["coordinates"][loopi, :] = np.asarray(s)
         self.mesh["coordinates"] = np.ascontiguousarray(self.mesh["coordinates"])
-        api.io.print('std', "ok."); sys.stdout.flush()
+        api.io.print('std', "end of node coordinates"); sys.stdout.flush()
 
     def _ReadInformativeValues(self):
         '''
@@ -415,7 +415,7 @@ class reader(binreader):
             else:
                 api.io.print('std', "Fatal error. Incoherence in dataset %s. Exiting."%(h.name))
                 exit()
-        api.io.print('std', "\t ok.")
+        api.io.print('std', "  end of scalars")
         
 
         # Then the vectors
@@ -453,7 +453,7 @@ class reader(binreader):
             else:
                 api.io.print('std', "Fatal error. Incoherence in dataset %s. Exiting."%(h.name))
                 exit()
-        api.io.print('std', "\t ok.")
+        api.io.print('std', "  end of vectors")
         
 
         # Then the tensors
@@ -481,7 +481,7 @@ class reader(binreader):
             else:
                 api.io.print('std', "Fatal error. Incoherence in dataset %s. Exiting."%(h.name))
                 exit()
-        api.io.print('std', "\t ok.")
+        api.io.print('std', "  end of tensors")
         
 
     # def __reachedEOF(self):

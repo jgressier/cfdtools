@@ -280,7 +280,7 @@ class restartSectionHeader():
         BinaryWrite(bfile, endian, self.binstr, varargs)
 
     def __str__(self):
-        mystring="Header: \n"
+        mystring="> Header: \n"
         mystring +="Name : %s\n"%self.name
 
         mystring +="Id   : %i %s\n"%(self.id, list(dict(filter(lambda items: items[1]==self.id[0], ic3_restart_codes.items())).keys()))
@@ -317,7 +317,7 @@ class binreader(api._files):
         '''
         api.io.print('std',"READER RESTART IC3 - only headers")
 
-        if not self._exists:
+        if not self.exists():
             print("Fatal error. File %s cannot be found."%(self.filename))
             exit()
 
@@ -339,6 +339,7 @@ class binreader(api._files):
                 skip = h.skip()
                 print(h)
                 if h.id[0] == ic3_restart_codes['UGP_IO_EOF']:
+                    api.io.print('std','UGP EOF reached')
                     break
         # Before returning, close the file
         self.fid.close()
@@ -351,7 +352,7 @@ class binreader(api._files):
         '''
         Method reading the header of a restart file.
         It is composed of two integers, the "magic number" used as a flag for endianness
-        and the CharlesX version number.
+        and the IC3 version number.
         input   : handle on an open restart file, [type file identifier]
         output  : the endianness of the open restart file [type boolean]
         '''
@@ -374,4 +375,5 @@ class binreader(api._files):
 
         # Some info for the user
         self.ic3_version = s[1]
-        api.io.print('std', f"\t Restart file is version {self.ic3_version}")
+        api.io.print('std', f"  version: {self.ic3_version} "+
+            ("little-endian" if self.byte_swap else "big-endian"))
