@@ -106,7 +106,7 @@ class _files():
         i = 0
         while safepath.exists():
             i += 1
-            safepath = safepath.with_stem(s+f'({i})')
+            safepath = safepath.with_stem(stem+f'({i})')
         self._path = safepath
         return i>0
             
