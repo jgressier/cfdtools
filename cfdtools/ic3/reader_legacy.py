@@ -1,7 +1,7 @@
 # coding: utf8
 
 # Import modules
-import struct
+#import struct
 import numpy as np
 import sys
 import cfdtools.api as api
@@ -130,7 +130,7 @@ class reader(binreader):
         self.mesh["params"]["fa_count"] = h.idata[1]
         self.mesh["params"]["cv_count"] = h.idata[2]
         self.mesh["params"]["noofa_count"] = h.idata[3]
-        api.io.print("std", "mesh with {} cells, {} faces and {} ndoes".format(h.idata[2], h.idata[1], h.idata[0]))
+        api.io.print("std", "mesh with {} cells, {} faces and {} nodes".format(h.idata[2], h.idata[1], h.idata[0]))
         del h
 
         # Integrity check

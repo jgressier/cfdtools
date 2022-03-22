@@ -88,7 +88,6 @@ def write_generic(argv, ext, writer):
     r = parser._reader(file.filename)
     cfdmesh = r.read_data()
     #
-    print(parser.args())
     if parser.args().remove_cell_data:
         for var in parser.args().remove_cell_data:
             if cfdmesh.pop_celldata(var) is None:
