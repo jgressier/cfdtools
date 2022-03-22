@@ -1,19 +1,19 @@
 # coding: utf8
 
 # Import modules
-import struct
+#import struct
 import numpy as np
 import sys
 import cfdtools.api as api
 import cfdtools.meshbase._mesh as _mesh
 import cfdtools.meshbase._data as _data
 #import cfdtools.ic3._ic3 as ic3b
-from cfdtools.ic3._ic3 import type2nbytes, restartSectionHeader, ic3_restart_codes, BinaryRead, zonekind2type, nno2fatype, properties_ugpcode
+from cfdtools.ic3._ic3 import binreader, type2nbytes, restartSectionHeader, ic3_restart_codes, BinaryRead, zonekind2type, nno2fatype, properties_ugpcode
 
 ###################################################################################################
 
 @api.fileformat_reader('IC3', '.ic3')
-class reader(api._files):
+class reader(binreader):
     '''Implementation of the reader to read IC3 restart files.'''
 
     def __init__(self, filename, cIntegrity=False):
@@ -62,27 +62,27 @@ class reader(api._files):
                   the lot of variables stored in the restart file
                   information on the state of the simulation
         '''
-        api.io.print('std',":: READER RESTART IC3 ::")
+        api.io.print('std',"READER RESTART IC3")
 
-        if not self._exists:
+        if not self.exists():
             print("Fatal error. File %s cannot be found."%(self.filename))
             exit()
 
         # Open the file for binary reading
-        api.io.print('debug','reading ',self.filename)
+        api.io.print('debug','opening ',self.filename)
         self.fid = open(self.filename, "rb")
 
-        api.io.print('std', "Reading header ..")
-        self.__ReadRestartHeader()
+        api.io.print('std', "binary file header")
+        self._ReadRestartHeader()
         #
         api.io.print('std', "Reading connectivity ..")
-        self.__ReadRestartConnectivity()
+        self._ReadRestartConnectivity()
         #
         api.io.print('std', "Reading informative values ..")
-        self.__ReadInformativeValues()
+        self._ReadInformativeValues()
         #
         api.io.print('std', "Reading variables ..")
-        self.__ReadRestartVar()
+        self._ReadRestartVar()
         #
 
         # Before returning, close the file
@@ -105,36 +105,7 @@ class reader(api._files):
 
         return meshdata
 
-    def __ReadRestartHeader(self):
-        '''
-        Method reading the header of a restart file.
-        It is composed of two integers, the "magic number" used as a flag for endianness
-        and the CharlesX version number.
-        input   : handle on an open restart file, [type file identifier]
-        output  : the endianness of the open restart file [type boolean]
-        '''
-
-        # By default suppose big-endian format
-        self.byte_swap = False
-
-        # Read the first integer (int64)
-        s = list(BinaryRead(self.fid, "ii", False, 2*type2nbytes["int32"]))
-        # If, with big-endian assumption, the first integer comes out wrong, swap to little-endian
-        if s[0] != ic3_restart_codes["UGP_IO_MAGIC_NUMBER"]:
-            # Change the flag
-            self.byte_swap=True
-            # Transform the second integer of the list to match the version number
-            aux_struct = struct.Struct(">i")
-            packed_version = aux_struct.pack(s[1])
-            del aux_struct
-            aux_struct = struct.Struct("<i")
-            s[1] = aux_struct.unpack(packed_version)[0]
-
-        # Some info for the user
-        self.ic3_version = s[1]
-        api.io.print('std', f"\t Restart file is version {self.ic3_version}")
-
-    def __ReadRestartConnectivity(self):
+    def _ReadRestartConnectivity(self):
         '''
         Method reading the first blocks passed the header, containing informations
         on the nodes, the faces, the cells and the connectivity in between those
@@ -159,7 +130,7 @@ class reader(api._files):
         self.mesh["params"]["fa_count"] = h.idata[1]
         self.mesh["params"]["cv_count"] = h.idata[2]
         self.mesh["params"]["noofa_count"] = h.idata[3]
-        api.io.print("std", "mesh with {} cells, {} faces and {} ndoes".format(h.idata[2], h.idata[1], h.idata[0]))
+        api.io.print("std", "mesh with {} cells, {} faces and {} nodes".format(h.idata[2], h.idata[1], h.idata[0]))
         del h
 
         # Integrity check
@@ -177,7 +148,7 @@ class reader(api._files):
                 s = BinaryRead(self.fid, "i", self.byte_swap, type2nbytes["int32"])
                 nodes_id[loopi] = s[0]
             assert np.allclose(nodes_id, np.arange(self.mesh["params"]["no_count"]))
-            api.io.print('std', "ok.") ; sys.stdout.flush()
+            api.io.print('std', "end of node integrity") ; sys.stdout.flush()
             del nodes_id, h
             # For faces
             api.io.print('std', "\t Checking faces integrity .."); sys.stdout.flush()
@@ -188,7 +159,7 @@ class reader(api._files):
                 s = BinaryRead(self.fid, "i", self.byte_swap, type2nbytes["int32"])
                 faces_id[loopi] = s[0]
             assert np.allclose(faces_id, np.arange(self.mesh["params"]["fa_count"]))
-            api.io.print('std', "ok."); sys.stdout.flush()
+            api.io.print('std', "end of face integrity"); sys.stdout.flush()
             del faces_id, h
             # For cells
             api.io.print('std', "\t Checking cells integrity .."); sys.stdout.flush()
@@ -201,7 +172,7 @@ class reader(api._files):
                 s = BinaryRead(self.fid, "i", self.byte_swap, type2nbytes["int32"])
                 cells_id[loopi] = s[0]
             assert np.allclose(cells_id, np.arange(self.mesh["params"]["cv_count"]))
-            api.io.print('std', "ok."); sys.stdout.flush()
+            api.io.print('std', "end of cell integrity"); sys.stdout.flush()
             del cells_id, h
 
         # The two connectivities now
@@ -233,7 +204,7 @@ class reader(api._files):
             sta, sto = self.mesh["connectivity"]["noofa"]["listofStarts_f2v"][loopi], self.mesh["connectivity"]["noofa"]["listofStarts_f2v"][loopi+1]
             s = BinaryRead(self.fid, "i"*nno_per_face[loopi], self.byte_swap, type2nbytes["int32"]*nno_per_face[loopi])
             self.mesh["connectivity"]["noofa"]["face2vertex"][sta:sto] = np.asarray(s).astype(np.int64)
-        api.io.print('std', "ok."); sys.stdout.flush()
+        api.io.print('std', "end of face/vertex connectivity"); sys.stdout.flush()
         del nno_per_face, h, uniq, counts
         #
         #- Second, CVOFA
@@ -250,7 +221,7 @@ class reader(api._files):
         for loopi in range(self.mesh["params"]["fa_count"]):  # xrange to range (python3 portage)
             s = BinaryRead(self.fid, "ii", self.byte_swap, type2nbytes["int32"]*self.mesh["connectivity"]["cvofa"]["cvofa"].shape[1])
             self.mesh["connectivity"]["cvofa"]["cvofa"][loopi, :] = np.asarray(s).astype(np.int64)
-        api.io.print('std', "ok."); sys.stdout.flush()
+        api.io.print('std', "end of face/cell connectivity"); sys.stdout.flush()
         #print("RA",self.mesh["connectivity"]["cvofa"]["cvofa"])
         del h
         # Checks and a few associations
@@ -294,7 +265,7 @@ class reader(api._files):
             self.mesh["bocos"][h.name]["slicing"] = np.unique(self.mesh["connectivity"]["noofa"]["face2vertex"][sta:sto])
             if h.idata[0] == 6:
                 break
-        api.io.print('standard', "ok.")
+        api.io.print('standard', "end of boco parsing")
         sys.stdout.flush()
 
         # Parse the header of the partition information
@@ -309,7 +280,7 @@ class reader(api._files):
             s = BinaryRead(self.fid, "i", self.byte_swap, type2nbytes["int32"])
             self.mesh["partition"]['icvpart'][loopi] = s[0]
         #print(h)
-        api.io.print('std', "ok.")
+        api.io.print('std', "end of partition")
         sys.stdout.flush()
 
         # The coordinates of the vertices finally
@@ -324,9 +295,9 @@ class reader(api._files):
             s = BinaryRead(self.fid, "ddd", self.byte_swap, type2nbytes["float64"]*self.mesh["coordinates"].shape[1])
             self.mesh["coordinates"][loopi, :] = np.asarray(s)
         self.mesh["coordinates"] = np.ascontiguousarray(self.mesh["coordinates"])
-        api.io.print('std', "ok."); sys.stdout.flush()
+        api.io.print('std', "end of node coordinates"); sys.stdout.flush()
 
-    def __ReadInformativeValues(self):
+    def _ReadInformativeValues(self):
         '''
         Method reading all the values also stored in a restart file,
         i.e. the step number, the time, the timestep.
@@ -352,14 +323,12 @@ class reader(api._files):
             h = restartSectionHeader()
             if (not h.readVar(self.fid, self.byte_swap,["UGP_IO_I0"],reset_offset=reset_offset)): break
             else: reset_offset=False
-            print("I0 var "+h.name.lower())
             self.simulation_state[h.name.lower()] = h.idata[0]
         reset_offset=True
         while True:
             h = restartSectionHeader()
             if (not h.readVar(self.fid, self.byte_swap,["UGP_IO_D0"],reset_offset=reset_offset)): break
             else: reset_offset=False
-            print("D0 var "+h.name.lower())
             self.simulation_state[h.name.lower()] = h.rdata[0]
 
     # def get_datacell_properties(self):
@@ -388,7 +357,7 @@ class reader(api._files):
         # self.get_datacell_properties()["ndof"] = ndof
         return ndof
 
-    def __ReadRestartVar(self):
+    def _ReadRestartVar(self):
         '''
         Method reading the variables from the restart file
         input   : handle on an open restart file, [type file identifier]
@@ -446,7 +415,7 @@ class reader(api._files):
             else:
                 api.io.print('std', "Fatal error. Incoherence in dataset %s. Exiting."%(h.name))
                 exit()
-        api.io.print('std', "\t ok.")
+        api.io.print('std', "  end of scalars")
         
 
         # Then the vectors
@@ -484,7 +453,7 @@ class reader(api._files):
             else:
                 api.io.print('std', "Fatal error. Incoherence in dataset %s. Exiting."%(h.name))
                 exit()
-        api.io.print('std', "\t ok.")
+        api.io.print('std', "  end of vectors")
         
 
         # Then the tensors
@@ -512,7 +481,7 @@ class reader(api._files):
             else:
                 api.io.print('std', "Fatal error. Incoherence in dataset %s. Exiting."%(h.name))
                 exit()
-        api.io.print('std', "\t ok.")
+        api.io.print('std', "  end of tensors")
         
 
     # def __reachedEOF(self):

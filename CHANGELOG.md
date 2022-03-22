@@ -16,6 +16,17 @@ pip show cfdtools
 
 ## Versions
 
+### [0.2.0](https://pypi.org/project/cfdtools/) (2022-03-22)
+
+#### new
+
+- command line `ic3brief` only section headers
+- command line writers can remove date with `--remove-[cell/node]-data` options
+
+#### changed
+
+- ensure safe new names for writers to avoid deletion of read files
+
 ### [0.1.0](https://pypi.org/project/cfdtools/) (2022-03-11)
 
 #### new
