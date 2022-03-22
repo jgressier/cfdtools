@@ -47,7 +47,7 @@ class reader(api._files):
     def read_data(self):
         api.io.print('std',f'GMSH reader: starts reading {self.filename}')
         # Check file exists
-        if not self._exists:
+        if not self.exists():
             print("Fatal error. File %s cannot be found."%(self.filename))
             exit()
 

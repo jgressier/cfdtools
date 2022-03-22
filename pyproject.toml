@@ -15,6 +15,7 @@ exclude = [ "examples" ]
 
 [tool.poetry.scripts]
 cfdinfo = 'cfdtools._cli:info'
+ic3brief = 'cfdtools._cli:ic3brief'
 cfdwrite_ic3v2 = 'cfdtools._cli:write_ic3v2'
 cfdwrite_ic3v3 = 'cfdtools._cli:write_ic3v3'
 
