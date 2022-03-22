@@ -77,36 +77,35 @@ def ic3brief(argv=None):
     r.read_headers()
     return True
 
-def write_ic3v2(argv=None):
+def write_generic(argv, ext, writer):
     parser = cli_argparser()
     parser.addarg_filenameformat()
+    parser.addarg_data()
     parser.parse_cli_args(argv)
     parser.parse_filenameformat()
     #
     file = api._files(parser.args().filename)
     r = parser._reader(file.filename)
     cfdmesh = r.read_data()
+    #
+    print(parser.args())
+    if parser.args().remove_cell_data:
+        for var in parser.args().remove_cell_data:
+            if cfdmesh.pop_celldata(var) is None:
+                api.io.print('std', f'  cannot find cell data {var}')
+            else:
+                api.io.print('std', f'  pop cell data {var}')
+    #
     file.remove_dir()
-    file.change_suffix('.ic3')
+    file.change_suffix(ext)
     if file.find_safe_newfile() > 0:
         api.io.print("std","change output to safe new name "+file.filename)
-    output = ic3.writerV2.writer(cfdmesh)
+    output = writer(cfdmesh)
     output.write_data(file.filename)
     return True # needed for pytest
 
+def write_ic3v2(argv=None):
+    return write_generic(argv, '.ic3', ic3.writerV2.writer)
+
 def write_ic3v3(argv=None):
-    parser = cli_argparser()
-    parser.addarg_filenameformat()
-    parser.parse_cli_args(argv)
-    parser.parse_filenameformat()
-    #
-    file = api._files(parser.args().filename)
-    r = parser._reader(file.filename)
-    cfdmesh = r.read_data()
-    file.remove_dir()
-    file.change_suffix('.ic3')
-    if file.find_safe_newfile() > 0:
-        api.io.print("std","change output to safe new name "+file.filename)
-    output = ic3.writerV2.writer(cfdmesh)
-    output.write_data(file.filename)
-    return True # needed for pytest
+    return write_generic(argv, '.ic3', ic3.writerV3.writer)

@@ -53,6 +53,12 @@ class mesh():
     def set_partition(self, partition):
         self._cellprop['partition'] = partition
 
+    def pop_nodedata(self, name):
+        return self._nodedata.pop(name) if name in self._nodedata.keys() else None
+
+    def pop_celldata(self, name):        
+        return self._celldata.pop(name) if name in self._celldata.keys() else None
+
     def printinfo(self):
         print("ncell:",self.ncell)
         print("nnode:",self.nnode)
