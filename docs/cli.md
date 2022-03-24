@@ -2,14 +2,22 @@
 
 ## cfdinfo
 
- <inputfile>  lit un fichier “complètement” (potentiellement tout format mais voir format plus bas) et donne quelques infos sur ce qu’il a trouvé
+`cfdinfo` fully reads all supported formats, converts to an internal mesh and data structure and prints a sum up of available information.
 
 ## ic3brief
 
- <inputfile> lit un fichier restart ic3 v2 ou v3 et liste toutes les sections sans lire les données : permet de savoir très rapidement ce qu’on trouve dedans (en particulier les variables)
+`ic3brief` currently reads v2 and v3 IC3 files and prints all data headers (mesh and variables) without reading data itself.
 
-cfdwrite_ic3v3 <inputfile>  écrit un restart ic3 v3 à partir d’un fichier qu’il a lu (inputfile) quel que soit le format (voir format) y compris ic3 v3 ; l’idée est d’y appliquer aussi des fonctions de filtre de données ou transformation, actuellement on peut effacer des variables avec --remove-cell-data LOC_LAM MU_LAM U_REL U_GRID (en fin de ligne de commande)
+## cfdwrite_ic3v2 and cfdwrite_ic3v3
 
-PS: les formats, actuellement
-lecture v2 et v3 mais pas de transfert v2 to v3 ou inverse
-les utilitaires génériques cfd* reconnaissent l’extension : .ic3 est recommandé pour la détection automatique des restarts. Ça se débrouille pour v2 ou v3. Si mauvaise (.out) ou pas extension, on peut imposer le format avec --fmt IC3
+`cfdwrite_ic3v2` and `cfdwrite_ic3v3`  specifically write an `IC3 v[23]`
+file from any supported input. Some specific options are available to
+transform mesh or variables:
+- `--remove-cell-data varname1 varname2` removes the listed names (should be at the end of command line if several names)
+- `--remove-node-data varname1 varname2` removes the listed names (should be at the end of command line if several names)
+
+## automatic format detection
+
+For all `cfd*` tools, generic file input is supported by an automatic detection of file format through its file extension. If extension is not the required of missing, one can force format with `--fmt <format>`
+
+- IC3 format with either `.ic3` extension or `--fmt IC3` option. v2 or v3 detection is automatic.
