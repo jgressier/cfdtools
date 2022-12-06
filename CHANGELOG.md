@@ -16,6 +16,12 @@ pip show cfdtools
 
 ## Versions
 
+### [0.2.x](https://pypi.org/project/cfdtools/) (2022-xx-xx)
+
+#### new
+
+- `morph`function for meshbase object
+
 ### [0.2.0](https://pypi.org/project/cfdtools/) (2022-03-22)
 
 #### new

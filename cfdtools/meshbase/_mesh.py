@@ -23,6 +23,11 @@ class mesh():
         for i,c in enumerate(['x', 'y', 'z']):
             self._nodes[c] = xyz[:,i]
     
+    def set_nodescoord_xyz(self, x, y, z):
+        self._nodes['x'] = x
+        self._nodes['y'] = y
+        self._nodes['z'] = z
+    
     def set_cell2node(self, cell2node):
         self._cell2node = cell2node
 
@@ -67,5 +72,16 @@ class mesh():
 
     def check(self):
         # check cell2node and cell numbers
+        api.io.print('std','ckeck: at least cell and node numbers')
+        assert(self.ncell >0)
+        assert(self.nnode >0)
+        api.io.print('std','ckeck: at least cell/node or face/node face/cell connectivity')
+        assert(not self._cell2node or (not self._face2node and not self._face2cell))
         return True
 
+    def morph(self, fmorph):
+        '''
+        change x, y, z position with a function of x, y, z, returning new x, y, z
+        '''
+        newx, newy, newz = fmorph(self._nodes['x'], self._nodes['y'], self._nodes['z'])
+        self.set_nodescoord_xyz(newx, newy, newz)
