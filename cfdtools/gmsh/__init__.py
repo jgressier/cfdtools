@@ -1,1 +1,1 @@
-from cfdtools.gmsh._gmsh import reader
+from cfdtools.gmsh.reader import reader
