@@ -66,8 +66,24 @@ class mesh():
 
     def printinfo(self):
         print("ncell:",self.ncell)
+        if self._cell2node:
+            for celltype, elemco in self._cell2node.items():
+                print(f"  {celltype}: {elemco.shape}")
+        else:
+            print("  no cell/node connectivity")
         print("nnode:",self.nnode)
         print("nface:",self.nface)
+        if self._face2node:
+            print(f"  {self._face2node}")
+        else:
+            print("  no face/node connectivity")
+        if self._face2cell:
+            print(f"  {self._face2cell.size}")
+        else:
+            print("  no face/cell connectivity")
+        print(f"bocos: {self._bocos.keys()}")
+        for name, boco in self._bocos.items():
+            print(f"  {name}: {boco.keys()}")
         print("params:",self._params)
 
     def check(self):

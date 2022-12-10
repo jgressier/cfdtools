@@ -18,6 +18,7 @@ reader = gmsh.reader(_datadir+filename)
 rmesh = reader.read_data()
 reader.printinfo()
 rmesh.printinfo()
+rmesh.check()
 
 # ic3write = ic3writer.writer(rmesh)
 # ic3write.write_data(_builddir+filename)

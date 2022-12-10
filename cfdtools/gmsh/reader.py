@@ -157,7 +157,7 @@ class reader(api._files):
         boundaries["int_fluid"]["slicing"] = np.array(
             boundaries["int_fluid"]["slicing"]
         )
-        print(connectivity)
+        # print(connectivity)
         meshdata = _mesh.mesh(len(elts), len(x))
         # np.array(zip(x, y, z)), connectivity, boundaries, None, None, None
         meshdata.set_nodescoord_xyz(x, y, z)
