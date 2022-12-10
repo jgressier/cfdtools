@@ -73,6 +73,10 @@ class api_output():
 io = api_output()
 #print(io.get_modes())
 
+def error_stop(msg):
+    io.print('error', msg)
+    exit
+
 class _files():
 
     def __init__(self, filename: str):

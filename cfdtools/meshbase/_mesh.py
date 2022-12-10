@@ -28,8 +28,14 @@ class mesh():
         self._nodes['y'] = y
         self._nodes['z'] = z
     
-    def set_cell2node(self, cell2node):
+    def set_cell2node(self, cell2node: dict):
+        """set cell to node connectivity as a dict
+
+        Args:
+            cell2node (dict): dict of ndarray
+        """
         self._cell2node = cell2node
+        self._check_cell2node()
 
     def set_face2cell(self, face2cell):
         self._face2cell = face2cell
@@ -78,13 +84,16 @@ class mesh():
         else:
             print("  no face/node connectivity")
         if self._face2cell:
-            print(f"  {self._face2cell.size}")
+            print(f"  {self._face2cell}")
         else:
             print("  no face/cell connectivity")
         print(f"bocos: {self._bocos.keys()}")
         for name, boco in self._bocos.items():
-            print(f"  {name}: {boco.keys()}")
+            print(f"  {name}: {boco}")
         print("params:",self._params)
+
+    def _check_cell2node(self):
+        assert isinstance(self._cell2node, dict)
 
     def check(self):
         # check cell2node and cell numbers
@@ -93,6 +102,8 @@ class mesh():
         assert(self.nnode >0)
         api.io.print('std','ckeck: at least cell/node or face/node face/cell connectivity')
         assert(not self._cell2node or (not self._face2node and not self._face2cell))
+        self._check_cell2node()
+        api.io.print('std','ckeck: done')
         return True
 
     def morph(self, fmorph):

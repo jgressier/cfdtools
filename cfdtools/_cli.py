@@ -63,8 +63,8 @@ def info(argv=None):
     #
     inputfile = Path(parser.args().filename)
     r = parser._reader(str(inputfile))
-    r.read_data()
-    r.printinfo()
+    mesh = r.read_data()
+    mesh.printinfo()
     return True # needed for pytest
 
 def ic3brief(argv=None):
