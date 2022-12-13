@@ -13,32 +13,38 @@ import numpy as np
 
 # Gmsh element types to canonical types see description below after ReaderGmsh class object
 gmshelt2canelt = {
-    1: "lin",
-    2: "tri",
-    3: "qua",
-    4: "tet",
-    5: "hex",
-    6: "pri",
-    7: "pyr",
-    8: "lin2",
-    9: "tri2",
-    10: "qua2",
-    11: "tet2",
-    12: "hex2",
-    13: "pri2",
-    14: "pyr2",
-    15: "node",
+    1: "bar2",
+    2: "tri3",
+    3: "quad4",
+    4: "tetra4",
+    5: "hexa8",
+    6: "prism6",
+    7: "pyra5",
+    8: "bar3",
+    9: "tri6",
+    10: "quad9",
+    11: "tetra10",
+    12: "hexa27",
+    13: "prism18",
+    14: "pyra14",
+    15: "node1"
 }
-# Actual number of vertices for a given cell type
-nodes_per_cell = {
-    "bi": 2,
-    "tri": 3,
-    "qua": 4,
-    "tet": 4,
-    "hex": 8,
-    "pri": 6,
-    "pyr": 5,
-}
+# # Actual number of vertices for a given cell type
+# nodes_per_cell = {
+#     "bi": 2,
+#     "tri": 3,
+#     "qua": 4,
+#     "tet": 4,
+#     "hex": 8,
+#     "pri": 6,
+#     "pyr": 5,
+# }
+
+# etype_from_gmsh = {
+#     "lin" : "bar2",
+#     "tri" : "tri3",
+#     "hex" : "hexa8"
+# }
 
 # #================================================================================================
 # #================================================================================================

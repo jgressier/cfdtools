@@ -1,4 +1,6 @@
 import cfdtools.api as api
+import cfdtools.meshbase._connectivity as conn
+import cfdtools.meshbase._elements as ele
 
 class mesh():
     """versatile mesh object
@@ -34,6 +36,7 @@ class mesh():
         Args:
             cell2node (dict): dict of ndarray
         """
+        print("cell2node : ", cell2node)
         self._cell2node = cell2node
         self._check_cell2node()
 
@@ -94,6 +97,15 @@ class mesh():
 
     def _check_cell2node(self):
         assert isinstance(self._cell2node, dict)
+        for etype, conn in self._cell2node.items():
+            assert etype in ele.elem2faces.keys()
+        return True
+
+    def _make_face_connectivity(self):
+        faces_elem = conn.create_faces_from_elems(self._cell2node)
+        intfaces, intf2c, boundfaces, boundf2c = conn.find_duplicates(faces_elem)
+        print(boundfaces, boundf2c.conn)
+
 
     def check(self):
         # check cell2node and cell numbers
@@ -102,7 +114,7 @@ class mesh():
         assert(self.nnode >0)
         api.io.print('std','ckeck: at least cell/node or face/node face/cell connectivity')
         assert(not self._cell2node or (not self._face2node and not self._face2cell))
-        self._check_cell2node()
+        assert self._check_cell2node()
         api.io.print('std','ckeck: done')
         return True
 
@@ -112,3 +124,5 @@ class mesh():
         '''
         newx, newy, newz = fmorph(self._nodes['x'], self._nodes['y'], self._nodes['z'])
         self.set_nodescoord_xyz(newx, newy, newz)
+
+    

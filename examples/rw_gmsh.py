@@ -7,6 +7,7 @@ import cfdtools.api as api
 _datadir="../tests/data/"
 _builddir="../tests/build/"
 
+#filename = "small_cube.msh" # 4.1
 filename = "test_3d.msh"
 
 api.io.set_modes(api.io._available) # all outputs
@@ -16,9 +17,10 @@ api.io.set_modes(api.io._available.remove("debug")) # all outputs but debug
 # ic3read = ic3reader.reader("./examples/restart_SD_21.out")
 reader = gmsh.reader(_datadir+filename)
 rmesh = reader.read_data()
-reader.printinfo()
+#reader.printinfo()
 rmesh.printinfo()
 rmesh.check()
+rmesh._make_face_connectivity()
 
 # ic3write = ic3writer.writer(rmesh)
 # ic3write.write_data(_builddir+filename)

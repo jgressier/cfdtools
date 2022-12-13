@@ -4,7 +4,8 @@
 import collections
 import cfdtools.meshbase._mesh as _mesh
 import cfdtools.meshbase._connectivity as _conn
-from cfdtools.gmsh._gmsh import gmshelt2canelt, nodes_per_cell
+import cfdtools.meshbase._elements as _ele
+from cfdtools.gmsh._gmsh import gmshelt2canelt #, nodes_per_cell
 #import os
 
 import cfdtools.api as api
@@ -27,35 +28,22 @@ class reader(api._files):
         # Read file.
         filename = self.filename
         fam, bctype, x, y, z, elts = self.__read_sections(filename)
-        #print(fam, bctype, elts)
         # fam: dict with index: family name
         # bctype: dict with name: type
         # elts: list of list[index, element type, x, x, x, nodes index ]
 
         # Check for 3D
-        dim = "2"
-        for elt in elts:
-            if elt[1] in gmshelt2canelt.keys():
-                elt_type = gmshelt2canelt[elt[1]]
-                if (
-                    elt_type != "tri"
-                    and elt_type != "qua"
-                    and elt_type != "tri2"
-                    and elt_type != "qua2"
-                    and elt_type != "lin"
-                    and elt_type != "lin2"
-                    and elt_type != "node"
-                ):
-                    dim = "3"
-                    break
+        dim = np.amax([_ele.elem_dim[gmshelt2canelt[e[1]]] for e in elts])
 
         # Define list of element
-        if dim == "3":
-            mesh_elt = ["tet", "hex", "pri", "pyr", "tet2", "hex2", "pri2", "pyr2"]
-            bc_elt = ["tri", "qua", "lin2", "tri2", "qua2"]
+        if dim == 3:
+            api.io.print("std", "  3D mesh")
+            mesh_elt = ["tet", "hexa8", "pri", "pyr", "tet2", "hex2", "pri2", "pyr2"]
+            bc_elt = ["tri3", "quad4" ]
         else:
-            mesh_elt = ["tri", "qua", "tri2", "qua2"]
-            bc_elt = ["lin", "lin2"]
+            api.io.print("std", "  2D mesh")
+            mesh_elt = ["tri3", "quad4"]
+            bc_elt = ["bar2", "bar3"]
 
         # Initialize returned variables
         boundaries = {}
@@ -157,7 +145,6 @@ class reader(api._files):
         boundaries["int_fluid"]["slicing"] = np.array(
             boundaries["int_fluid"]["slicing"]
         )
-        # print(connectivity)
         meshdata = _mesh.mesh(len(elts), len(x))
         # np.array(zip(x, y, z)), connectivity, boundaries, None, None, None
         meshdata.set_nodescoord_xyz(x, y, z)
@@ -274,7 +261,7 @@ class reader(api._files):
         # ---------------------------------------
 
         elif ver >= 4:
-            api.io.print('std',"--Running 4.0 reader--")
+            api.io.print('std',"--Running 4.x reader--")
             # Find the families.
             if ["$PhysicalNames"] in msh:
                 ibeg = msh.index(["$PhysicalNames"])
