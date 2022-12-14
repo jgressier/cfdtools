@@ -1,4 +1,6 @@
 import cfdtools.api as api
+import cfdtools.meshbase._connectivity as conn
+import cfdtools.meshbase._elements as ele
 
 class mesh():
     """versatile mesh object
@@ -28,8 +30,15 @@ class mesh():
         self._nodes['y'] = y
         self._nodes['z'] = z
     
-    def set_cell2node(self, cell2node):
+    def set_cell2node(self, cell2node: dict):
+        """set cell to node connectivity as a dict
+
+        Args:
+            cell2node (dict): dict of ndarray
+        """
+        print("cell2node : ", cell2node)
         self._cell2node = cell2node
+        self._check_cell2node()
 
     def set_face2cell(self, face2cell):
         self._face2cell = face2cell
@@ -66,9 +75,37 @@ class mesh():
 
     def printinfo(self):
         print("ncell:",self.ncell)
+        if self._cell2node:
+            for celltype, elemco in self._cell2node.items():
+                print(f"  {celltype}: {elemco.shape}")
+        else:
+            print("  no cell/node connectivity")
         print("nnode:",self.nnode)
         print("nface:",self.nface)
+        if self._face2node:
+            print(f"  {self._face2node}")
+        else:
+            print("  no face/node connectivity")
+        if self._face2cell:
+            print(f"  {self._face2cell}")
+        else:
+            print("  no face/cell connectivity")
+        print(f"bocos: {self._bocos.keys()}")
+        for name, boco in self._bocos.items():
+            print(f"  {name}: {boco}")
         print("params:",self._params)
+
+    def _check_cell2node(self):
+        assert isinstance(self._cell2node, dict)
+        for etype, conn in self._cell2node.items():
+            assert etype in ele.elem2faces.keys()
+        return True
+
+    def _make_face_connectivity(self):
+        faces_elem = conn.create_faces_from_elems(self._cell2node)
+        intfaces, intf2c, boundfaces, boundf2c = conn.find_duplicates(faces_elem)
+        print(boundfaces, boundf2c.conn)
+
 
     def check(self):
         # check cell2node and cell numbers
@@ -77,6 +114,8 @@ class mesh():
         assert(self.nnode >0)
         api.io.print('std','ckeck: at least cell/node or face/node face/cell connectivity')
         assert(not self._cell2node or (not self._face2node and not self._face2cell))
+        assert self._check_cell2node()
+        api.io.print('std','ckeck: done')
         return True
 
     def morph(self, fmorph):
@@ -85,3 +124,5 @@ class mesh():
         '''
         newx, newy, newz = fmorph(self._nodes['x'], self._nodes['y'], self._nodes['z'])
         self.set_nodescoord_xyz(newx, newy, newz)
+
+    
