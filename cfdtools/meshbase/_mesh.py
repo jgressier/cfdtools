@@ -104,8 +104,7 @@ class mesh():
     def _make_face_connectivity(self):
         faces_elem = conn.create_faces_from_elems(self._cell2node)
         intfaces, intf2c, boundfaces, boundf2c = conn.find_duplicates(faces_elem)
-        print(boundfaces, boundf2c.conn)
-
+        #print(boundfaces, boundf2c.conn)
 
     def check(self):
         # check cell2node and cell numbers

@@ -84,11 +84,11 @@ class reader(binreader):
         api.io.print('std', "Reading variables ..")
         self._ReadRestartVar()
         #
-
         # Before returning, close the file
         self.fid.close()
         del self.fid
 
+    def export_mesh(self):
         #return self.mesh["coordinates"], self.mesh["connectivity"]["e2v"], self.mesh["bocos"], self.variables["nodes"], self.variables["cells"], (self.simulation_state, self.mesh["params"])
         meshdata = _mesh.mesh(self.mesh['params']['cv_count'], self.mesh['params']['no_count'])
         meshdata.set_nodescoord_nd(self.mesh['coordinates'])
@@ -102,7 +102,6 @@ class reader(binreader):
         meshdata.update_params(self.simulation_state)
         if 'partition' in self.mesh.keys():
             meshdata.set_partition(self.mesh['partition'])
-
         return meshdata
 
     def _ReadRestartConnectivity(self):

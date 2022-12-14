@@ -63,7 +63,8 @@ def info(argv=None):
     #
     inputfile = Path(parser.args().filename)
     r = parser._reader(str(inputfile))
-    mesh = r.read_data()
+    r.read_data()
+    mesh = r.export_mesh()
     mesh.printinfo()
     return True # needed for pytest
 
@@ -86,7 +87,8 @@ def write_generic(argv, ext, writer):
     #
     file = api._files(parser.args().filename)
     r = parser._reader(file.filename)
-    cfdmesh = r.read_data()
+    r.read_data()
+    cfdmesh = r.export_mesh()
     #
     if parser.args().remove_cell_data:
         for var in parser.args().remove_cell_data:

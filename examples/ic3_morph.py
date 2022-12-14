@@ -15,7 +15,8 @@ mem=psutil.virtual_memory().percent
 print(f"memory: {mem}")
 
 ic3read = ic3reader.reader("./tan25D2-185k+data.restart")
-rmesh = ic3read.read_data()
+ic3read.read_data()
+rmesh = ic3read.export_mesh()
 
 mem=psutil.virtual_memory().percent
 print(f"memory: {mem}")

@@ -145,13 +145,18 @@ class reader(api._files):
         boundaries["int_fluid"]["slicing"] = np.array(
             boundaries["int_fluid"]["slicing"]
         )
-        meshdata = _mesh.mesh(len(elts), len(x))
-        # np.array(zip(x, y, z)), connectivity, boundaries, None, None, None
-        meshdata.set_nodescoord_xyz(x, y, z)
-        # meshdata.set_face2cell(self.mesh['connectivity']['cvofa'])
+
+        self._elems = elts
+        self._coords = (x, y, z)
+        self._cellconnectivity = connectivity
+        self._boundaries = boundaries
+
+    def export_mesh(self):
+        meshdata = _mesh.mesh(len(self._elems), len(self._coords[0]))
+        meshdata.set_nodescoord_xyz(*self._coords)
         # meshdata.set_face2node(self.mesh['connectivity']['noofa'])
-        meshdata.set_cell2node(connectivity)
-        meshdata.set_bocos(boundaries)
+        meshdata.set_cell2node(self._cellconnectivity)
+        meshdata.set_bocos(self._boundaries)
         # meshdata.set_celldata(self.variables['cells'])
         # meshdata.set_nodedata(self.variables['nodes'])
         # meshdata.set_facedata(self.variables['faces'])
