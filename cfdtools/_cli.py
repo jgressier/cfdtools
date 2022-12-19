@@ -20,6 +20,7 @@ class cli_argparser():
     def addarg_filenameformat(self):
         self._parser.add_argument('filename', help="file")
         self._parser.add_argument('--fmt', help="input format", choices=self._available_readers)
+        self._parser.add_argument('--outdir', help="output folder")
 
     def addarg_data(self):
         self._parser.add_argument('--remove-node-data', nargs='+', help="list of data to remove",)
@@ -97,7 +98,10 @@ def write_generic(argv, ext, writer):
             else:
                 api.io.print('std', f'  pop cell data {var}')
     #
-    file.remove_dir()
+    if parser.args().outdir is None:
+        file.remove_dir()
+    else:
+        file.change_dir(parser.args().outdir)
     file.change_suffix(ext)
     if file.find_safe_newfile() > 0:
         api.io.print("std","change output to safe new name "+file.filename)
