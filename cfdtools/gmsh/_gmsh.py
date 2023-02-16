@@ -12,7 +12,7 @@ import numpy as np
 # from operator import itemgetter
 
 # Gmsh element types to canonical types see description below after ReaderGmsh class object
-gmshelt2canelt = {
+gmshtype_elem = {
     1: "bar2",
     2: "tri3",
     3: "quad4",

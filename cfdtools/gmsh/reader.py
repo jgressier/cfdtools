@@ -5,7 +5,7 @@ import collections
 import cfdtools.meshbase._mesh as _mesh
 import cfdtools.meshbase._connectivity as _conn
 import cfdtools.meshbase._elements as _ele
-from cfdtools.gmsh._gmsh import gmshelt2canelt #, nodes_per_cell
+from cfdtools.gmsh._gmsh import gmshtype_elem #, nodes_per_cell
 #import os
 
 import cfdtools.api as api
@@ -33,10 +33,10 @@ class reader(api._files):
         # elts: list of list[index, element type, x, x, x, nodes index ]
 
         # Check for 3D
-        dim = np.amax([_ele.elem_dim[gmshelt2canelt[e[1]]] for e in elts])
+        self._maxdim = np.amax([_ele.elem_dim[gmshtype_elem[e[1]]] for e in elts])
 
         # Define list of element
-        if dim == 3:
+        if self._maxdim == 3:
             api.io.print("std", "  3D mesh")
             mesh_elt = ["tet", "hexa8", "pri", "pyr", "tet2", "hex2", "pri2", "pyr2"]
             bc_elt = ["tri3", "quad4" ]
@@ -57,8 +57,8 @@ class reader(api._files):
         # Volume Connectivity
         bnd_connect = 1
         for elt in elts:
-            if elt[1] in gmshelt2canelt.keys():
-                elt_type = gmshelt2canelt[elt[1]]
+            if elt[1] in gmshtype_elem.keys():
+                elt_type = gmshtype_elem[elt[1]]
                 if elt_type in mesh_elt:
                     if elt_type not in connectivity.keys():
                         connectivity[elt_type] = []
@@ -68,8 +68,8 @@ class reader(api._files):
         # Boundary Connectivity
         connect_bc = {}
         for elt in elts:
-            if elt[1] in gmshelt2canelt.keys():
-                elt_type = gmshelt2canelt[elt[1]]
+            if elt[1] in gmshtype_elem.keys():
+                elt_type = gmshtype_elem[elt[1]]
                 if elt_type in bc_elt:
                     bnd_tag = elt[2 + tag]
                     bnd_fam = elt[2 + tag - 1]
@@ -155,7 +155,12 @@ class reader(api._files):
         meshdata = _mesh.mesh(len(self._elems), len(self._coords[0]))
         meshdata.set_nodescoord_xyz(*self._coords)
         # meshdata.set_face2node(self.mesh['connectivity']['noofa'])
-        meshdata.set_cell2node(self._cellconnectivity)
+        cellconn = _conn.elem_connectivity()
+        # extract cell connectivity only
+        for etype, econn in self._cellconnectivity.items():
+            if _ele.elem_dim[etype] == self._maxdim:
+                cellconn.add_elems(etype, econn)
+        meshdata.set_cell2node(cellconn)
         meshdata.set_bocos(self._boundaries)
         # meshdata.set_celldata(self.variables['cells'])
         # meshdata.set_nodedata(self.variables['nodes'])

@@ -61,9 +61,9 @@ class writer():
         self.params["noofa_count"] = self._mesh._params["noofa_count"]
 
         self.f2v = {}
-        self.f2v["noofa"] = self._mesh._face2node['listofStarts_f2v'][1:]-self._mesh._face2node['listofStarts_f2v'][:-1]
-        self.f2v["noofa_v"] = self._mesh._face2node['face2vertex']
-        self.f2e = self._mesh._face2cell['cvofa']
+        self.f2v["noofa"] = self._mesh._faces['mixed']['face2node']._index[1:]-self._mesh._faces['mixed']['face2node']._index[:-1]
+        self.f2v["noofa_v"] = self._mesh._faces['mixed']['face2node']._value
+        self.f2e = self._mesh._faces['mixed']['face2cell'].conn
         #print(self.f2e.shape)
         api.io.print('std',"ok.")
 
