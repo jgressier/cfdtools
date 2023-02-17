@@ -355,7 +355,10 @@ class reader(api._files):
                     elts.append(elt1)
 
                 count = count + nxtrange + 1
-            elts = np.array(elts)
+            #max_j = np.max([len(l) for l in elts])
+            #np_elts = np.zeros((len(elts), max_j), dtype=np.int8)
+            #elts = np.array(elts) # numpy depreciation
+            #print(elts)
             # api.io.print('std',elts)
             fid.close()
             return fam, bctype, x, y, z, elts
