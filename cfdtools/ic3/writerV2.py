@@ -39,7 +39,7 @@ class writer():
         api.io.print('std',"Setting coordinates and connectivity arrays..")
 
         # Keep the coordinates of the points
-        self.coordinates = np.stack((self._mesh._nodes[c] 
+        self.coordinates = np.stack(list(self._mesh._nodes[c] 
             for c in ['x', 'y', 'z']), axis=1)
 
         # Compute the number of nodes and elements

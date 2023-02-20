@@ -95,7 +95,10 @@ class mesh():
             api.io.print("std", "  no face/node connectivity")
         api.io.print(f"bocos: {self._bocos.keys()}")
         for name, boco in self._bocos.items():
-            api.io.print("std", f"  {name}: {boco}")
+            if isinstance(boco, dict):
+                api.io.print("std", f"  BC {name}: {boco.keys()}")
+            else:
+                api.io.print("std", f"  BC {name}: {boco}")
         api.io.print("std", "params:",self._params)
 
     def _check_cell2node(self):
