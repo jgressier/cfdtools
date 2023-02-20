@@ -5,6 +5,11 @@ from itertools import groupby
 import numpy as np
 
 class singleindex():
+    """class of different implementation of list of index
+
+    Returns:
+        _type_: _description_
+    """
     __available_types = ['list', 'range']
 
     def __init__(self):
@@ -39,6 +44,8 @@ class singleindex():
             api.error_stop("unknown type")
 
 class doubleindex():
+    """class for a genuine connectivity, regular which size = nelem x ndim 
+    """
     def __init__(self, nelem=0, dim=0):
         self._conn = None
         self._nelem = nelem
@@ -60,6 +67,17 @@ class doubleindex():
         else:
             assert(array.shape[1]==self._dim)
             self._conn.append(array, axis=0)
+            self._nelem += array.shape[0]
+
+class compressed_doubleindex():
+    """class for a compressed double index (CSR like)
+
+    Returns:
+        _type_: _description_
+    """
+    def __init__(self, index, value) -> None:
+        self._index = index
+        self._value = value
 
 class elem_connectivity():
     def __init__(self):
@@ -76,24 +94,31 @@ class elem_connectivity():
         cell2node = self._elem2node[etype]['cell2node']
         return range(ist, ist+cell2node.shape[0]), cell2node
 
-def create_faces_from_elems(elems: dict):
-    """build a dict of face type to a list of tuples of each (oriented) face and its neighbor
+    def nelem(self):
+        return self._nelem
 
-    Args:
-        elems (dict): dict of elements with node definition
+    def print(self):
+        for celltype, elemco in self._elem2node.items():
+            api.io.print("std", f"  {celltype}: {elemco['elem2node'].shape}")
 
-    Returns:
-        _type_: dict of face type 
-    """
-    faces_neighbor = defaultdict(list)
-    for elemtype, elemsarray in elems.items(): # elemtype: 'hexa8', elemsarray: ndarray[nelem,8]
-        # !!! ielem is local for elemtype, should get an absolute index !!!
-        print(elemtype, elemsarray.shape)
-        for ielem in range(elemsarray.shape[0]):
-            for ftype, listfaces in ele.elem2faces[elemtype].items():
-                for face in listfaces:
-                    faces_neighbor[ftype].append( (tuple(elemsarray[ielem, face]), ielem) ) 
-    return faces_neighbor
+    def create_faces_from_elems(self):
+        """build a dict of face type to a list of tuples of each (oriented) face and its neighbor
+
+        Args:
+            elems (dict): dict of elements with node definition
+
+        Returns:
+            _type_: dict of face type 
+        """
+        faces_neighbor = defaultdict(list)
+        for elemtype, elemsdict in self._elem2node.items(): # elemtype: 'hexa8', elemsarray: ndarray[nelem,8]
+            istart = elemsdict['starts']
+            elemsarray = elemsdict['elem2node']
+            for ielem in range(elemsarray.shape[0]):
+                for ftype, listfaces in ele.elem2faces[elemtype].items():
+                    for face in listfaces:
+                        faces_neighbor[ftype].append( (tuple(elemsarray[ielem, face]), istart+ielem) ) 
+        return faces_neighbor
 
 def find_duplicates(faces_neighbor: dict):
     """find duplicated faces and build unique face/node face/cell connectivity

@@ -13,6 +13,7 @@
 `cfdwrite_ic3v2` and `cfdwrite_ic3v3`  specifically write an `IC3 v[23]`
 file from any supported input. Some specific options are available to
 transform mesh or variables:
+
 - `--remove-cell-data varname1 varname2` removes the listed names (should be at the end of command line if several names)
 - `--remove-node-data varname1 varname2` removes the listed names (should be at the end of command line if several names)
 

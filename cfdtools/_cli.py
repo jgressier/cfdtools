@@ -20,6 +20,7 @@ class cli_argparser():
     def addarg_filenameformat(self):
         self._parser.add_argument('filename', help="file")
         self._parser.add_argument('--fmt', help="input format", choices=self._available_readers)
+        self._parser.add_argument('--outpath', help="output folder")
 
     def addarg_data(self):
         self._parser.add_argument('--remove-node-data', nargs='+', help="list of data to remove",)
@@ -63,7 +64,8 @@ def info(argv=None):
     #
     inputfile = Path(parser.args().filename)
     r = parser._reader(str(inputfile))
-    mesh = r.read_data()
+    r.read_data()
+    mesh = r.export_mesh()
     mesh.printinfo()
     return True # needed for pytest
 
@@ -86,7 +88,8 @@ def write_generic(argv, ext, writer):
     #
     file = api._files(parser.args().filename)
     r = parser._reader(file.filename)
-    cfdmesh = r.read_data()
+    r.read_data()
+    cfdmesh = r.export_mesh()
     #
     if parser.args().remove_cell_data:
         for var in parser.args().remove_cell_data:
@@ -95,7 +98,10 @@ def write_generic(argv, ext, writer):
             else:
                 api.io.print('std', f'  pop cell data {var}')
     #
-    file.remove_dir()
+    if parser.args().outpath is None:
+        file.remove_dir()
+    else:
+        file.change_dir(parser.args().outpath)
     file.change_suffix(ext)
     if file.find_safe_newfile() > 0:
         api.io.print("std","change output to safe new name "+file.filename)
@@ -104,6 +110,7 @@ def write_generic(argv, ext, writer):
     return True # needed for pytest
 
 def write_ic3v2(argv=None):
+    print(argv)
     return write_generic(argv, '.ic3', ic3.writerV2.writer)
 
 def write_ic3v3(argv=None):

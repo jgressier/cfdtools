@@ -97,6 +97,9 @@ class _files():
         s = '  filename: '+self.filename
         return s
 
+    def change_dir(self, dir):
+        self._path = Path(dir) / Path(self._path.name)
+
     def remove_dir(self):
         self._path = Path(self._path.name)
 
