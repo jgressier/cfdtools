@@ -138,7 +138,6 @@ def ic3probe_plotline(argv=None):
     parser.add_argument("--cmap", action="store", dest="cmap", default="turbo", help="colormap")
     parser.add_argument("--cmaplevels", action="store", dest="nlevels", default=30, type=int, help="colormap number of levels")
     parser.parse_cli_args(argv)
-    print(parser.args())
     #parser.parse_filenameformat()
     #basename, ext = os.path.splitext(parser.args().filenames[0])
     var = parser.args('datalist')[0] #ext[1:]
@@ -147,12 +146,12 @@ def ic3probe_plotline(argv=None):
     # check files and read data
     data = probedata.phydata(basename, verbose=parser.args().verbose)
 
-    print("> read data ")
+    api.io.print('std', "> read data ")
     for ivar in expected_data:
         data.check_data(ivar, prefix=basename)
 
     # --- read all expected data ---
-    print("> processing " + parser.args().map + " map of " + var)
+    api.io.print('std', "> processing " + parser.args().map + " map of " + var)
     run_plot = { "time": probeplot.plot_timemap, "freq": probeplot.plot_freqmap}
 
     # run

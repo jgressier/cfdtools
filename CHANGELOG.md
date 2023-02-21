@@ -16,11 +16,14 @@ pip show cfdtools
 
 ## Versions
 
-### [0.2.x](https://pypi.org/project/cfdtools/) (2022-xx-xx)
+### [0.2.x](https://pypi.org/project/cfdtools/) (2023-xx-xx)
 
 #### new
 
 - `morph`function for meshbase object
+- core: computation of face/node and face/cell connectivities from cell/node
+- command `ic3probe_plotline`
+- new common option `--outpath`
 
 ### [0.2.0](https://pypi.org/project/cfdtools/) (2022-03-22)
 

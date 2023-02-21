@@ -1,6 +1,7 @@
 import os
 from shutil import Error
 import numpy as np
+import cfdtools.api as api
 
 # options definition
 
@@ -73,7 +74,7 @@ class phydata():
             else:
                 raise NameError(varname + " missing or unable to compute")
         if success:
-            print("- "+varname+" min:avg:max = {:.3f} : {:.3f} : {:.3f}".format(*minavgmax(self.alldata[varname])))
+            api.io.print('std', "- "+varname+" min:avg:max = {:.3f} : {:.3f} : {:.3f}".format(*minavgmax(self.alldata[varname])))
         return success
 
     def read_data(self, varname, prefix=""):
