@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import cfdtools.api as api
 import cfdtools.plot as cfdplt
 import numpy as np
-import scipy.fft as fftm
+import numpy.fft as fftm
 
 def minavgmax(d):
     return (f(d) for f in [np.min, np.average, np.max])
