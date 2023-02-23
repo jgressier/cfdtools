@@ -4,7 +4,7 @@ from collections import defaultdict, OrderedDict
 from itertools import groupby
 import numpy as np
 
-class singleindex():
+class indexlist():
     """class of different implementation of list of index
 
     Returns:
@@ -43,34 +43,39 @@ class singleindex():
         else:
             api.error_stop("unknown type")
 
-class doubleindex():
-    """class for a genuine connectivity, regular which size = nelem x ndim 
+class indexindirection():
+    """class for a genuine connectivity, regular which size = nelem x 2 
     """
-    def __init__(self, nelem=0, dim=0):
-        self._conn = None
-        self._nelem = nelem
-        self._dim   = dim
+    def __init__(self, array: np.ndarray):
+        self.conn = array
 
     @property
     def conn(self):
         return self._conn
 
     @conn.setter
-    def conn(self, array):
+    def conn(self, array: np.ndarray):
+        assert(array.shape[1]==2)
         self._conn = array
-        self._elem = array.shape[0]
-        self._dim  = array.shape[1]
+        self._nelem = array.shape[0]
 
-    def append(self, array):
+    @property
+    def nelem(self):
+        return self._nelem
+
+    def __getitem__(self, indices):
+        # direct access to index without check
+        return self._conn.__getitem__(indices)
+
+    def append(self, array: np.ndarray):
         if self._conn is None:
             self.conn = array
         else:
-            assert(array.shape[1]==self._dim)
-            self._conn.append(array, axis=0)
-            self._nelem += array.shape[0]
+            assert(array.shape[1]==2)
+            self.conn = np.append(self.conn, array, axis=0)
 
-class compressed_doubleindex():
-    """class for a compressed double index (CSR like)
+class compressed_listofindex():
+    """class for a compressed list of index (CSR like)
 
     Returns:
         _type_: _description_
@@ -128,8 +133,8 @@ def find_duplicates(faces_neighbor: dict):
     """
     internalfaces = elem_connectivity()
     boundaryfaces = elem_connectivity()
-    iface2cell = doubleindex(0,2) # 
-    bface2cell = doubleindex(0,2) # 
+    iface2cell = indexindirection(0,2) # 
+    bface2cell = indexindirection(0,2) # 
 
     def face_from_ufacedict(uface_dict):
         return np.array(list(map(lambda flist: flist[0][0], uface_dict.values())))

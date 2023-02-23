@@ -93,9 +93,9 @@ class reader(binreader):
         #return self.mesh["coordinates"], self.mesh["connectivity"]["e2v"], self.mesh["bocos"], self.variables["nodes"], self.variables["cells"], (self.simulation_state, self.mesh["params"])
         meshdata = _mesh.mesh(self.mesh['params']['cv_count'], self.mesh['params']['no_count'])
         meshdata.set_nodescoord_nd(self.mesh['coordinates'])
-        zface2node = conn.compressed_doubleindex(self.mesh['connectivity']['noofa']['listofStarts_f2v'], 
+        zface2node = conn.compressed_listofindex(self.mesh['connectivity']['noofa']['listofStarts_f2v'], 
                                                  self.mesh['connectivity']['noofa']['face2vertex'])
-        face2cell = conn.doubleindex() ; face2cell.conn = self.mesh['connectivity']['cvofa']['cvofa']
+        face2cell = conn.indexindirection(self.mesh['connectivity']['cvofa']['cvofa'])
         meshdata.set_faces('mixed', zface2node, face2cell)
         meshdata.set_bocos(self.mesh['bocos'])
         meshdata.set_celldata(self.variables['cells'])

@@ -40,13 +40,13 @@ class mesh():
         self._cell2node = cell2node
         self._check_cell2node()
 
-    def set_faces(self, facetype: str, face2node: conn.elem_connectivity, face2cell: conn.doubleindex = None):
+    def set_faces(self, facetype: str, face2node: conn.elem_connectivity, face2cell: conn.indexindirection = None):
         """set faces connectivity with face type et optional face/cell connectivity
 
         Args:
             facetype (str): _description_
             face2node (conn.elem_connectivity): _description_
-            face2cell (conn.doubleindex, optional): _description_. Defaults to None.
+            face2cell (conn.indexindirection, optional): _description_. Defaults to None.
         """
         if facetype in self.__available_facetypes:
             self._faces[facetype] = {'face2node' : face2node, 'face2cell': face2cell}
