@@ -46,8 +46,12 @@ class indexlist():
 class indexindirection():
     """class for a genuine connectivity, regular which size = nelem x 2 
     """
-    def __init__(self, array: np.ndarray):
-        self.conn = array
+    def __init__(self, array: np.ndarray = None):
+        if array is None:
+            self._nelem = 0 
+            self._conn = None
+        else:
+            self.conn = array # setter
 
     @property
     def conn(self):
@@ -72,7 +76,7 @@ class indexindirection():
             self.conn = array
         else:
             assert(array.shape[1]==2)
-            self.conn = np.append(self.conn, array, axis=0)
+            self.conn = np.concatenate((self.conn, array), axis=0)
 
 class compressed_listofindex():
     """class for a compressed list of index (CSR like)
@@ -81,8 +85,19 @@ class compressed_listofindex():
         _type_: _description_
     """
     def __init__(self, index, value) -> None:
+        self.set(index, value)
+
+    def set(self, index, value):
         self._index = index
         self._value = value
+        self._nelem = self._index.size
+        self._size = self._value.size
+
+    def check(self):
+        assert self._index[0] == 0
+        print(self._index.max(), self._size)
+        assert self._index.max() == self._size
+        return True
 
 class elem_connectivity():
     def __init__(self):
@@ -99,8 +114,12 @@ class elem_connectivity():
         cell2node = self._elem2node[etype]['cell2node']
         return range(ist, ist+cell2node.shape[0]), cell2node
 
+    @property
     def nelem(self):
         return self._nelem
+
+    def check(self):
+        return True
 
     def print(self):
         for celltype, elemco in self._elem2node.items():
@@ -133,8 +152,8 @@ def find_duplicates(faces_neighbor: dict):
     """
     internalfaces = elem_connectivity()
     boundaryfaces = elem_connectivity()
-    iface2cell = indexindirection(0,2) # 
-    bface2cell = indexindirection(0,2) # 
+    iface2cell = indexindirection() # 
+    bface2cell = indexindirection() # 
 
     def face_from_ufacedict(uface_dict):
         return np.array(list(map(lambda flist: flist[0][0], uface_dict.values())))

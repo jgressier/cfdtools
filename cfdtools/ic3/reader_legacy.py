@@ -95,6 +95,7 @@ class reader(binreader):
         meshdata.set_nodescoord_nd(self.mesh['coordinates'])
         zface2node = conn.compressed_listofindex(self.mesh['connectivity']['noofa']['listofStarts_f2v'], 
                                                  self.mesh['connectivity']['noofa']['face2vertex'])
+        zface2node.check()
         face2cell = conn.indexindirection(self.mesh['connectivity']['cvofa']['cvofa'])
         meshdata.set_faces('mixed', zface2node, face2cell)
         meshdata.set_bocos(self.mesh['bocos'])

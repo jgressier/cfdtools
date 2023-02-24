@@ -9,7 +9,9 @@ elem_dim = { e: d for d, elems in [
 #   faces are defined with inward normal 
 # see https://cgns.github.io/CGNS_docs_current/sids/conv.html#unst_hexa
 elem2faces = {
-    'quad4' : {},
+    'quad4' : {
+        'bar2' : [ [0, 1], [1, 2], [2, 3], [3, 0]]
+    },
     'hexa8' : {
         'quad4' : [ [0, 1, 2, 3], [4, 7, 6, 5], 
                     [0, 4, 5, 1], [2, 6, 7, 3],
