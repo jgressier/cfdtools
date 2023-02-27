@@ -2,16 +2,21 @@ import cfdtools.meshbase._connectivity as conn
 import numpy as np
 import pytest
 
-def test_indexlist_list():
+def test_indexlist_initlist0():
     ilist = [ 10, 12, 15, 20]
     iconn = conn.indexlist()
     iconn.set_list(ilist)
     assert iconn.list() == ilist
 
-def test_indexlist_range():
+def test_indexlist_initlist1():
+    ilist = [ 10, 12, 15, 20]
+    iconn = conn.indexlist(list=ilist)
+    assert iconn.list() == ilist # test property
+
+def test_indexlist_initrange0():
     imin, imax = 10, 20
     iconn = conn.indexlist()
-    iconn.set_range(imin, imax)
+    iconn.set_range([imin, imax])
     assert iconn.range() == [imin, imax]
     assert iconn.list() == list(range(imin, imax+1))
 
@@ -44,16 +49,17 @@ def test_compressed_listofindex():
 class TestElem():
     dict_basiccon = { 
         '2quads': ('quad4', np.array([[0, 1, 2, 3], [2, 1, 4, 5]])),
+        '2hexas': ('hexa8', np.array([[0, 1, 2, 3, 4, 5, 6, 7], [4, 5, 6, 7, 8, 9, 10, 11]])),
     }
 
-    @pytest.mark.parametrize('econ', ['2quads'])
+    @pytest.mark.parametrize('econ', ['2quads', '2hexas'])
     def test_elem_init(self, econ):
         elemc = conn.elem_connectivity()
         elemc.add_elems(*self.dict_basiccon[econ]) # type and connectivy
         assert elemc.check()
         return elemc
 
-    @pytest.mark.parametrize('econ', ['2quads'])
+    @pytest.mark.parametrize('econ', ['2quads', '2hexas'])
     def test_elem_createface(self, econ):
         elemc = self.test_elem_init(econ)
         faces = elemc.create_faces_from_elems()

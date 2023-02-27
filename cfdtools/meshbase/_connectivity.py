@@ -12,28 +12,30 @@ class indexlist():
     """
     __available_types = ['list', 'range']
 
-    def __init__(self):
+    def __init__(self, range=None, list=None):
         self._type = None
+        assert (range is None) or (list is None)
+        if range is not None:
+            self.set_range(range)
+        if list is not None:
+            self.set_list(list)
 
     def _delete(self):
-        self._list = []
-        self._range = []
+        self._type = None
+        self._list = None
+        self._range = None
 
-    def set_list(self, ilist):
-        self._delete()
-        self._type = 'list'
-        self._list = ilist
-
-    def set_range(self, imin, imax):
-        self._delete()
-        self._type = 'range'
-        self._range = [imin, imax]
-
+    #@property
     def range(self):
         if self._type == 'range':
             return self._range
         else:
             api.error_stop("unable to get range from list connectivity")
+
+    def set_range(self, range):
+        self._delete()
+        self._type = 'range'
+        self._range = [*range]
 
     def list(self):
         if self._type == 'range':
@@ -41,7 +43,12 @@ class indexlist():
         elif self._type == 'list':
             return self._list
         else:
-            api.error_stop("unknown type")
+            api.error_stop(f"unknown type: {self._type}")
+
+    def set_list(self, ilist):
+        self._delete()
+        self._type = 'list'
+        self._list = ilist
 
 class indexindirection():
     """class for a genuine connectivity, regular which size = nelem x 2 
@@ -181,17 +188,17 @@ def find_duplicates(faces_neighbor: dict):
         f2c[:,0] = list(map(lambda flist: flist[0][1], uniqueface_dict.values()))
         bface2cell.append(f2c)
         # remove these faces
-        print(len(uniqueface_dict),'/', len(face_pairs))
+        #print(len(uniqueface_dict),'/', len(face_pairs))
         for uface in uniqueface_dict.keys():
             face_pairs.pop(uface)
-        print(len(uniqueface_dict), len(face_pairs))
+        #print(len(uniqueface_dict), len(face_pairs))
         # get all first face of each pair of tuple (face,ielem)
         intfaces = face_from_ufacedict(face_pairs)
         internalfaces.add_elems(ftype, intfaces)
         # get all elements connections via faces
         # get index of connected cells
         f2c = np.array(list(map(lambda flist: [flist[0][1], flist[1][1]], face_pairs.values())))
-        print(f2c.shape)
+        #print(f2c.shape)
         iface2cell.append(f2c)
 
     return internalfaces, iface2cell, boundaryfaces, bface2cell

@@ -98,7 +98,8 @@ class reader(binreader):
         zface2node.check()
         face2cell = conn.indexindirection(self.mesh['connectivity']['cvofa']['cvofa'])
         meshdata.set_faces('mixed', zface2node, face2cell)
-        meshdata.set_bocos(self.mesh['bocos'])
+        for boco in self.mesh['bocos']:
+            meshdata.add_boco(boco)
         meshdata.set_celldata(self.variables['cells'])
         meshdata.set_nodedata(self.variables['nodes'])
         meshdata.set_facedata(self.variables['faces'])
@@ -236,37 +237,39 @@ class reader(binreader):
         try:
             iwhere = np.where(uniq==-1)[0][0]
         except IndexError:
-            self.mesh["bocos"]["nfa_b"] = 0
+            self.mesh["params"]["nfa_b"] = 0
         else:
-            self.mesh["bocos"]["nfa_b"] = counts[iwhere]
+            self.mesh["params"]["nfa_b"] = counts[iwhere]
         del uniq, counts
         # Number of periodic boundary faces
-        self.mesh["bocos"]["nfa_bp"] = np.count_nonzero(self.mesh["connectivity"]["cvofa"]["cvofa"][:,1] < -1)
+        self.mesh["params"]["nfa_bp"] = np.count_nonzero(self.mesh["connectivity"]["cvofa"]["cvofa"][:,1] < -1)
         # All periodic boundary faces to -1
         # mask = self.mesh["connectivity"]["cvofa"]["cvofa"][:,1] < -1
         # self.mesh["connectivity"]["cvofa"]["cvofa"][:,1][mask] = -1
         #print("RC",self.mesh["connectivity"]["cvofa"]["cvofa"])
         #
         # The boundary conditions now
-        api.io.print('std', "\t Parsing boundary conditions .."); sys.stdout.flush()
+        api.io.print('std', "Parsing boundary conditions ..."); sys.stdout.flush()
+        self.mesh['bocos'] = [] # init list of bocos
         while True:
             h = restartSectionHeader()
             if(not h.readVar(self.fid, self.byte_swap,["UGP_IO_FA_ZONE"],reset_offset=False)): break
 
             self.mesh["params"]["nboco"] += 1
-            self.mesh["bocos"][h.name] = {}
-            self.mesh["bocos"][h.name]["type"] = zonekind2type[h.idata[0]]
-            self.mesh["bocos"][h.name]["fa_range"] = np.array([h.idata[1], h.idata[2]])
-            self.mesh["bocos"][h.name]["periodic_transform"] = h.rdata
+            boco = _mesh.submeshmark(h.name)
+            boco.properties['type'] = zonekind2type[h.idata[0]]
+            boco.index = conn.indexlist(range=[h.idata[1], h.idata[2]])
+            boco.properties["periodic_transform"] = h.rdata
             #
-            famin, famax = self.mesh["bocos"][h.name]["fa_range"]
+            famin, famax = boco.index.range()
             sta = self.mesh["connectivity"]["noofa"]["listofStarts_f2v"][famin]
             try:
                 sto = self.mesh["connectivity"]["noofa"]["listofStarts_f2v"][famax+1]
             except IndexError:
                 sto = self.mesh["connectivity"]["noofa"]["face2vertex"].size
             #
-            self.mesh["bocos"][h.name]["slicing"] = np.unique(self.mesh["connectivity"]["noofa"]["face2vertex"][sta:sto])
+            boco.properties["slicing"] = np.unique(self.mesh["connectivity"]["noofa"]["face2vertex"][sta:sto])
+            self.mesh['bocos'].append(boco)
             if h.idata[0] == 6:
                 break
         api.io.print('standard', "end of boco parsing")

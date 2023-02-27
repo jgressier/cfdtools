@@ -2,6 +2,40 @@ import cfdtools.api as api
 import cfdtools.meshbase._connectivity as conn
 import cfdtools.meshbase._elements as ele
 
+class submeshmark():
+    def __init__(self, name):
+        self._name = name
+        self.properties = {}
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def geodim(self):
+        return self._geodim
+
+    @geodim.setter
+    def set_geodim(self, geodim):
+        assert geodim in ele.geomdim.keys()
+        self._geodim = geodim
+
+    @property
+    def index(self):
+        return self._index
+
+    @index.setter
+    def index(self, index: conn.indexlist):
+        self._index = index
+
+    @property
+    def properties(self):
+        return self._properties
+
+    @properties.setter
+    def properties(self, properties: dict):
+        self._properties = properties
+
 class mesh():
     """versatile mesh object
     """
@@ -53,8 +87,11 @@ class mesh():
         else:
             api.io.error_stop(f"bad face type: {facetype} since {self.__available_facetypes} expected")
 
-    def set_bocos(self, bocos):
-        self._bocos = bocos
+    def add_boco(self, boco: submeshmark):
+        self._bocos[boco.name] = boco
+
+    def remove_boco(self, name):
+        self._bocos.pop(name)
 
     def set_params(self, params):
         self._params = params

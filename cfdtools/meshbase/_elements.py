@@ -1,5 +1,9 @@
 import cfdtools.api as api
 
+geodim = { 'point': 0, 'line':1, 'surface':2, 'volume':3}
+
+# TODO: set properties (dim, nnodes) for all elems and build reverse map
+
 elem_dim = { e: d for d, elems in [
     (0, ['node1']), (1, ['bar2']),
     (2, ['tri3', 'quad4']),
