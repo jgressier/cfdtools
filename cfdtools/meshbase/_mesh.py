@@ -1,6 +1,7 @@
 import cfdtools.api as api
 import cfdtools.meshbase._connectivity as conn
 import cfdtools.meshbase._elements as ele
+import numpy as np
 
 class submeshmark():
     def __init__(self, name):
@@ -38,6 +39,17 @@ class submeshmark():
 
 class mesh():
     """versatile mesh object
+
+    nodes are compulsory
+
+    cells (to nodes) connectivity is not compulsory but may be necessary
+    for many operations
+
+    faces (to nodes) connectivity is not compulsory ; it can exists either
+        - `mixed` internal and boundaries, with mixed index
+        - separated `internal` and `boundary` with separated index
+
+    
     """
     __available_facetypes = ( 'mixed', 'internal', 'boundaries')
 
@@ -55,11 +67,14 @@ class mesh():
         self._facedata = {}
         self._cellprop = {}
         
-    def set_nodescoord_nd(self, xyz):
+    def set_nodescoord_nd(self, xyz: np.ndarray):
+        assert xyz.shape[0] == self.nnode
         for i,c in enumerate(['x', 'y', 'z']):
             self._nodes[c] = xyz[:,i]
     
     def set_nodescoord_xyz(self, x, y, z):
+        for c in [x, y, z]:
+            assert len(c) == self.nnode
         self._nodes['x'] = x
         self._nodes['y'] = y
         self._nodes['z'] = z
@@ -86,6 +101,7 @@ class mesh():
             self._faces[facetype] = {'face2node' : face2node, 'face2cell': face2cell}
         else:
             api.io.error_stop(f"bad face type: {facetype} since {self.__available_facetypes} expected")
+        self.nface = np.sum([fcon['face2node'].nelem for _, fcon in self._faces.items()])
 
     def add_boco(self, boco: submeshmark):
         self._bocos[boco.name] = boco

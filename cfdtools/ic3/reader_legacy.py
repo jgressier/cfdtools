@@ -9,7 +9,7 @@ import cfdtools.meshbase._mesh as _mesh
 import cfdtools.meshbase._data as _data
 import cfdtools.meshbase._connectivity as conn
 #import cfdtools.ic3._ic3 as ic3b
-from cfdtools.ic3._ic3 import binreader, type2nbytes, restartSectionHeader, ic3_restart_codes, BinaryRead, zonekind2type, nno2fatype, properties_ugpcode
+from cfdtools.ic3._ic3 import binreader, type2nbytes, restartSectionHeader, ic3_restart_codes, BinaryRead, zonekind2type, properties_ugpcode
 
 ###################################################################################################
 
@@ -93,11 +93,10 @@ class reader(binreader):
         #return self.mesh["coordinates"], self.mesh["connectivity"]["e2v"], self.mesh["bocos"], self.variables["nodes"], self.variables["cells"], (self.simulation_state, self.mesh["params"])
         meshdata = _mesh.mesh(self.mesh['params']['cv_count'], self.mesh['params']['no_count'])
         meshdata.set_nodescoord_nd(self.mesh['coordinates'])
-        zface2node = conn.compressed_listofindex(self.mesh['connectivity']['noofa']['listofStarts_f2v'], 
-                                                 self.mesh['connectivity']['noofa']['face2vertex'])
-        zface2node.check()
         face2cell = conn.indexindirection(self.mesh['connectivity']['cvofa']['cvofa'])
-        meshdata.set_faces('mixed', zface2node, face2cell)
+        face2node = conn.elem_connectivity()
+        face2node.importfrom_compressedindex(self.mesh['connectivity']['noofa'])
+        meshdata.set_faces('mixed', face2node, face2cell)
         for boco in self.mesh['bocos']:
             meshdata.add_boco(boco)
         meshdata.set_celldata(self.variables['cells'])
@@ -195,26 +194,28 @@ class reader(binreader):
             s = BinaryRead(self.fid, "i", self.byte_swap, type2nbytes["int32"])
             nno_per_face[loopi] = s[0]
         uniq, counts = np.unique(nno_per_face, return_counts=True)
-        #print("uniq:",uniq)
-        uniq = [nno2fatype[val] for val in uniq]
-        api.io.print('std', "found %s faces .."%(" and ".join(uniq))); sys.stdout.flush()
+        for facesize, nfacesize in zip(uniq, counts):
+            api.io.print('std',f"  {nfacesize} faces of {facesize} nodes")
         # Initialize the proper connectivity arrays in self.mesh
         face2node_index = np.concatenate(([0,], np.cumsum(nno_per_face)))
-        self.mesh["connectivity"]["noofa"]["face2vertex"] = np.zeros((np.sum(nno_per_face),), dtype=np.int64)
+        face2node_value = np.zeros((np.sum(nno_per_face),), dtype=np.int64)
         assert face2node_index[0] == 0
-        assert face2node_index[-2] == self.mesh["connectivity"]["noofa"]["face2vertex"].size - nno_per_face[-1]
+        assert face2node_index[-2] == face2node_value.size - nno_per_face[-1]
         # Now loop on the restart file to fill the connectivities
         for loopi in range(self.mesh["params"]["fa_count"]):  # xrange to range (python3 portage)
             sta, sto = face2node_index[loopi], face2node_index[loopi+1]
             s = BinaryRead(self.fid, "i"*nno_per_face[loopi], self.byte_swap, type2nbytes["int32"]*nno_per_face[loopi])
-            self.mesh["connectivity"]["noofa"]["face2vertex"][sta:sto] = np.asarray(s).astype(np.int64)
-        self.mesh["connectivity"]["noofa"]["listofStarts_f2v"] = face2node_index
+            face2node_value[sta:sto] = np.asarray(s).astype(np.int64)
+        face2node_index = face2node_index
+        zface2node = conn.compressed_listofindex(face2node_index, face2node_value)
+        zface2node.check()
+        self.mesh["connectivity"]["noofa"] = zface2node
         api.io.print('std', "end of face/vertex connectivity"); sys.stdout.flush()
         del nno_per_face, h, uniq, counts
         #
         #- Second, CVOFA
         #
-        api.io.print('std', "\t Parsing face to cell connectivity .."); sys.stdout.flush()
+        api.io.print('std', "  parsing face to cell connectivity..."); sys.stdout.flush()
         h = restartSectionHeader()
         if (not h.readVar(self.fid, self.byte_swap,["UGP_IO_CVOFA"])): exit()
 
@@ -262,13 +263,13 @@ class reader(binreader):
             boco.properties["periodic_transform"] = h.rdata
             #
             famin, famax = boco.index.range()
-            sta = self.mesh["connectivity"]["noofa"]["listofStarts_f2v"][famin]
+            sta = face2node_index[famin]
             try:
-                sto = self.mesh["connectivity"]["noofa"]["listofStarts_f2v"][famax+1]
+                sto = face2node_index[famax+1]
             except IndexError:
-                sto = self.mesh["connectivity"]["noofa"]["face2vertex"].size
+                sto = face2node_value.size
             #
-            boco.properties["slicing"] = np.unique(self.mesh["connectivity"]["noofa"]["face2vertex"][sta:sto])
+            boco.properties["slicing"] = np.unique(face2node_value[sta:sto])
             self.mesh['bocos'].append(boco)
             if h.idata[0] == 6:
                 break

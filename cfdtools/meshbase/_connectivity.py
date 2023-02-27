@@ -1,7 +1,7 @@
 import cfdtools.api as api
 import cfdtools.meshbase._elements as ele
 from collections import defaultdict, OrderedDict
-from itertools import groupby
+from itertools import groupby, chain
 import numpy as np
 
 class indexlist():
@@ -102,7 +102,6 @@ class compressed_listofindex():
 
     def check(self):
         assert self._index[0] == 0
-        print(self._index.max(), self._size)
         assert self._index.max() == self._size
         return True
 
@@ -111,26 +110,54 @@ class elem_connectivity():
         self._nelem = 0
         self._elem2node = OrderedDict()
 
-    def add_elems(self, etype: str, elem2node: np.ndarray):
-        #print("elem2node", elem2node)
-        self._elem2node[etype] = { 'starts' : self._nelem, 'elem2node' : elem2node }
-        self._nelem += elem2node.shape[0]
+    def add_elems(self, etype: str, elem2node: np.ndarray, index: np.ndarray=None):
+        dim = elem2node.shape[0]
+        ind = range(self._nelem, self._nelem+dim)
+        self._nelem += dim
+        self._elem2node[etype] = { 'index' : ind, 'elem2node' : elem2node }
 
-    def index_cell2node(self, etype):
-        ist = self._elem2node[etype]['starts']
-        cell2node = self._elem2node[etype]['cell2node']
-        return range(ist, ist+cell2node.shape[0]), cell2node
+    # def index_elem2node(self, etype):
+    #     ist = self._elem2node[etype]['starts']
+    #     cell2node = self._elem2node[etype]['cell2node']
+    #     return range(ist, ist+cell2node.shape[0]), cell2node
 
     @property
     def nelem(self):
         return self._nelem
 
     def check(self):
+        # check uniqueness of all index
+        index = np.concatenate(tuple(
+            e2n['index'] for _,e2n in self._elem2node.items()))
+        uniq = np.unique(index)
+        assert np.all(uniq==index)
         return True
 
     def print(self):
-        for celltype, elemco in self._elem2node.items():
-            api.io.print("std", f"  {celltype}: {elemco['elem2node'].shape}")
+        for elemtype, elemco in self._elem2node.items():
+            api.io.print("std", f"  {elemtype}: {elemco['elem2node'].shape}")
+
+    def importfrom_compressedindex(self, zconn: compressed_listofindex):
+        # there is no test but must only applied to faces
+        nodeperface = zconn._index[1:]-zconn._index[:-1]
+        uniq, counts = np.unique(nodeperface, return_counts=True)
+        for facesize, nface in zip(uniq, counts):
+            typef = ele.nnode_face[facesize]
+            index = np.argwhere(nodeperface==facesize)
+            zind  = zconn._index[index]
+            nodes = np.hstack(tuple(zconn._value[zind+i] for i in range(facesize)))
+            self.add_elems(typef, nodes, index)
+
+    def exportto_compressedindex(self) -> compressed_listofindex:
+        concat = sorted(tuple(
+            (i, face.flatten().tolist()) for _, e2n in self._elem2node.items()
+                for i, face in zip(e2n['index'], np.vsplit(e2n['elem2node'], e2n['elem2node'].shape[0]))
+        ))
+        nnode_perface = [ len(face) for _,face in concat ]
+        index = np.concatenate(([0,], np.cumsum(nnode_perface)))
+        value = np.array(list(chain(*[face for _,face in concat ])))
+        zconn = compressed_listofindex(index, value)
+        return zconn
 
     def create_faces_from_elems(self):
         """build a dict of face type to a list of tuples of each (oriented) face and its neighbor
@@ -143,12 +170,12 @@ class elem_connectivity():
         """
         faces_neighbor = defaultdict(list)
         for elemtype, elemsdict in self._elem2node.items(): # elemtype: 'hexa8', elemsarray: ndarray[nelem,8]
-            istart = elemsdict['starts']
+            index = elemsdict['index']
             elemsarray = elemsdict['elem2node']
             for ielem in range(elemsarray.shape[0]):
                 for ftype, listfaces in ele.elem2faces[elemtype].items():
                     for face in listfaces:
-                        faces_neighbor[ftype].append( (tuple(elemsarray[ielem, face]), istart+ielem) ) 
+                        faces_neighbor[ftype].append( (tuple(elemsarray[ielem, face]), index[ielem]) ) 
         return faces_neighbor
 
 def find_duplicates(faces_neighbor: dict):

@@ -66,3 +66,9 @@ class TestElem():
         intfaces, iface2cell, boundaryfaces, bface2cell = conn.find_duplicates(faces)
         assert iface2cell.nelem == intfaces.nelem
         assert bface2cell.nelem == boundaryfaces.nelem
+
+    def test_elemtocompress(self):
+        elemc = conn.elem_connectivity()
+        elemc.add_elems(*self.dict_basiccon['2quads']) # type and connectivy
+        zconn = elemc.exportto_compressedindex()
+        assert np.all(zconn._index == [0, 4, 8])

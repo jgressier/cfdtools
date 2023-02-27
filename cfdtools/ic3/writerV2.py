@@ -38,14 +38,12 @@ class writer():
         """
         api.io.print('std',"Setting coordinates and connectivity arrays..")
 
-        # Keep the coordinates of the points
+        self.params = {}
+        # Nodes
         self.coordinates = np.stack(list(self._mesh._nodes[c] 
             for c in ['x', 'y', 'z']), axis=1)
 
         # Compute the number of nodes and elements
-        self.params = {}
-        # Nodes
-        #print(self.coordinates.shape)
         assert self.coordinates.shape[0] == self._mesh.nnode
         self.params["no_count"] = self.coordinates.shape[0]
         # Elements, count throughout all connectivities
@@ -55,17 +53,19 @@ class writer():
         ### will need an actual extract of data
         #
         # Store the information properly
-        self.params["no_count"] = self._mesh._params["no_count"]
-        self.params["fa_count"] = self._mesh._params["fa_count"]
-        self.params["cv_count"] = self._mesh._params["cv_count"]
-        self.params["noofa_count"] = self._mesh._params["noofa_count"]
+        self.params["no_count"] = self._mesh.nnode
+        self.params["fa_count"] = self._mesh.nface
+        self.params["cv_count"] = self._mesh.ncell
 
+        assert 'mixed' in self._mesh._faces
+        zface2node = self._mesh._faces['mixed']['face2node'].exportto_compressedindex()
         self.f2v = {}
-        self.f2v["noofa"] = self._mesh._faces['mixed']['face2node']._index[1:]-self._mesh._faces['mixed']['face2node']._index[:-1]
-        self.f2v["noofa_v"] = self._mesh._faces['mixed']['face2node']._value
+        self.f2v["noofa"] = zface2node._index[1:]-zface2node._index[:-1]
+        self.f2v["noofa_v"] = zface2node._value
+        self.params["noofa_count"] = zface2node._value.size
+        print(zface2node._value)
+        print(zface2node._value.size)
         self.f2e = self._mesh._faces['mixed']['face2cell'].conn
-        #print(self.f2e.shape)
-        api.io.print('std',"ok.")
 
     def set_bocos(self, nboco=None):
         """
