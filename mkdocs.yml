@@ -21,7 +21,9 @@ nav:
     #- Examples: examples.md
     # - Rayleigh flow: examples/nozzle-1-rayleigh.ipynb
     # - Nozzle: examples/nozzle-2-convdiv.ipynb
-  #- Code reference: coderef.md
+  - Code reference:
+    - internal mesh: cfdtools-format.md
+    - IC3 format: IC3-format.md
   - About: 
     - About: about.md
     - Change log: changelog.md

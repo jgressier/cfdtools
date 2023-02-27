@@ -4,7 +4,7 @@ from collections import defaultdict, OrderedDict
 from itertools import groupby
 import numpy as np
 
-class singleindex():
+class indexlist():
     """class of different implementation of list of index
 
     Returns:
@@ -12,28 +12,30 @@ class singleindex():
     """
     __available_types = ['list', 'range']
 
-    def __init__(self):
+    def __init__(self, range=None, list=None):
         self._type = None
+        assert (range is None) or (list is None)
+        if range is not None:
+            self.set_range(range)
+        if list is not None:
+            self.set_list(list)
 
     def _delete(self):
-        self._list = []
-        self._range = []
+        self._type = None
+        self._list = None
+        self._range = None
 
-    def set_list(self, ilist):
-        self._delete()
-        self._type = 'list'
-        self._list = ilist
-
-    def set_range(self, imin, imax):
-        self._delete()
-        self._type = 'range'
-        self._range = [imin, imax]
-
+    #@property
     def range(self):
         if self._type == 'range':
             return self._range
         else:
             api.error_stop("unable to get range from list connectivity")
+
+    def set_range(self, range):
+        self._delete()
+        self._type = 'range'
+        self._range = [*range]
 
     def list(self):
         if self._type == 'range':
@@ -41,43 +43,68 @@ class singleindex():
         elif self._type == 'list':
             return self._list
         else:
-            api.error_stop("unknown type")
+            api.error_stop(f"unknown type: {self._type}")
 
-class doubleindex():
-    """class for a genuine connectivity, regular which size = nelem x ndim 
+    def set_list(self, ilist):
+        self._delete()
+        self._type = 'list'
+        self._list = ilist
+
+class indexindirection():
+    """class for a genuine connectivity, regular which size = nelem x 2 
     """
-    def __init__(self, nelem=0, dim=0):
-        self._conn = None
-        self._nelem = nelem
-        self._dim   = dim
+    def __init__(self, array: np.ndarray = None):
+        if array is None:
+            self._nelem = 0 
+            self._conn = None
+        else:
+            self.conn = array # setter
 
     @property
     def conn(self):
         return self._conn
 
     @conn.setter
-    def conn(self, array):
+    def conn(self, array: np.ndarray):
+        assert(array.shape[1]==2)
         self._conn = array
-        self._elem = array.shape[0]
-        self._dim  = array.shape[1]
+        self._nelem = array.shape[0]
 
-    def append(self, array):
+    @property
+    def nelem(self):
+        return self._nelem
+
+    def __getitem__(self, indices):
+        # direct access to index without check
+        return self._conn.__getitem__(indices)
+
+    def append(self, array: np.ndarray):
         if self._conn is None:
             self.conn = array
         else:
-            assert(array.shape[1]==self._dim)
-            self._conn.append(array, axis=0)
-            self._nelem += array.shape[0]
+            assert(array.shape[1]==2)
+            self.conn = np.concatenate((self.conn, array), axis=0)
 
-class compressed_doubleindex():
-    """class for a compressed double index (CSR like)
+class compressed_listofindex():
+    """class for a compressed list of index (CSR like)
 
     Returns:
         _type_: _description_
     """
     def __init__(self, index, value) -> None:
+        self.set(index, value)
+
+    def set(self, index, value):
         self._index = index
         self._value = value
+        self._nelem = self._index.size
+        self._size = self._value.size
+
+    def check(self):
+        assert self._index[0] == 0
+        print(self._index.max(), self._size)
+        assert self._index.max() == self._size
+        return True
 
 class elem_connectivity():
     def __init__(self):
@@ -94,8 +121,12 @@ class elem_connectivity():
         cell2node = self._elem2node[etype]['cell2node']
         return range(ist, ist+cell2node.shape[0]), cell2node
 
+    @property
     def nelem(self):
         return self._nelem
+
+    def check(self):
+        return True
 
     def print(self):
         for celltype, elemco in self._elem2node.items():
@@ -128,8 +159,8 @@ def find_duplicates(faces_neighbor: dict):
     """
     internalfaces = elem_connectivity()
     boundaryfaces = elem_connectivity()
-    iface2cell = doubleindex(0,2) # 
-    bface2cell = doubleindex(0,2) # 
+    iface2cell = indexindirection() # 
+    bface2cell = indexindirection() # 
 
     def face_from_ufacedict(uface_dict):
         return np.array(list(map(lambda flist: flist[0][0], uface_dict.values())))
@@ -157,17 +188,17 @@ def find_duplicates(faces_neighbor: dict):
         f2c[:,0] = list(map(lambda flist: flist[0][1], uniqueface_dict.values()))
         bface2cell.append(f2c)
         # remove these faces
-        print(len(uniqueface_dict),'/', len(face_pairs))
+        #print(len(uniqueface_dict),'/', len(face_pairs))
         for uface in uniqueface_dict.keys():
             face_pairs.pop(uface)
-        print(len(uniqueface_dict), len(face_pairs))
+        #print(len(uniqueface_dict), len(face_pairs))
         # get all first face of each pair of tuple (face,ielem)
         intfaces = face_from_ufacedict(face_pairs)
         internalfaces.add_elems(ftype, intfaces)
         # get all elements connections via faces
         # get index of connected cells
         f2c = np.array(list(map(lambda flist: [flist[0][1], flist[1][1]], face_pairs.values())))
-        print(f2c.shape)
+        #print(f2c.shape)
         iface2cell.append(f2c)
 
     return internalfaces, iface2cell, boundaryfaces, bface2cell

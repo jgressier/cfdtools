@@ -74,10 +74,10 @@ class writer():
         __WriteRestartConnectivity method.
         The bocos slicing is expressed in terms of faces.
         """
-        api.io.print('std',"Setting boundary conditions..")
+        api.io.print('std',"Setting boundary conditions...")
         self.bocos = self._mesh._bocos
-        self.bocos.pop("nfa_b")
-        self.bocos.pop("nfa_bp")
+        # self.bocos.pop("nfa_b")
+        # self.bocos.pop("nfa_bp")
         api.io.print('std',"ok.")
 
     def set_simstate(self, state={}):
@@ -253,18 +253,19 @@ class writer():
         # print(self.f2e.ravel())
         BinaryWrite(self.fid, self.endian, "i"*self.params["fa_count"]*2, self.f2e.ravel().tolist())
         # Face zones, a.k.a boundary condition patches
-        for key in self.bocos.keys():
+        for key, boco in self.bocos.items():
+            assert key == boco.name
             # Header
             header = restartSectionHeader()
             header.name = key
             header.id = ic3_restart_codes["UGP_IO_FA_ZONE"]
             header.skip = header.hsize
             # diff# print(self.bocos[key]["type"], type2zonekind)
-            header.idata[0] = type2zonekind[self.bocos[key]["type"]]
-            header.idata[1] = self.bocos[key]["fa_range"][0]
-            header.idata[2] = self.bocos[key]["fa_range"][1]
-            if "periodic_transform" in self.bocos[key].keys():
-                for idx, val in enumerate(self.bocos[key]["periodic_transform"]):
+            header.idata[0] = type2zonekind[boco.properties["type"]]
+            header.idata[1] = boco.index.range()[0]
+            header.idata[2] = boco.index.range()[1]
+            if "periodic_transform" in boco.properties.keys():
+                for idx, val in enumerate(boco.properties["periodic_transform"]):
                     header.rdata[idx] = val
             header.write(self.fid, self.endian)
         # Partition information
