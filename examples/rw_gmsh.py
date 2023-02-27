@@ -4,8 +4,8 @@ import cfdtools.gmsh as gmsh
 import cfdtools.ic3.writerV3 as ic3writer
 import cfdtools.api as api
 
-_datadir="../tests/data/"
-_builddir="../tests/build/"
+_datadir="./tests/data/"
+_builddir="./tests/build/"
 
 filename = "small_cube.msh" # 4.1
 #filename = "test_3d.msh"
@@ -20,9 +20,14 @@ reader.read_data()
 rmesh = reader.export_mesh()
 #reader.printinfo()
 rmesh._make_face_connectivity()
+api.io.print('std','PRINT INFO')
 rmesh.printinfo()
+api.io.print('std','CHECK')
 rmesh.check()
 
-# ic3write = ic3writer.writer(rmesh)
-# ic3write.write_data(_builddir+filename)
-# print("done")
+api.io.print('std','EXPORT TO IC3')
+ic3write = ic3writer.writer(rmesh)
+outfile = api._files(_builddir+filename)
+outfile.change_suffix('.ic3')
+ic3write.write_data(outfile)
+print("done")

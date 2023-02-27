@@ -48,10 +48,7 @@ class reader(api._files):
         # Initialize returned variables
         boundaries = {}
         connectivity = collections.OrderedDict({})
-        families = {}
-
-        # And some local stuff
-        global bnd_idx
+        self._nboco = 0
         bnd, bnd2fam = {}, {}
 
         # Volume Connectivity
@@ -102,10 +99,7 @@ class reader(api._files):
                 )
 
         # Fill the dictionary of boundary conditions
-        global famm
-        famm = []
-        bnd_idx = 0
-        global bound
+        self._famm = []
         if fam is not None:  # B.C. are defined
             for bnd_tag in bnd.keys():
                 family = fam[str(bnd2fam[bnd_tag])]
@@ -176,12 +170,11 @@ class reader(api._files):
     def __create_bnd(self, boundaries, window, family, bctype, connectivity):
 
         fff = family
-        global bnd_idx
-        bnd_idx += 1
+        self._nboco += 1
 
         # Loop to concatenate multiple faces/entities into the same boundary (For complex geometries)
 
-        if fff in famm:
+        if fff in self._famm:
             # Temporary list to be merged below
             bc2 = {"slicing": None}
             bc2["slicing"] = []
@@ -214,7 +207,7 @@ class reader(api._files):
             bc["slicing"] = np.array(bc["slicing"])
             bc["type"] = "boundary"
             bc["periodic_transform"] = np.zeros((16,), dtype=np.float64)
-            famm.append(fff)
+            self._famm.append(fff)
 
     def __read_sections(self, filename):
         # Read the entire mesh.
@@ -227,15 +220,14 @@ class reader(api._files):
         ibeg = msh.index(["$MeshFormat"])  # To be safe, use these indicators
         iend = msh.index(["$EndMeshFormat"])
         version = msh[ibeg + 1 : iend]
-        global ver
-        ver = int(float(version[0][0]))
+        self.version = int(float(version[0][0]))
 
         # -------------------------------------
         # Reading the msh file for version 2.0
         # -------------------------------------
 
-        if ver <= 2:
-            api.io.print('std',"--Running version 2.0 reader--")
+        if self.version <= 2:
+            api.io.print('std',"Running version 2.0 reader")
             # Find the families.
             if ["$PhysicalNames"] in msh:
                 ibeg = msh.index(["$PhysicalNames"])
@@ -275,8 +267,8 @@ class reader(api._files):
         # msh reading for version 4.0 and above
         # ---------------------------------------
 
-        elif ver >= 4:
-            api.io.print('std',"--Running 4.x reader--")
+        elif self.version >= 4:
+            api.io.print('std',"Running 4.x reader")
             # Find the families.
             if ["$PhysicalNames"] in msh:
                 ibeg = msh.index(["$PhysicalNames"])
@@ -337,8 +329,7 @@ class reader(api._files):
             # a, b, c, d = [], [], [], []
             counter = 1
             count = 1
-            global eltts
-            eltts = []
+            #self._eltts = []
             totcomp = int(elements[0][0])
             # api.io.print('std',totcomp)
             totelm = int(elements[0][1])

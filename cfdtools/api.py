@@ -68,7 +68,7 @@ class api_output():
 
     def print(self, mode, *args):
         if mode in self._api_output:
-            print(mode+': ',*args)
+            print(mode+':',*args)
 
 io = api_output()
 #print(io.get_modes())
