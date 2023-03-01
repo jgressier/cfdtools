@@ -204,7 +204,6 @@ class elem_connectivity():
         mergedict = defaultdict(dict)
         for shift, elemcon in zip(sizes, list_elem):
             for key, elemtype in elemcon.items():
-                print(shift, "A",elemtype['index'])
                 if key in mergedict.keys():
                     mergedict[key]['index'] = mergedict[key]['index'] + elemtype['index'].shift(shift)
                     mergedict[key]['elem2node'] = np.concatenate((mergedict[key]['elem2node'], elemtype['elem2node']), axis=0)

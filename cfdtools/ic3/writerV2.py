@@ -57,15 +57,18 @@ class writer():
         self.params["fa_count"] = self._mesh.nface
         self.params["cv_count"] = self._mesh.ncell
 
-        assert 'mixed' in self._mesh._faces
-        zface2node = self._mesh._faces['mixed']['face2node'].exportto_compressedindex()
+        # check face connectivity
+        if 'mixed' in self._mesh._faces.keys():
+            zface2node = self._mesh._faces['mixed']['face2node'].exportto_compressedindex()
+            self.f2e = self._mesh._faces['mixed']['face2cell'].conn
+        else:
+            mixedfaces, f2cell = self._mesh.export_mixedfaces()
+            zface2node = mixedfaces.exportto_compressedindex()
+            self.f2e = f2cell.conn
         self.f2v = {}
         self.f2v["noofa"] = zface2node._index[1:]-zface2node._index[:-1]
         self.f2v["noofa_v"] = zface2node._value
         self.params["noofa_count"] = zface2node._value.size
-        print(zface2node._value)
-        print(zface2node._value.size)
-        self.f2e = self._mesh._faces['mixed']['face2cell'].conn
 
     def set_bocos(self, nboco=None):
         """

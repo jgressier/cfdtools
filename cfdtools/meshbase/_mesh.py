@@ -109,6 +109,16 @@ class mesh():
                     del item
                 self._faces.pop(facetype)
 
+    def export_mixedfaces(self):
+        mixedfaces_con = conn.elem_connectivity()
+        mixedfaces_con.importfrom_merge((self._faces['boundary']['face2node'], 
+                                         self._faces['internal']['face2node']))
+        face2cell = conn.indexindirection()
+        face2cell.conn = np.concatenate((self._faces['boundary']['face2cell'].conn, 
+                                         self._faces['internal']['face2cell'].conn), axis=0)
+        return mixedfaces_con, face2cell
+                                                  
+
     def add_boco(self, boco: submeshmark):
         self._bocos[boco.name] = boco
 
@@ -167,7 +177,7 @@ class mesh():
         #    assert etype in ele.elem2faces.keys()
         return True
 
-    def _make_face_connectivity(self):
+    def make_face_connectivity(self):
         intfaces, intf2c, boundfaces, boundf2c = self._cell2node.create_faces_from_elems()
         self.pop_faces('mixed') # remove if it exists
         self.add_faces('internal', intfaces, intf2c)
