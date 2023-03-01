@@ -96,7 +96,7 @@ class reader(binreader):
         face2cell = conn.indexindirection(self.mesh['connectivity']['cvofa']['cvofa'])
         face2node = conn.elem_connectivity()
         face2node.importfrom_compressedindex(self.mesh['connectivity']['noofa'])
-        meshdata.set_faces('mixed', face2node, face2cell)
+        meshdata.add_faces('mixed', face2node, face2cell)
         for boco in self.mesh['bocos']:
             meshdata.add_boco(boco)
         meshdata.set_celldata(self.variables['cells'])

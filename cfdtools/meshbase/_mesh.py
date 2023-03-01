@@ -51,14 +51,14 @@ class mesh():
 
     
     """
-    __available_facetypes = ( 'mixed', 'internal', 'boundaries')
+    __available_facetypes = ( 'mixed', 'internal', 'boundary')
 
     def __init__(self, ncell, nnode):
         self.ncell = ncell
         self.nnode = nnode
         self.nface = 0
         self._params = {}
-        self._cell2node = {}
+        self._cell2node = None
         self._faces = {}
         self._nodes = {}
         self._bocos = {}
@@ -85,11 +85,10 @@ class mesh():
         Args:
             cell2node (dict): dict of ndarray
         """
-        #print("cell2node : ", cell2node)
         self._cell2node = cell2node
         self._check_cell2node()
 
-    def set_faces(self, facetype: str, face2node: conn.elem_connectivity, face2cell: conn.indexindirection = None):
+    def add_faces(self, facetype: str, face2node: conn.elem_connectivity, face2cell: conn.indexindirection = None):
         """set faces connectivity with face type et optional face/cell connectivity
 
         Args:
@@ -102,6 +101,13 @@ class mesh():
         else:
             api.io.error_stop(f"bad face type: {facetype} since {self.__available_facetypes} expected")
         self.nface = np.sum([fcon['face2node'].nelem for _, fcon in self._faces.items()])
+
+    def pop_faces(self, facetype: str):
+        if facetype in self.__available_facetypes:
+            if facetype in self._faces.keys():
+                for key, item in self._faces[facetype].items():
+                    del item
+                self._faces.pop(facetype)
 
     def add_boco(self, boco: submeshmark):
         self._bocos[boco.name] = boco
@@ -155,25 +161,26 @@ class mesh():
         api.io.print("std", "params:",self._params)
 
     def _check_cell2node(self):
-        assert isinstance(self._cell2node, conn.elem_connectivity)
+        if self._cell2node is not None:
+            assert isinstance(self._cell2node, conn.elem_connectivity)
         #for etype, conn in self._cell2node.items():
         #    assert etype in ele.elem2faces.keys()
         return True
 
     def _make_face_connectivity(self):
-        faces_elem = self._cell2node.create_faces_from_elems()
-        intfaces, intf2c, boundfaces, boundf2c = conn.find_duplicates(faces_elem)
-        #print(boundfaces, boundf2c.conn)
+        intfaces, intf2c, boundfaces, boundf2c = self._cell2node.create_faces_from_elems()
+        self.pop_faces('mixed') # remove if it exists
+        self.add_faces('internal', intfaces, intf2c)
+        self.add_faces('boundary', boundfaces, boundf2c)
 
     def check(self):
         # check cell2node and cell numbers
-        #api.io.print('std','ckeck: at least cell and node numbers')
         assert(self.ncell >0)
         assert(self.nnode >0)
+        self._check_cell2node()
         #api.io.print('std','ckeck: at least cell/node or face/node face/cell connectivity')
         #assert(not self._cell2node or (not self._face2node and not self._face2cell))
         #assert self._check_cell2node() # not compulsory
-        #api.io.print('std','ckeck: done')
         return True
 
     def morph(self, fmorph):
