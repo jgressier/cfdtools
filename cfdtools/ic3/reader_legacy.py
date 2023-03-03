@@ -258,6 +258,7 @@ class reader(binreader):
 
             self.mesh["params"]["nboco"] += 1
             boco = _mesh.submeshmark(h.name)
+            boco.geodim = 'bdface'
             boco.properties['type'] = zonekind2type[h.idata[0]]
             boco.index = conn.indexlist(range=[h.idata[1], h.idata[2]])
             boco.properties["periodic_transform"] = h.rdata

@@ -157,6 +157,7 @@ class reader(api._files):
         meshdata.set_cell2node(cellconn)
         for name, bc_dict in self._boundaries.items():
             boco = _mesh.submeshmark(name)
+            boco.geodim = 'bdnode'
             boco.properties['type'] = bc_dict['type']
             boco.properties['periodic_transform'] = bc_dict['periodic_transform']
             boco.index = _conn.indexlist(list=bc_dict['slicing'])
@@ -186,7 +187,7 @@ class reader(api._files):
             for elt_type in connectivity.keys():
                 raveled = np.unique(connectivity[elt_type].ravel())
                 bc2["slicing"] += raveled.tolist()
-            api.io.print('std',bc["slicing"])
+            #api.io.print('std',bc["slicing"])
             bc["slicing"] += bc2["slicing"]
             bc["slicing"] = np.unique(bc["slicing"])
             bc["type"] = "boundary"

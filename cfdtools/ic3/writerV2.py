@@ -81,7 +81,6 @@ class writer():
         self.bocos = self._mesh._bocos
         # self.bocos.pop("nfa_b")
         # self.bocos.pop("nfa_bp")
-        api.io.print('std',"ok.")
 
     def set_simstate(self, state={}):
         """
@@ -117,7 +116,6 @@ class writer():
         for key, item in self._mesh._celldata.items():
             api.io.print('std',"  cell data: "+key)
             self.vars["cells"][key] = item
-        api.io.print('std',"ok.")
         
     def write_data(self, filename):
         """
@@ -258,6 +256,7 @@ class writer():
         # Face zones, a.k.a boundary condition patches
         for key, boco in self.bocos.items():
             assert key == boco.name
+            assert boco.geodim in ('face', 'bdface')
             # Header
             header = restartSectionHeader()
             header.name = key

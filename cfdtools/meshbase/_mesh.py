@@ -4,9 +4,17 @@ import cfdtools.meshbase._elements as ele
 import numpy as np
 
 class submeshmark():
+
+    # authorized geomdim type and actual dimension
+    available_geomdim = (
+        'node', 'intnode', 'bdnode',
+        'face', 'intface', 'bdface',
+        'cell' )
+
     def __init__(self, name):
         self._name = name
-        self.properties = {}
+        self._geodim = None
+        self._properties = {}
 
     @property
     def name(self):
@@ -17,8 +25,8 @@ class submeshmark():
         return self._geodim
 
     @geodim.setter
-    def set_geodim(self, geodim):
-        assert geodim in ele.geomdim.keys()
+    def geodim(self, geodim):
+        assert geodim in self.available_geomdim
         self._geodim = geodim
 
     @property
@@ -27,6 +35,7 @@ class submeshmark():
 
     @index.setter
     def index(self, index: conn.indexlist):
+        assert self.geodim in self.available_geomdim
         self._index = index
 
     @property
@@ -36,6 +45,9 @@ class submeshmark():
     @properties.setter
     def properties(self, properties: dict):
         self._properties = properties
+
+    def __str__(self):
+        return f"{self.name} ({self.geodim}): {self.index}"
 
 class mesh():
     """versatile mesh object
@@ -155,19 +167,16 @@ class mesh():
             self._cell2node.print()
         else:
             api.io.print("std", "  no cell/node connectivity")
-        api.io.print("nnode:",self.nnode)
-        api.io.print("nface:",self.nface)
+        api.io.print('std', "nnode:",self.nnode)
+        api.io.print('std', "nface:",self.nface)
         if self._faces:
             for t, facedict in self._faces.items():
-                api.io.print("std", f"  type {t}")
+                api.io.print("std", f"  type {t}: {' '.join(facedict['face2node'].elems())}")
         else:
             api.io.print("std", "  no face/node connectivity")
-        api.io.print(f"bocos: {self._bocos.keys()}")
+        api.io.print('std', f"bocos: {' '.join(self._bocos.keys())}")
         for name, boco in self._bocos.items():
-            if isinstance(boco, dict):
-                api.io.print("std", f"  BC {name}: {boco.keys()}")
-            else:
-                api.io.print("std", f"  BC {name}: {boco}")
+            api.io.print("std", f"  BC {name}: {boco}")
         api.io.print("std", "params:",self._params)
 
     def _check_cell2node(self):

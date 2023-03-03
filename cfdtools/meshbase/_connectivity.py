@@ -159,7 +159,10 @@ class elem_connectivity():
 
     def items(self):
         return self._elem2node.items()
-    
+
+    def elems(self):
+        return self._elem2node.keys()
+        
     def check(self):
         # check uniqueness of all index
         index = np.concatenate(tuple(
