@@ -177,6 +177,12 @@ class elem_connectivity():
         for elemtype, elemco in self._elem2node.items():
             api.io.print("std", f"  {elemtype}: {elemco['elem2node'].shape} with index {elemco['index']}")
 
+    def index_elem_tuples(self):
+        return tuple( (i, face.flatten().tolist()) 
+                    for _, e2n in self.items()
+                        for i, face in zip(e2n['index'], np.vsplit(e2n['elem2node'], e2n['elem2node'].shape[0]))
+                )
+
     def importfrom_compressedindex(self, zconn: compressed_listofindex):
         # there is no test but must only applied to faces
         nodeperface = zconn._index[1:]-zconn._index[:-1]
@@ -189,10 +195,7 @@ class elem_connectivity():
             self.add_elems(typef, nodes, index)
 
     def exportto_compressedindex(self) -> compressed_listofindex:
-        concat = sorted(tuple(
-            (i, face.flatten().tolist()) for _, e2n in self.items()
-                for i, face in zip(e2n['index'], np.vsplit(e2n['elem2node'], e2n['elem2node'].shape[0]))
-        ))
+        concat = sorted(self.index_elem_tuples())
         nnode_perface = [ len(face) for _,face in concat ]
         index = np.concatenate(([0,], np.cumsum(nnode_perface)))
         value = np.array(list(chain(*[face for _,face in concat ])))

@@ -8,7 +8,7 @@ _datadir="./tests/data/"
 _builddir="./tests/build/"
 
 filename = "small_cube.msh" # 4.1
-#filename = "test_3d.msh"
+filename = "test_3d.msh"
 
 api.io.set_modes(api.io._available) # all outputs
 api.io.set_modes(api.io._available.remove("debug")) # all outputs but debug
@@ -20,6 +20,7 @@ reader.read_data()
 rmesh = reader.export_mesh()
 #reader.printinfo()
 rmesh.make_face_connectivity()
+rmesh.bocomarks_set_node_to_face()
 api.io.print('std','PRINT INFO')
 rmesh.printinfo()
 api.io.print('std','CHECK')

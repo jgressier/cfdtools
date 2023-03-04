@@ -137,6 +137,22 @@ class mesh():
     def remove_boco(self, name):
         self._bocos.pop(name)
 
+    def bocomarks_set_node_to_face(self):
+        """transform node list into face list
+        face/node connectivity must exist and must be splitted into
+        'internal'/'boundary' instead of 'mixed'
+        """
+        def face_in_nodelist(face, nodelist):
+            return all(map(lambda n: n in nodelist, face))
+        assert 'boundary' in self._faces.keys()
+        index_face_tuples = self._faces['boundary']['face2node'].index_elem_tuples()
+        for name, boco in self._bocos.items():
+            listface_index = [i for i,_ in 
+                              filter(lambda t: face_in_nodelist(t[1], boco.index), 
+                                     index_face_tuples)]
+            boco.geodim = 'bdface'
+            boco.index = conn.indexlist(list=listface_index)
+ 
     def set_params(self, params):
         self._params = params
 

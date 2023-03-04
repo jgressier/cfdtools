@@ -156,12 +156,13 @@ class reader(api._files):
                 cellconn.add_elems(etype, econn)
         meshdata.set_cell2node(cellconn)
         for name, bc_dict in self._boundaries.items():
-            boco = _mesh.submeshmark(name)
-            boco.geodim = 'bdnode'
-            boco.properties['type'] = bc_dict['type']
-            boco.properties['periodic_transform'] = bc_dict['periodic_transform']
-            boco.index = _conn.indexlist(list=bc_dict['slicing'])
-            meshdata.add_boco(boco)
+            if bc_dict['type'] == 'boundary':
+                boco = _mesh.submeshmark(name)
+                boco.geodim = 'bdnode'
+                boco.properties['type'] = bc_dict['type']
+                boco.properties['periodic_transform'] = bc_dict['periodic_transform']
+                boco.index = _conn.indexlist(list=bc_dict['slicing'])
+                meshdata.add_boco(boco)
         # meshdata.set_celldata(self.variables['cells'])
         # meshdata.set_nodedata(self.variables['nodes'])
         # meshdata.set_facedata(self.variables['faces'])

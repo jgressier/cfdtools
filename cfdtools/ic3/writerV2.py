@@ -264,6 +264,7 @@ class writer():
             header.skip = header.hsize
             # diff# print(self.bocos[key]["type"], type2zonekind)
             header.idata[0] = type2zonekind[boco.properties["type"]]
+            assert boco.index.type == 'range', "indexing must be a range and may need reordering"
             header.idata[1] = boco.index.range()[0]
             header.idata[2] = boco.index.range()[1]
             if "periodic_transform" in boco.properties.keys():
