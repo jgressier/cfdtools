@@ -70,6 +70,13 @@ class writer():
         self.f2v["noofa_v"] = zface2node._value
         self.params["noofa_count"] = zface2node._value.size
 
+        if not 'partition' in self._mesh._cellprop.keys():
+            self.params["partition"] = {}
+            self.params["partition"]['npart'] = 1
+            self.params["partition"]['icvpart'] = np.zeros((self._mesh.ncell,), dtype=np.int32)
+        else:
+            self.params['partition'] = self._mesh._cellprop['partition']
+
     def set_bocos(self, nboco=None):
         """
         Set the boundary conditions dictionary for the restart.
@@ -256,7 +263,7 @@ class writer():
         # Face zones, a.k.a boundary condition patches
         for key, boco in self.bocos.items():
             assert key == boco.name
-            assert boco.geodim in ('face', 'bdface')
+            assert boco.geodim in ('face', 'bdface'), "boco marks must be faces index"
             # Header
             header = restartSectionHeader()
             header.name = key
@@ -278,11 +285,11 @@ class writer():
         header.id = ic3_restart_codes["UGP_IO_CV_PART"]
         header.skip = header.hsize + type2nbytes["int32"] * self.params["cv_count"]
         header.idata[0] = self.params["cv_count"]
-        header.idata[1] = self._mesh._cellprop['partition'].get('npart', 1)
+        header.idata[1] = self.params['partition'].get('npart', 1)
         header.write(self.fid, self.endian)
         # The ranks of the processors, default to everybody 0
         BinaryWrite(self.fid, self.endian, "i"*self.params["cv_count"], 
-            self._mesh._cellprop['partition'].get('icvpart', np.zeros((self.params["cv_count"],), dtype=np.int32)))
+            self.params['partition'].get('icvpart', np.zeros((self.params["cv_count"],), dtype=np.int32)))
         # Coordinates
         # Header
         header = restartSectionHeader()

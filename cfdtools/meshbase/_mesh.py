@@ -1,6 +1,7 @@
 import cfdtools.api as api
 import cfdtools.meshbase._connectivity as conn
 import cfdtools.meshbase._elements as ele
+import itertools
 import numpy as np
 
 class submeshmark():
@@ -176,11 +177,29 @@ class mesh():
 
     def pop_celldata(self, name):        
         return self._celldata.pop(name) if name in self._celldata.keys() else None
+    
+    def reindex_boundaryfaces(self):
+        assert 'boundary' in self._faces.keys(), "can only reindex faces according to boco if separated in 'boundary' list"
+        for _,boco in self._bocos.items():
+            assert boco.geodim in ('face', 'bdface'), "boco marks must be faces index"
+        oldindex = list(itertools.chain(*[ boco.index.list() for _,boco in self._bocos.items() ]))
+        assert np.all(np.unique(oldindex)==sorted(oldindex)), "some faces are marked by several boundary marks"
+        newindex = np.full_like(oldindex, -1)
+        newindex[oldindex] = np.arange(len(oldindex))
+        # reindex boco
+        for _,boco in self._bocos.items():
+            boco.index = conn.indexlist(list=newindex[boco.index.list()])
+            boco.index.compress() # try to (and must) make it a range
+        # reindex boundary faces
+        for _, fdict in self._faces['boundary']['face2node'].items():
+            fdict['index'] = conn.indexlist(list=newindex[fdict['index'].list()])
+            #fdict['index'].compress() # not expected
 
     def printinfo(self):
         api.io.print("std", f"ncell: {self.ncell}")
         if self._cell2node:
             self._cell2node.print()
+            np.arange()
         else:
             api.io.print("std", "  no cell/node connectivity")
         api.io.print('std', "nnode:",self.nnode)
@@ -197,7 +216,7 @@ class mesh():
 
     def _check_cell2node(self):
         if self._cell2node is not None:
-            assert isinstance(self._cell2node, conn.elem_connectivity)
+            assert isinstance(self._cell2node, conn.elem_connectivity), "cell2node connecitivity is not the expected class"
         #for etype, conn in self._cell2node.items():
         #    assert etype in ele.elem2faces.keys()
         return True

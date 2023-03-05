@@ -63,6 +63,13 @@ class indexlist():
             return indexlist(range=[self._range[0]+i, self._range[1]+i])
         elif self._type == 'list':
             return indexlist(list=[j+i for j in self._list])
+        
+    def compress(self):
+        """try to make it a range"""
+        if self._type == 'list':
+            if np.all(self._list == np.arange(self._list[0], self._list[0]+len(self._list))):
+                self.set_range([self._list[0], self._list[-1]])
+        # else no error, keep list
 
     def __getitem__(self, indices):
         return self.list()[indices]
