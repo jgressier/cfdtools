@@ -16,13 +16,14 @@ class writer():
         """
         Initialization of a ic3 restart file writer.
         """
-        api.io.print('std',"Initialization of IC3 writer V"+self.__version__)
+        api.io.print('std',"> Initialization of IC3 writer V"+self.__version__)
         if not endian in struct_endian.keys():
             raise ValueError("unknown endian key")
         else:
             self.endian = endian
         self.vars = {"nodes":{}, "cells":{}}
         self._mesh = mesh
+        self.params = {}
         # Initialize the simulation state
         self.set_simstate()
         self.set_mesh()
@@ -36,9 +37,26 @@ class writer():
         of a face-to-element and face-to-vertex connectivity
         as per CharlesX implementation.
         """
+        timer = api.Timer()
+        api.io.print('std',"> Check connectivity and compute mandatory")
+        if not self._mesh._faces: # empty dict of faces
+            api.io.print('std',"  generate all faces")
+            timer.start()
+            self._mesh.make_face_connectivity()
+            timer.stop()
+        if any([boco.nodebased() for _,boco in self._mesh._bocos.items()]):
+            api.io.print('std',"  change boco marks (node to face)")
+            timer.start()
+            self._mesh.bocomarks_set_node_to_face()
+            timer.stop()
+        if any([boco.index.type == 'list' for _,boco in self._mesh._bocos.items()]):
+            api.io.print('std',"  reindex boundary faces according to boco marks and compress")
+            timer.start()
+            self._mesh.reindex_boundaryfaces()        
+            timer.stop()
+
         api.io.print('std',"Setting coordinates and connectivity arrays..")
 
-        self.params = {}
         # Nodes
         self.coordinates = np.stack(list(self._mesh._nodes[c] 
             for c in ['x', 'y', 'z']), axis=1)
@@ -62,8 +80,11 @@ class writer():
             zface2node = self._mesh._faces['mixed']['face2node'].exportto_compressedindex()
             self.f2e = self._mesh._faces['mixed']['face2cell'].conn
         else:
+            api.io.print('std',"  compressing faces connectivity")
+            timer.start()
             mixedfaces, f2cell = self._mesh.export_mixedfaces()
             zface2node = mixedfaces.exportto_compressedindex()
+            timer.stop()
             self.f2e = f2cell.conn
         self.f2v = {}
         self.f2v["noofa"] = zface2node._index[1:]-zface2node._index[:-1]
@@ -128,6 +149,7 @@ class writer():
         """
         Main method of the ic3 restart file writer
         """
+        api.io.print('std',"> WRITING FILE {filename}")
         self.filename = filename
         # Open the file for binary reading
         self.fid = open(self.filename, "wb")

@@ -39,6 +39,12 @@ class submeshmark():
         assert self.geodim in self.available_geomdim
         self._index = index
 
+    def nodebased(self):
+        return self._geodim in {'node', 'bdnode', 'intnode'}
+    
+    def facebased(self):
+        return self._geodim in {'face', 'bdface', 'intface'}
+    
     @property
     def properties(self):
         return self._properties
@@ -147,12 +153,13 @@ class mesh():
             return all(map(lambda n: n in nodelist, face))
         assert 'boundary' in self._faces.keys()
         index_face_tuples = self._faces['boundary']['face2node'].index_elem_tuples()
-        for name, boco in self._bocos.items():
-            listface_index = [i for i,_ in 
-                              filter(lambda t: face_in_nodelist(t[1], boco.index), 
-                                     index_face_tuples)]
-            boco.geodim = 'bdface'
-            boco.index = conn.indexlist(list=listface_index)
+        for _, boco in self._bocos.items():
+            if boco.nodebased():
+                listface_index = [i for i,_ in 
+                                filter(lambda t: face_in_nodelist(t[1], boco.index), 
+                                        index_face_tuples)]
+                boco.geodim = 'bdface'
+                boco.index = conn.indexlist(list=listface_index)
  
     def set_params(self, params):
         self._params = params
