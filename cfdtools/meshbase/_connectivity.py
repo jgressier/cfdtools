@@ -252,12 +252,24 @@ class elem_connectivity():
             for elemtype, elemsdict in self._elem2node.items(): # elemtype: 'hexa8', elemsarray: ndarray[nelem,8]
                 index = elemsdict['index'].list() # call export to list now
                 elemsarray = elemsdict['elem2node']
-                for ielem in range(elemsarray.shape[0]):
-                    for ftype, listfaces in ele.elem2faces[elemtype].items():
-                        # for face in listfaces:
-                        #     faces_neighbour[ftype].append( (tuple(elemsarray[ielem, face]), index[ielem]) ) 
+                # V0
+                # for ielem in range(elemsarray.shape[0]):
+                #     for ftype, listfaces in ele.elem2faces[elemtype].items():
+                #         # for face in listfaces:
+                #         #     faces_neighbour[ftype].append( (tuple(elemsarray[ielem, face]), index[ielem]) ) 
+                #         faces_neighbour[ftype].extend( 
+                #             [ (tuple(elemsarray[ielem, face]), index[ielem]) for face in listfaces ] ) 
+                # V1 (-3%)
+                # for ftype, listfaces in ele.elem2faces[elemtype].items():
+                #     for face in listfaces:
+                #         faces_neighbour[ftype].extend( 
+                #             [ (tuple(elemsarray[ielem, face]), index[ielem]) for ielem in range(elemsarray.shape[0]) ] ) 
+                # V2 (-30%)
+                for ftype, listfaces in ele.elem2faces[elemtype].items():
+                    for face in listfaces:
+                        reordered_f = elemsarray[:, face].tolist()
                         faces_neighbour[ftype].extend( 
-                            [ (tuple(elemsarray[ielem, face]), index[ielem]) for face in listfaces ] ) 
+                            [ (tuple(face), ind) for face,ind in zip(reordered_f, index) ] ) 
             return faces_neighbour
 
         # @profile
@@ -283,7 +295,7 @@ class elem_connectivity():
                 #     face_pairs[uface] = list(facepair)
                 face_pairs = defaultdict(list)
                 for tface in listfaces:
-                    face_pairs[tuple(sorted(tface[0]))].append(tface)            
+                    face_pairs[tuple(sorted(tface[0]))].append(tface)   # 50% COST      
                 nf_unique = len(face_pairs)
                 assert (nf_unique < nf_all)
                 assert (2*nf_unique >= nf_all)
@@ -298,11 +310,11 @@ class elem_connectivity():
                 for uface in uniqueface_dict.keys():
                     face_pairs.pop(uface)
                 # get all first face of each pair of tuple (face,ielem)
-                intfaces = face_from_ufacedict(face_pairs)
+                intfaces = face_from_ufacedict(face_pairs)  # 10% COST
                 internalfaces.add_elems(ftype, intfaces)
                 # get all elements connections via faces
-                # get index of connected cells
-                f2c = np.array(list(map(lambda flist: [flist[0][1], flist[1][1]], face_pairs.values())))
+                # get index of connected cells # 25% COST
+                f2c = np.array(list(map(lambda flist: [flist[0][1], flist[1][1]], face_pairs.values()))) 
                 iface2cell.append(f2c)
 
             return internalfaces, iface2cell, boundaryfaces, bface2cell
