@@ -71,7 +71,7 @@ class indexlist():
                 self.set_range([self._list[0], self._list[-1]])
         # else no error, keep list
 
-    def __getitem__(self, indices):
+    def __getitem__(self, indices): # caution: may be highly costly
         return self.list()[indices]
 
     def __add__(self, other):
@@ -184,11 +184,19 @@ class elem_connectivity():
         for elemtype, elemco in self._elem2node.items():
             api.io.print("std", f"  {elemtype}: {elemco['elem2node'].shape} with index {elemco['index']}")
 
+    # def index_elem_tuples(self):
+    #     # optim: here, .list() is not mandatory but avoid massively calling .list().getitem()
+    #     return list( (i, face.ravel().tolist()) 
+    #                 for _, e2n in self.items()
+    #                     for i, face in zip(e2n['index'].list(), np.vsplit(e2n['elem2node'], e2n['elem2node'].shape[0]))
+    #             )
     def index_elem_tuples(self):
-        return tuple( (i, face.flatten().tolist()) 
-                    for _, e2n in self.items()
-                        for i, face in zip(e2n['index'], np.vsplit(e2n['elem2node'], e2n['elem2node'].shape[0]))
-                )
+        list_of_tuples = []
+        for _, e2n in self.items():
+            ind = e2n['index'].list() # optim: here, .list() is not mandatory but avoid massively calling .list().getitem()
+            f2n = e2n['elem2node']
+            list_of_tuples.extend( [ (ind[i], f2n[i,:].ravel().tolist() ) for i in range(f2n.shape[0]) ] )
+        return list_of_tuples
 
     def importfrom_compressedindex(self, zconn: compressed_listofindex):
         # there is no test but must only applied to faces
@@ -199,8 +207,9 @@ class elem_connectivity():
             index = np.argwhere(nodeperface==facesize)
             zind  = zconn._index[index]
             nodes = np.hstack(tuple(zconn._value[zind+i] for i in range(facesize)))
-            self.add_elems(typef, nodes, index)
+            self.add_elems(typef, nodes, indexlist(list=index))
 
+    # @profile
     def exportto_compressedindex(self) -> compressed_listofindex:
         concat = sorted(self.index_elem_tuples())
         nnode_perface = [ len(face) for _,face in concat ]
@@ -226,8 +235,10 @@ class elem_connectivity():
         for elem, elemtype in mergedict.items():
             self.add_elems(elem, elemtype['elem2node'], elemtype['index'])
 
+    # @profile
     def create_faces_from_elems(self):
 
+        # @profile
         def __build_face_and_neighbour():
             """build a dict of face type to a list of tuples of each (oriented) face and its neighbor
 
@@ -239,14 +250,17 @@ class elem_connectivity():
             """
             faces_neighbour = defaultdict(list)
             for elemtype, elemsdict in self._elem2node.items(): # elemtype: 'hexa8', elemsarray: ndarray[nelem,8]
-                index = elemsdict['index']
+                index = elemsdict['index'].list() # call export to list now
                 elemsarray = elemsdict['elem2node']
                 for ielem in range(elemsarray.shape[0]):
                     for ftype, listfaces in ele.elem2faces[elemtype].items():
-                        for face in listfaces:
-                            faces_neighbour[ftype].append( (tuple(elemsarray[ielem, face]), index[ielem]) ) 
+                        # for face in listfaces:
+                        #     faces_neighbour[ftype].append( (tuple(elemsarray[ielem, face]), index[ielem]) ) 
+                        faces_neighbour[ftype].extend( 
+                            [ (tuple(elemsarray[ielem, face]), index[ielem]) for face in listfaces ] ) 
             return faces_neighbour
 
+        # @profile
         def __find_duplicates(faces_neighbour: dict):
             """find duplicated faces and build unique face/node face/cell connectivity
 

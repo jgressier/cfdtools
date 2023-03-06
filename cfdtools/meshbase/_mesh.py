@@ -155,8 +155,9 @@ class mesh():
         index_face_tuples = self._faces['boundary']['face2node'].index_elem_tuples()
         for _, boco in self._bocos.items():
             if boco.nodebased():
+                nodeset = set(boco.index.list())
                 listface_index = [i for i,_ in 
-                                filter(lambda t: face_in_nodelist(t[1], boco.index), 
+                                filter(lambda t: face_in_nodelist(t[1], nodeset), 
                                         index_face_tuples)]
                 boco.geodim = 'bdface'
                 boco.index = conn.indexlist(list=listface_index)

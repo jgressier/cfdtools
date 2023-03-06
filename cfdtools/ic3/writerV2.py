@@ -149,7 +149,7 @@ class writer():
         """
         Main method of the ic3 restart file writer
         """
-        api.io.print('std',"> WRITING FILE {filename}")
+        api.io.print('std',f"> WRITING FILE {filename}")
         self.filename = filename
         # Open the file for binary reading
         self.fid = open(self.filename, "wb")
