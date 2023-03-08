@@ -53,23 +53,26 @@ class TestElem():
         '2hexas': ('hexa8', np.array([[0, 1, 2, 3, 4, 5, 6, 7], [4, 5, 6, 7, 8, 9, 10, 11]])),
     }
 
-    @pytest.mark.parametrize('econ', ['2quads', '2hexas'])
-    def test_elem_init(self, econ):
+    def set_elemcon(self, econ):
         elemc = conn.elem_connectivity()
         elemc.add_elems(*self.dict_basiccon[econ]) # type and connectivy
-        assert elemc.check()
         return elemc
+    
+    @pytest.mark.parametrize('econ', ['2quads', '2hexas'])
+    def test_elem_init(self, econ):
+        elemc = self.set_elemcon(econ)
+        assert elemc.check()
 
     @pytest.mark.parametrize('econ', ['2quads', '2hexas'])
     def test_elem_createface(self, econ):
-        elemc = self.test_elem_init(econ)
+        elemc = self.set_elemcon(econ)
         intfaces, iface2cell, boundaryfaces, bface2cell = elemc.create_faces_from_elems()
         assert iface2cell.nelem == intfaces.nelem
         assert bface2cell.nelem == boundaryfaces.nelem
 
     @pytest.mark.parametrize('econ', ['3quadsintri', '2hexas'])
     def test_elem_merge(self, econ):
-        elemc = self.test_elem_init(econ)
+        elemc = self.set_elemcon(econ)
         intfaces, _, boundaryfaces, _ = elemc.create_faces_from_elems()
         mergedfaces = conn.elem_connectivity()
         mergedfaces.importfrom_merge((boundaryfaces, intfaces))
