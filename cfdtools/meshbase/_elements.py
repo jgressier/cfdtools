@@ -2,12 +2,17 @@ import cfdtools.api as api
 
 geodim = { 'point': 0, 'line':1, 'surface':2, 'volume':3}
 
-# TODO: set properties (dim, nnodes) for all elems and build reverse map
+elem_properties = [ # itype, name, nnode, geodim, 
+    (0, 'node1',  1, 0),
+    (0, 'bar2',   2, 1),
+    (0, 'tri3',   3, 2),
+    (0, 'quad4',  4, 2),
+    (0, 'tetra4', 4, 3),
+    (0, 'hexa8',  8, 3),
+    ]
 
-elem_dim = { e: d for d, elems in [
-    (0, ['node1']), (1, ['bar2']),
-    (2, ['tri3', 'quad4']),
-    (3, ['tetra4', 'hexa8']) ] for e in elems }
+elem_dim = { e: d for _, e, _, d in elem_properties }
+nnode_face = { n: e for _, e, n, d in elem_properties if d <= 2 }
 
 # define list of faces from an element type
 #   faces are defined with inward normal 

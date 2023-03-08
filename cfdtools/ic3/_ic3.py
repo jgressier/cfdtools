@@ -52,14 +52,11 @@ type2nbytes = {"char":1,
                "float64":8,
                "float128":16,}
 
-# Dictionary to convert number of nodes per face to type of face
-nno2fatype = {2:"line",
-              3:"tri",
-              4:"qua",}
 
-fatype2nno = {"line":2,
-              "tri":3,
-              "qua":4,}
+
+# fatype2nno = {"line":2,
+#               "tri":3,
+#               "qua":4,}
 # Actual number of vertices for a given cell type
 nodes_per_cell = {
     'bi': 2,

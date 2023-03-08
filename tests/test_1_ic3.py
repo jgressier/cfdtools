@@ -29,7 +29,7 @@ def test_writer_v2_litend(filename):
     assert filecmp.cmp(basefile, outfile)
 
 # @pytest.mark.parametrize("filename", ["sam_sd3.ic3"])
-# def test_writer_v2_litend(filename):
+# def test_writer_v3_litend(filename):
 #     _builddir.mkdir(exist_ok = True)
 #     basefile = _datadir / filename
 #     outfile = _builddir / filename

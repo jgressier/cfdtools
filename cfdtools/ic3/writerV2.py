@@ -16,13 +16,14 @@ class writer():
         """
         Initialization of a ic3 restart file writer.
         """
-        api.io.print('std',"Initialization of IC3 writer V"+self.__version__)
+        api.io.print('std',"> Initialization of IC3 writer V"+self.__version__)
         if not endian in struct_endian.keys():
             raise ValueError("unknown endian key")
         else:
             self.endian = endian
         self.vars = {"nodes":{}, "cells":{}}
         self._mesh = mesh
+        self.params = {}
         # Initialize the simulation state
         self.set_simstate()
         self.set_mesh()
@@ -36,16 +37,25 @@ class writer():
         of a face-to-element and face-to-vertex connectivity
         as per CharlesX implementation.
         """
+        timer = api.Timer()
+        api.io.print('std',"> Check connectivity and compute mandatory")
+        if not self._mesh._faces: # empty dict of faces
+            with api.Timer(task="  generate all faces"):
+                self._mesh.make_face_connectivity()
+        if any([boco.nodebased() for _,boco in self._mesh._bocos.items()]):
+            with api.Timer(task="  change boco marks (node to face)"):
+                self._mesh.bocomarks_set_node_to_face()
+        if any([boco.index.type == 'list' for _,boco in self._mesh._bocos.items()]):
+            with api.Timer(task="  reindex boundary faces with boco marks and compress"):
+                self._mesh.reindex_boundaryfaces()        
+
         api.io.print('std',"Setting coordinates and connectivity arrays..")
 
-        # Keep the coordinates of the points
+        # Nodes
         self.coordinates = np.stack(list(self._mesh._nodes[c] 
             for c in ['x', 'y', 'z']), axis=1)
 
         # Compute the number of nodes and elements
-        self.params = {}
-        # Nodes
-        #print(self.coordinates.shape)
         assert self.coordinates.shape[0] == self._mesh.nnode
         self.params["no_count"] = self.coordinates.shape[0]
         # Elements, count throughout all connectivities
@@ -55,17 +65,32 @@ class writer():
         ### will need an actual extract of data
         #
         # Store the information properly
-        self.params["no_count"] = self._mesh._params["no_count"]
-        self.params["fa_count"] = self._mesh._params["fa_count"]
-        self.params["cv_count"] = self._mesh._params["cv_count"]
-        self.params["noofa_count"] = self._mesh._params["noofa_count"]
+        self.params["no_count"] = self._mesh.nnode
+        self.params["fa_count"] = self._mesh.nface
+        self.params["cv_count"] = self._mesh.ncell
 
+        # check face connectivity
+        if 'mixed' in self._mesh._faces.keys():
+            zface2node = self._mesh._faces['mixed']['face2node'].exportto_compressedindex()
+            self.f2e = self._mesh._faces['mixed']['face2cell'].conn
+        else:
+            api.io.print('std',"  compressing faces connectivity")
+            timer.start()
+            mixedfaces, f2cell = self._mesh.export_mixedfaces()
+            zface2node = mixedfaces.exportto_compressedindex()
+            timer.stop()
+            self.f2e = f2cell.conn
         self.f2v = {}
-        self.f2v["noofa"] = self._mesh._faces['mixed']['face2node']._index[1:]-self._mesh._faces['mixed']['face2node']._index[:-1]
-        self.f2v["noofa_v"] = self._mesh._faces['mixed']['face2node']._value
-        self.f2e = self._mesh._faces['mixed']['face2cell'].conn
-        #print(self.f2e.shape)
-        api.io.print('std',"ok.")
+        self.f2v["noofa"] = zface2node._index[1:]-zface2node._index[:-1]
+        self.f2v["noofa_v"] = zface2node._value
+        self.params["noofa_count"] = zface2node._value.size
+
+        if not 'partition' in self._mesh._cellprop.keys():
+            self.params["partition"] = {}
+            self.params["partition"]['npart'] = 1
+            self.params["partition"]['icvpart'] = np.zeros((self._mesh.ncell,), dtype=np.int32)
+        else:
+            self.params['partition'] = self._mesh._cellprop['partition']
 
     def set_bocos(self, nboco=None):
         """
@@ -78,7 +103,6 @@ class writer():
         self.bocos = self._mesh._bocos
         # self.bocos.pop("nfa_b")
         # self.bocos.pop("nfa_bp")
-        api.io.print('std',"ok.")
 
     def set_simstate(self, state={}):
         """
@@ -114,12 +138,12 @@ class writer():
         for key, item in self._mesh._celldata.items():
             api.io.print('std',"  cell data: "+key)
             self.vars["cells"][key] = item
-        api.io.print('std',"ok.")
         
     def write_data(self, filename):
         """
         Main method of the ic3 restart file writer
         """
+        api.io.print('std',f"> WRITING FILE {filename}")
         self.filename = filename
         # Open the file for binary reading
         self.fid = open(self.filename, "wb")
@@ -255,6 +279,7 @@ class writer():
         # Face zones, a.k.a boundary condition patches
         for key, boco in self.bocos.items():
             assert key == boco.name
+            assert boco.geodim in ('face', 'bdface'), "boco marks must be faces index"
             # Header
             header = restartSectionHeader()
             header.name = key
@@ -262,6 +287,7 @@ class writer():
             header.skip = header.hsize
             # diff# print(self.bocos[key]["type"], type2zonekind)
             header.idata[0] = type2zonekind[boco.properties["type"]]
+            assert boco.index.type == 'range', "indexing must be a range and may need reordering"
             header.idata[1] = boco.index.range()[0]
             header.idata[2] = boco.index.range()[1]
             if "periodic_transform" in boco.properties.keys():
@@ -275,11 +301,11 @@ class writer():
         header.id = ic3_restart_codes["UGP_IO_CV_PART"]
         header.skip = header.hsize + type2nbytes["int32"] * self.params["cv_count"]
         header.idata[0] = self.params["cv_count"]
-        header.idata[1] = self._mesh._cellprop['partition'].get('npart', 1)
+        header.idata[1] = self.params['partition'].get('npart', 1)
         header.write(self.fid, self.endian)
         # The ranks of the processors, default to everybody 0
         BinaryWrite(self.fid, self.endian, "i"*self.params["cv_count"], 
-            self._mesh._cellprop['partition'].get('icvpart', np.zeros((self.params["cv_count"],), dtype=np.int32)))
+            self.params['partition'].get('icvpart', np.zeros((self.params["cv_count"],), dtype=np.int32)))
         # Coordinates
         # Header
         header = restartSectionHeader()
