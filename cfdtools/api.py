@@ -42,7 +42,8 @@ def _printreadable(string, value):
 class api_output():
     """class to handle library outputs
     """
-    _available = ['internal', 'error', 'warning', 'std', 'debug']
+    _prefix = {'internal': 'int:', 'error': 'ERROR:', 'warning':'WARNING:', 'std':'', 'debug':'debug:'}
+    _available = list(_prefix.keys())
     _default = ['internal', 'error', 'warning', 'std' ]
 
     def __init__(self, list=None):
@@ -67,16 +68,16 @@ class api_output():
     def set_default(self):
         self.set_modes(self._default)
 
-    def print(self, mode, *args):
+    def print(self, mode, *args, **kwargs):
         if mode in self._api_output:
-            print(mode+':',*args)
+            print(self._prefix[mode],*args, **kwargs)
 
 io = api_output()
 #print(io.get_modes())
 
 def error_stop(msg):
-    io.print('error', msg)
-    exit
+    #io.print('error', msg)
+    raise RuntimeError(msg)
 
 class _files():
 
@@ -130,9 +131,15 @@ class TimerError(Exception):
     """A custom exception used to report errors in use of Timer class"""
 
 class Timer: # from https://realpython.com/python-timer/
-    def __init__(self, ncell=None, tab=60):
+    default_tab = 60
+    default_msg = ""
+
+    def __init__(self, task="", msg=default_msg, nelem=None, tab=default_tab):
         self._start_time = None
-        self._ncell = ncell
+        self._nelem = nelem
+        self._tab = tab
+        self._task = task
+        self._msg = msg
 
     def start(self):
         """Start a new timer"""
@@ -146,10 +153,16 @@ class Timer: # from https://realpython.com/python-timer/
             raise TimerError(f"Timer is not running. Use .start() to start it")
 
         elapsed_time = time.perf_counter() - self._start_time
+        normalized_time_ms = 0. if self._nelem is None else 1e6*elapsed_time / self._nelem
         self._start_time = None
-        io.print('std',f"       elapsed time: {elapsed_time:0.4f} seconds")
+        if self._nelem is None:
+            io.print('std',f"{' '*(self._tab-len(self._task))}wtime: {elapsed_time:0.4f}s")
+        else:
+            io.print('std',f"{' '*(self._tab-len(self._task))}wtime: {elapsed_time:0.4f}s | {normalized_time_ms:0.4f}µs/elem")
+        self._task = ""
     
     def __enter__(self):
+        io.print('std', self._task, end='')
         self.start()
 
     def __exit__(self, *exitoptions):

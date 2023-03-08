@@ -72,9 +72,9 @@ class mesh():
     """
     __available_facetypes = ( 'mixed', 'internal', 'boundary')
 
-    def __init__(self, ncell, nnode):
-        self.ncell = ncell
-        self.nnode = nnode
+    def __init__(self, ncell=0, nnode=0):
+        self._ncell = ncell
+        self._nnode = nnode
         self.nface = 0
         self._params = {}
         self._cell2node = None
@@ -85,7 +85,15 @@ class mesh():
         self._nodedata = {}
         self._facedata = {}
         self._cellprop = {}
-        
+
+    @property
+    def ncell(self):
+        return self._ncell
+
+    @property
+    def nnode(self):
+        return self._nnode
+
     def set_nodescoord_nd(self, xyz: np.ndarray):
         assert xyz.shape[0] == self.nnode
         for i,c in enumerate(['x', 'y', 'z']):
@@ -98,13 +106,14 @@ class mesh():
         self._nodes['y'] = y
         self._nodes['z'] = z
     
-    def set_cell2node(self, cell2node):
+    def set_cell2node(self, cell2node: conn.elem_connectivity):
         """set cell to node connectivity as a dict
 
         Args:
             cell2node (dict): dict of ndarray
         """
         self._cell2node = cell2node
+        self._ncell = self._cell2node.nelem
         self._check_cell2node()
 
     def add_faces(self, facetype: str, face2node: conn.elem_connectivity, face2cell: conn.indexindirection = None):
@@ -207,7 +216,6 @@ class mesh():
         api.io.print("std", f"ncell: {self.ncell}")
         if self._cell2node:
             self._cell2node.print()
-            np.arange()
         else:
             api.io.print("std", "  no cell/node connectivity")
         api.io.print('std', "nnode:",self.nnode)
@@ -225,6 +233,7 @@ class mesh():
     def _check_cell2node(self):
         if self._cell2node is not None:
             assert isinstance(self._cell2node, conn.elem_connectivity), "cell2node connecitivity is not the expected class"
+        assert self.ncell == self._cell2node.nelem, f"inconsistent size of cells {self.ncell} and {self._cell2node.nelem}"
         #for etype, conn in self._cell2node.items():
         #    assert etype in ele.elem2faces.keys()
         return True

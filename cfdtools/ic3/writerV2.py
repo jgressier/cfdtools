@@ -40,20 +40,14 @@ class writer():
         timer = api.Timer()
         api.io.print('std',"> Check connectivity and compute mandatory")
         if not self._mesh._faces: # empty dict of faces
-            api.io.print('std',"  generate all faces")
-            timer.start()
-            self._mesh.make_face_connectivity()
-            timer.stop()
+            with api.Timer(task="  generate all faces"):
+                self._mesh.make_face_connectivity()
         if any([boco.nodebased() for _,boco in self._mesh._bocos.items()]):
-            api.io.print('std',"  change boco marks (node to face)")
-            timer.start()
-            self._mesh.bocomarks_set_node_to_face()
-            timer.stop()
+            with api.Timer(task="  change boco marks (node to face)"):
+                self._mesh.bocomarks_set_node_to_face()
         if any([boco.index.type == 'list' for _,boco in self._mesh._bocos.items()]):
-            api.io.print('std',"  reindex boundary faces according to boco marks and compress")
-            timer.start()
-            self._mesh.reindex_boundaryfaces()        
-            timer.stop()
+            with api.Timer(task="  reindex boundary faces with boco marks and compress"):
+                self._mesh.reindex_boundaryfaces()        
 
         api.io.print('std',"Setting coordinates and connectivity arrays..")
 
