@@ -1,6 +1,7 @@
 import cfdtools.api as api
 import cfdtools.meshbase._connectivity as conn
 import cfdtools.meshbase._elements as ele
+from cfdtools.utils.math import minavgmax
 import itertools
 import numpy as np
 
@@ -213,6 +214,10 @@ class mesh():
             #fdict['index'].compress() # not expected
 
     def printinfo(self):
+        api.io.print("std", f"nnode: {self.nnode}")
+        for c in ('x', 'y', 'z'):
+            api.io.print("std", "  {} min:avg:max = {:.3f}:{:.3f}:{:.3f}".format(c, *minavgmax(self._nodes[c])))
+            
         api.io.print("std", f"ncell: {self.ncell}")
         if self._cell2node:
             self._cell2node.print()
