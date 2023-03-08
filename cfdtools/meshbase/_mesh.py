@@ -233,7 +233,7 @@ class mesh():
     def _check_cell2node(self):
         if self._cell2node is not None:
             assert isinstance(self._cell2node, conn.elem_connectivity), "cell2node connecitivity is not the expected class"
-        assert self.ncell == self._cell2node.nelem, f"inconsistent size of cells {self.ncell} and {self._cell2node.nelem}"
+            assert self.ncell == self._cell2node.nelem, f"inconsistent size of cells {self.ncell} and {self._cell2node.nelem}"
         #for etype, conn in self._cell2node.items():
         #    assert etype in ele.elem2faces.keys()
         return True
