@@ -286,7 +286,8 @@ class writer():
             header.id = ic3_restart_codes["UGP_IO_FA_ZONE"]
             header.skip = header.hsize
             # diff# print(self.bocos[key]["type"], type2zonekind)
-            header.idata[0] = type2zonekind[boco.properties["type"]]
+            assert boco.type in type2zonekind.keys(), f"unsupported type of boco for IC3 output: {boco.type}"
+            header.idata[0] = type2zonekind[boco.type]
             assert boco.index.type == 'range', "indexing must be a range and may need reordering"
             header.idata[1] = boco.index.range()[0]
             header.idata[2] = boco.index.range()[1]

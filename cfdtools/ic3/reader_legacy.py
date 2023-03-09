@@ -255,11 +255,12 @@ class reader(binreader):
         while True:
             h = restartSectionHeader()
             if(not h.readVar(self.fid, self.byte_swap,["UGP_IO_FA_ZONE"],reset_offset=False)): break
-
+            # UGP_IO_FA_ZONE header
+            # 3 ints: kind, face range (begin, start)
             self.mesh["params"]["nboco"] += 1
             boco = _mesh.submeshmark(h.name)
             boco.geodim = 'bdface'
-            boco.properties['type'] = zonekind2type[h.idata[0]]
+            boco.type = zonekind2type[h.idata[0]]
             boco.index = conn.indexlist(range=[h.idata[1], h.idata[2]])
             boco.properties["periodic_transform"] = h.rdata
             #

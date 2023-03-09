@@ -5,6 +5,7 @@ import cfdtools.api as api
 # readers
 import cfdtools.ic3 as ic3 #.reader_legacy # needed to map readers
 import cfdtools.gmsh as gmsh
+import cfdtools.meshbase.simple as simplemesh
 import cfdtools.probes.plot as probeplot
 import cfdtools.probes.data as probedata
 
@@ -53,13 +54,12 @@ class cli_argparser():
         else:
             thisfmt = [self.args().fmt]
         if len(thisfmt)==0:
-            api.io.print('error','no extension found')
-            exit()
+            api.error_stop('no extension found')
         elif len(thisfmt)>1:
-            api.io.print('error','too many extensions found, must specify format with --fmt')
-            exit()
+            api.error_stop('too many extensions found, must specify format with --fmt')
         self._fileformat = thisfmt[0]
         self._reader = api._fileformat_map[self._fileformat]['reader']
+        self._writer = api._fileformat_map[self._fileformat]['writer']
 
 def info(argv=None):
     """call specific printinfo function from reader
@@ -125,6 +125,31 @@ def write_ic3v2(argv=None):
 
 def write_ic3v3(argv=None):
     return write_generic(argv, '.ic3', ic3.writerV3.writer)
+
+def writecube(argv=None):
+    """call specific printinfo function from reader
+
+    Args:
+        argv (_type_, optional): _description_. Defaults to None.
+    """
+    #api.io.set_modes(api.io._available)
+    parser = cli_argparser()
+    parser.addarg_filenameformat()
+    parser.add_argument("--nx", action="store", dest="nx", default=10, type=int, help="number of cells in x direction")
+    parser.add_argument("--ny", action="store", dest="ny", default=10, type=int, help="number of cells in y direction")
+    parser.add_argument("--nz", action="store", dest="nz", default=10, type=int, help="number of cells in z direction")
+    parser.parse_cli_args(argv)
+    parser.parse_filenameformat()
+    nx, ny, nz = parser.args().nx, parser.args().ny, parser.args().nz
+    #
+    api.io.print('std', f"> create Cube {nx}x{ny}x{nz}")
+    cube = simplemesh.Cube(nx, ny, nz)
+    mesh = cube.export_mesh()
+    #
+    file = api._files(parser.args().filename)
+    w = parser._writer(mesh)
+    w.write_data(file.filename)
+    return True # needed for pytest
 
 def ic3probe_plotline(argv=None):
     parser = cli_argparser(description="Process line probes from IC3")

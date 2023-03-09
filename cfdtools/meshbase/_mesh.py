@@ -8,10 +8,18 @@ import numpy as np
 class submeshmark():
 
     # authorized geomdim type and actual dimension
-    available_geomdim = (
+    _available_geomdim = (
         'node', 'intnode', 'bdnode',
         'face', 'intface', 'bdface',
         'cell' )
+
+    _available_types = (
+        'boundary',
+        'perio_cart',
+        'perio_cylx',
+        'perio_cyly',
+        'perio_cylz',
+    )
 
     def __init__(self, name):
         self._name = name
@@ -28,7 +36,7 @@ class submeshmark():
 
     @geodim.setter
     def geodim(self, geodim):
-        assert geodim in self.available_geomdim
+        assert geodim in self._available_geomdim
         self._geodim = geodim
 
     @property
@@ -37,8 +45,17 @@ class submeshmark():
 
     @index.setter
     def index(self, index: conn.indexlist):
-        assert self.geodim in self.available_geomdim
+        assert self.geodim in self._available_geomdim
         self._index = index
+
+    @property
+    def type(self):
+        return self._properties['type']
+
+    @type.setter
+    def type(self, type):
+        assert type in self._available_types
+        self._properties['type'] = type
 
     def nodebased(self):
         return self._geodim in {'node', 'bdnode', 'intnode'}

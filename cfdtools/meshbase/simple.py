@@ -72,6 +72,7 @@ class Cube():
         for name, task in tasks.items():
             bcmark = _mesh.submeshmark(name)
             bcmark.geodim = 'bdnode'
+            bcmark.type = 'boundary'
             ni, nj, nk = np.array(list(task['ijknodes'])).T
             nodes = self.nodeglobindex_ijk(ni, nj, nk)
             bcmark.index = conn.indexlist(list=nodes.tolist())
