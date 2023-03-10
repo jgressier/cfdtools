@@ -58,8 +58,8 @@ class cli_argparser():
         elif len(thisfmt)>1:
             api.error_stop('too many extensions found, must specify format with --fmt')
         self._fileformat = thisfmt[0]
-        self._reader = api._fileformat_map[self._fileformat]['reader']
-        self._writer = api._fileformat_map[self._fileformat]['writer']
+        self._reader = api._fileformat_map[self._fileformat].get('reader', None)
+        self._writer = api._fileformat_map[self._fileformat].get('writer', None)
 
 def info(argv=None):
     """call specific printinfo function from reader
