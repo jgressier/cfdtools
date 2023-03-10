@@ -14,6 +14,7 @@ class submeshmark():
         'cell' )
 
     _available_types = (
+        'internal',
         'boundary',
         'perio_cart',
         'perio_cylx',

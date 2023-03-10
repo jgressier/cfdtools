@@ -12,6 +12,7 @@ _builddir=Path("./tests/build")
 def test_reader(filename):
     ic3mesh = ic3reader.reader(_datadir.joinpath(filename))
     ic3mesh.read_data()
+    ic3mesh.printinfo()
     rmesh = ic3mesh.export_mesh()
     assert rmesh.check()
 

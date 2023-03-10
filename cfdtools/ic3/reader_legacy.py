@@ -65,9 +65,8 @@ class reader(binreader):
         '''
         api.io.print('std',"READER RESTART IC3")
 
-        if not self.exists():
-            print("Fatal error. File %s cannot be found."%(self.filename))
-            exit()
+        if not self.exists(): #pragma: no cover
+            api.error("Fatal error. File %s cannot be found."%(self.filename))
 
         # Open the file for binary reading
         api.io.print('debug','opening ',self.filename)
@@ -76,13 +75,13 @@ class reader(binreader):
         api.io.print('std', "binary file header")
         self._ReadRestartHeader()
         #
-        api.io.print('std', "Reading connectivity ..")
+        api.io.print('std', "Reading connectivity...")
         self._ReadRestartConnectivity()
         #
-        api.io.print('std', "Reading informative values ..")
+        api.io.print('std', "Reading informative values...")
         self._ReadInformativeValues()
         #
-        api.io.print('std', "Reading variables ..")
+        api.io.print('std', "Reading variables...")
         self._ReadRestartVar()
         #
         # Before returning, close the file
@@ -259,8 +258,8 @@ class reader(binreader):
             # 3 ints: kind, face range (begin, start)
             self.mesh["params"]["nboco"] += 1
             boco = _mesh.submeshmark(h.name)
-            boco.geodim = 'bdface'
             boco.type = zonekind2type[h.idata[0]]
+            boco.geodim = 'intface' if boco.type=='internal' else 'bdface' 
             boco.index = conn.indexlist(range=[h.idata[1], h.idata[2]])
             boco.properties["periodic_transform"] = h.rdata
             #
