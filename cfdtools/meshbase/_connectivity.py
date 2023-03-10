@@ -180,9 +180,12 @@ class elem_connectivity():
         assert np.all(uniq==index)
         return True
 
-    def print(self):
+    def print(self, prefix="", detailed=False):
         for elemtype, elemco in self._elem2node.items():
-            api.io.print("std", f"  {elemtype}: {elemco['elem2node'].shape} with index {elemco['index']}")
+            api.io.print("std", prefix+f"{elemtype}: {elemco['elem2node'].shape} with index {elemco['index']}")
+            if detailed:
+                api.io.print("std", prefix+f"  index: {elemco['index'].list()}")
+                api.io.print("std", prefix+f"  faces: {elemco['elem2node']}")
 
     # def index_elem_tuples(self):
     #     # optim: here, .list() is not mandatory but avoid massively calling .list().getitem()
@@ -265,11 +268,12 @@ class elem_connectivity():
                 #         faces_neighbour[ftype].extend( 
                 #             [ (tuple(elemsarray[ielem, face]), index[ielem]) for ielem in range(elemsarray.shape[0]) ] ) 
                 # V2 (-30%)
-                for ftype, listfaces in ele.elem2faces[elemtype].items():
-                    for face in listfaces:
-                        reordered_f = elemsarray[:, face].tolist()
+                # NODE ORDER of face IS REVERSED
+                for ftype, face_of_elem in ele.elem2faces[elemtype].items():
+                    for eface in face_of_elem:
+                        reindex_f = elemsarray[:, list(reversed(eface))].tolist()
                         faces_neighbour[ftype].extend( 
-                            [ (tuple(face), ind) for face,ind in zip(reordered_f, index) ] ) 
+                            [ (tuple(fnodes), ind) for fnodes,ind in zip(reindex_f, index) ] ) 
             return faces_neighbour
 
         # @profile
@@ -300,6 +304,7 @@ class elem_connectivity():
                 assert (nf_unique < nf_all)
                 assert (2*nf_unique >= nf_all)
                 # extract all unique face
+                #   since reversed when created, boco faces are pointing outward
                 uniqueface_dict = dict(filter(lambda tup: len(tup[1])==1, face_pairs.items())) # tup[1] is the value of key
                 boundaryfaces.add_elems(ftype, face_from_ufacedict(uniqueface_dict))
                 f2c = np.full((len(uniqueface_dict),2), -1)

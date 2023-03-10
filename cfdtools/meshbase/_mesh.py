@@ -231,7 +231,7 @@ class mesh():
             fdict['index'] = conn.indexlist(list=newindex[fdict['index'].list()])
             #fdict['index'].compress() # not expected
 
-    def printinfo(self):
+    def printinfo(self, detailed=False):
         api.io.print("std", f"nnode: {self.nnode}")
         for c in ('x', 'y', 'z'):
             api.io.print("std", "  {} min:avg:max = {:.3f}:{:.3f}:{:.3f}".format(c, *minavgmax(self._nodes[c])))
@@ -246,6 +246,7 @@ class mesh():
         if self._faces:
             for t, facedict in self._faces.items():
                 api.io.print("std", f"  type {t}: {' '.join(facedict['face2node'].elems())}")
+                facedict['face2node'].print(prefix='  . ', detailed=detailed)
         else:
             api.io.print("std", "  no face/node connectivity")
         api.io.print('std', f"bocos: {' '.join(self._bocos.keys())}")
