@@ -179,10 +179,18 @@ class elem_connectivity():
         assert index.max()==index.size-1
         assert np.all(uniq==index)
         return True
+    
+    # def reindexed_elems(self, etype):
+    #     ind = self._elem2node[etype]['index']
+    #     e2n[ind,:] = self._elem2node[etype]['elem2node'] # dangerous, index may be too large
+    #     return e2n
 
-    def print(self):
+    def print(self, prefix="", detailed=False):
         for elemtype, elemco in self._elem2node.items():
-            api.io.print("std", f"  {elemtype}: {elemco['elem2node'].shape} with index {elemco['index']}")
+            api.io.print("std", prefix+f"{elemtype}: {elemco['elem2node'].shape} with index {elemco['index']}")
+            if detailed:
+                api.io.print("std", prefix+f"  index: {elemco['index'].list()}")
+                api.io.print("std", prefix+f"  faces: {elemco['elem2node']}")
 
     # def index_elem_tuples(self):
     #     # optim: here, .list() is not mandatory but avoid massively calling .list().getitem()
@@ -191,6 +199,7 @@ class elem_connectivity():
     #                     for i, face in zip(e2n['index'].list(), np.vsplit(e2n['elem2node'], e2n['elem2node'].shape[0]))
     #             )
     def index_elem_tuples(self):
+        """creates a list of tuple (index of face, nodes of faces)"""
         list_of_tuples = []
         for _, e2n in self.items():
             ind = e2n['index'].list() # optim: here, .list() is not mandatory but avoid massively calling .list().getitem()
@@ -265,11 +274,12 @@ class elem_connectivity():
                 #         faces_neighbour[ftype].extend( 
                 #             [ (tuple(elemsarray[ielem, face]), index[ielem]) for ielem in range(elemsarray.shape[0]) ] ) 
                 # V2 (-30%)
-                for ftype, listfaces in ele.elem2faces[elemtype].items():
-                    for face in listfaces:
-                        reordered_f = elemsarray[:, face].tolist()
+                # NODE ORDER of face IS REVERSED
+                for ftype, face_of_elem in ele.elem2faces[elemtype].items():
+                    for eface in face_of_elem:
+                        reindex_f = elemsarray[:, list(reversed(eface))].tolist()
                         faces_neighbour[ftype].extend( 
-                            [ (tuple(face), ind) for face,ind in zip(reordered_f, index) ] ) 
+                            [ (tuple(fnodes), ind) for fnodes,ind in zip(reindex_f, index) ] ) 
             return faces_neighbour
 
         # @profile
@@ -300,6 +310,7 @@ class elem_connectivity():
                 assert (nf_unique < nf_all)
                 assert (2*nf_unique >= nf_all)
                 # extract all unique face
+                #   since reversed when created, boco faces are pointing outward
                 uniqueface_dict = dict(filter(lambda tup: len(tup[1])==1, face_pairs.items())) # tup[1] is the value of key
                 boundaryfaces.add_elems(ftype, face_from_ufacedict(uniqueface_dict))
                 f2c = np.full((len(uniqueface_dict),2), -1)
@@ -309,12 +320,18 @@ class elem_connectivity():
                 # remove these faces
                 for uface in uniqueface_dict.keys():
                     face_pairs.pop(uface)
+                # print('list of face + cell', listfaces)
+                # print('uniquefaces', uniqueface_dict)
+                # print(f2c)
+                # print('faces pairs', face_pairs)
                 # get all first face of each pair of tuple (face,ielem)
                 intfaces = face_from_ufacedict(face_pairs)  # 10% COST
                 internalfaces.add_elems(ftype, intfaces)
                 # get all elements connections via faces
                 # get index of connected cells # 25% COST
                 f2c = np.array(list(map(lambda flist: [flist[0][1], flist[1][1]], face_pairs.values()))) 
+                # print('int faces', intfaces)
+                # print(f2c)
                 iface2cell.append(f2c)
 
             return internalfaces, iface2cell, boundaryfaces, bface2cell

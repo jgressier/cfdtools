@@ -135,11 +135,16 @@ class Timer: # from https://realpython.com/python-timer/
     default_msg = ""
 
     def __init__(self, task="", msg=default_msg, nelem=None, tab=default_tab):
-        self._start_time = None
+        self._reset()
         self._nelem = nelem
         self._tab = tab
         self._task = task
         self._msg = msg
+
+    def _reset(self):
+        self._start_time = None
+        self._task = ""
+        self._col = 0
 
     def start(self):
         """Start a new timer"""
@@ -151,18 +156,18 @@ class Timer: # from https://realpython.com/python-timer/
         """Stop the timer, and report the elapsed time"""
         if self._start_time is None:
             raise TimerError(f"Timer is not running. Use .start() to start it")
-
         elapsed_time = time.perf_counter() - self._start_time
         normalized_time_ms = 0. if self._nelem is None else 1e6*elapsed_time / self._nelem
-        self._start_time = None
         if self._nelem is None:
-            io.print('std',f"{' '*(self._tab-len(self._task))}wtime: {elapsed_time:0.4f}s")
+            io.print('std',f"{' '*(self._tab-self._col)}wtime: {elapsed_time:0.4f}s")
         else:
-            io.print('std',f"{' '*(self._tab-len(self._task))}wtime: {elapsed_time:0.4f}s | {normalized_time_ms:0.4f}µs/elem")
-        self._task = ""
+            io.print('std',f"{' '*(self._tab-self._col)}wtime: {elapsed_time:0.4f}s | {normalized_time_ms:0.4f}µs/elem")
+        # reset
+        self._reset()
     
     def __enter__(self):
         io.print('std', self._task, end='')
+        self._col = len(self._task)+1
         self.start()
 
     def __exit__(self, *exitoptions):

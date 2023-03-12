@@ -1,11 +1,9 @@
 import matplotlib.pyplot as plt
 import cfdtools.api as api
 import cfdtools.plot as cfdplt
+from cfdtools.utils.math import minavgmax
 import numpy as np
 import numpy.fft as fftm
-
-def minavgmax(d):
-    return (f(d) for f in [np.min, np.average, np.max])
 
 def check_axis(axisdata):
     if axisdata.ndim > 1:

@@ -1,16 +1,26 @@
 import cfdtools.api as api
 import cfdtools.meshbase._connectivity as conn
 import cfdtools.meshbase._elements as ele
+from cfdtools.utils.math import minavgmax
 import itertools
 import numpy as np
 
 class submeshmark():
 
     # authorized geomdim type and actual dimension
-    available_geomdim = (
+    _available_geomdim = (
         'node', 'intnode', 'bdnode',
         'face', 'intface', 'bdface',
         'cell' )
+
+    _available_types = (
+        'internal',
+        'boundary',
+        'perio_cart',
+        'perio_cylx',
+        'perio_cyly',
+        'perio_cylz',
+    )
 
     def __init__(self, name):
         self._name = name
@@ -27,7 +37,7 @@ class submeshmark():
 
     @geodim.setter
     def geodim(self, geodim):
-        assert geodim in self.available_geomdim
+        assert geodim in self._available_geomdim
         self._geodim = geodim
 
     @property
@@ -36,8 +46,17 @@ class submeshmark():
 
     @index.setter
     def index(self, index: conn.indexlist):
-        assert self.geodim in self.available_geomdim
+        assert self.geodim in self._available_geomdim
         self._index = index
+
+    @property
+    def type(self):
+        return self._properties['type']
+
+    @type.setter
+    def type(self, type):
+        assert type in self._available_types
+        self._properties['type'] = type
 
     def nodebased(self):
         return self._geodim in {'node', 'bdnode', 'intnode'}
@@ -105,6 +124,10 @@ class mesh():
         self._nodes['x'] = x
         self._nodes['y'] = y
         self._nodes['z'] = z
+
+    def nodescoord(self, ndarray=False):
+        coords = (self._nodes[c] for c in ['x', 'y', 'z'])
+        return np.column_stack(coords) if ndarray else coords
     
     def set_cell2node(self, cell2node: conn.elem_connectivity):
         """set cell to node connectivity as a dict
@@ -144,6 +167,7 @@ class mesh():
         face2cell = conn.indexindirection()
         face2cell.conn = np.concatenate((self._faces['boundary']['face2cell'].conn, 
                                          self._faces['internal']['face2cell'].conn), axis=0)
+        #print('merge',face2cell.conn)
         return mixedfaces_con, face2cell
                                                   
 
@@ -201,8 +225,11 @@ class mesh():
             assert boco.geodim in ('face', 'bdface'), "boco marks must be faces index"
         oldindex = list(itertools.chain(*[ boco.index.list() for _,boco in self._bocos.items() ]))
         assert np.all(np.unique(oldindex)==sorted(oldindex)), "some faces are marked by several boundary marks"
+        assert min(oldindex) == 0, "first face index (0) is not marked as a boundary"
+        assert max(oldindex) == len(oldindex)-1, "boundary faces must be indexed first before reindexing"
         newindex = np.full_like(oldindex, -1)
         newindex[oldindex] = np.arange(len(oldindex))
+        assert min(newindex) == 0, "inconsistency: there must not be -1 index"
         # reindex boco
         for _,boco in self._bocos.items():
             boco.index = conn.indexlist(list=newindex[boco.index.list()])
@@ -211,8 +238,14 @@ class mesh():
         for _, fdict in self._faces['boundary']['face2node'].items():
             fdict['index'] = conn.indexlist(list=newindex[fdict['index'].list()])
             #fdict['index'].compress() # not expected
+        if 'face2cell' in self._faces['boundary']:
+            self._faces['boundary']['face2cell'].conn = self._faces['boundary']['face2cell'].conn[oldindex,:]
 
-    def printinfo(self):
+    def printinfo(self, detailed=False):
+        api.io.print("std", f"nnode: {self.nnode}")
+        for c in ('x', 'y', 'z'):
+            api.io.print("std", "  {} min:avg:max = {:.3f}:{:.3f}:{:.3f}".format(c, *minavgmax(self._nodes[c])))
+            
         api.io.print("std", f"ncell: {self.ncell}")
         if self._cell2node:
             self._cell2node.print()
@@ -223,6 +256,7 @@ class mesh():
         if self._faces:
             for t, facedict in self._faces.items():
                 api.io.print("std", f"  type {t}: {' '.join(facedict['face2node'].elems())}")
+                facedict['face2node'].print(prefix='  . ', detailed=detailed)
         else:
             api.io.print("std", "  no face/node connectivity")
         api.io.print('std', f"bocos: {' '.join(self._bocos.keys())}")
