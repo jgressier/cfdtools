@@ -264,6 +264,8 @@ class writer():
         BinaryWrite(self.fid, self.endian, "i"*nface, self.f2v["noofa"].tolist()) # remove first 0
         # Flattened face-to-node connectivity
         BinaryWrite(self.fid, self.endian, "i"*self.params["noofa_count"], self.f2v["noofa_v"].tolist())
+        # print('noofa',self.f2v["noofa"] )
+        # print('noofa_v',self.f2v["noofa_v"] )
         # Faces-to-cells connectivities
         # Header
         api.io.print('std',f"  face to cell connectivity")
@@ -278,6 +280,7 @@ class writer():
         #print("W",self.f2e)
         # print(self.f2e.ravel())
         BinaryWrite(self.fid, self.endian, "i"*nface*2, self.f2e.ravel().tolist())
+        #print('cellofface',self.f2e.ravel().tolist() )
         # Face zones, a.k.a boundary condition patches
         api.io.print('std',f"  marks (face based)")
         last_boco = 0

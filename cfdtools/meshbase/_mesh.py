@@ -124,6 +124,10 @@ class mesh():
         self._nodes['x'] = x
         self._nodes['y'] = y
         self._nodes['z'] = z
+
+    def nodescoord(self, ndarray=False):
+        coords = (self._nodes[c] for c in ['x', 'y', 'z'])
+        return np.column_stack(coords) if ndarray else coords
     
     def set_cell2node(self, cell2node: conn.elem_connectivity):
         """set cell to node connectivity as a dict
@@ -163,6 +167,7 @@ class mesh():
         face2cell = conn.indexindirection()
         face2cell.conn = np.concatenate((self._faces['boundary']['face2cell'].conn, 
                                          self._faces['internal']['face2cell'].conn), axis=0)
+        #print('merge',face2cell.conn)
         return mixedfaces_con, face2cell
                                                   
 
@@ -220,8 +225,11 @@ class mesh():
             assert boco.geodim in ('face', 'bdface'), "boco marks must be faces index"
         oldindex = list(itertools.chain(*[ boco.index.list() for _,boco in self._bocos.items() ]))
         assert np.all(np.unique(oldindex)==sorted(oldindex)), "some faces are marked by several boundary marks"
+        assert min(oldindex) == 0, "first face index (0) is not marked as a boundary"
+        assert max(oldindex) == len(oldindex)-1, "boundary faces must be indexed first before reindexing"
         newindex = np.full_like(oldindex, -1)
         newindex[oldindex] = np.arange(len(oldindex))
+        assert min(newindex) == 0, "inconsistency: there must not be -1 index"
         # reindex boco
         for _,boco in self._bocos.items():
             boco.index = conn.indexlist(list=newindex[boco.index.list()])
@@ -230,6 +238,8 @@ class mesh():
         for _, fdict in self._faces['boundary']['face2node'].items():
             fdict['index'] = conn.indexlist(list=newindex[fdict['index'].list()])
             #fdict['index'].compress() # not expected
+        if 'face2cell' in self._faces['boundary']:
+            self._faces['boundary']['face2cell'].conn = self._faces['boundary']['face2cell'].conn[oldindex,:]
 
     def printinfo(self, detailed=False):
         api.io.print("std", f"nnode: {self.nnode}")

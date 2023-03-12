@@ -77,7 +77,7 @@ class Cube():
             ni, nj, nk = np.array(list(task['ijknodes'])).T
             nodes = self.nodeglobindex_ijk(ni, nj, nk)
             bcmark.index = conn.indexlist(list=nodes.tolist())
-            meshdata.add_boco(bcmark)        
+            meshdata.add_boco(bcmark)
         return meshdata
     
 if __name__ == "__main__":

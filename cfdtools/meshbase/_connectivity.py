@@ -179,6 +179,11 @@ class elem_connectivity():
         assert index.max()==index.size-1
         assert np.all(uniq==index)
         return True
+    
+    # def reindexed_elems(self, etype):
+    #     ind = self._elem2node[etype]['index']
+    #     e2n[ind,:] = self._elem2node[etype]['elem2node'] # dangerous, index may be too large
+    #     return e2n
 
     def print(self, prefix="", detailed=False):
         for elemtype, elemco in self._elem2node.items():
@@ -194,6 +199,7 @@ class elem_connectivity():
     #                     for i, face in zip(e2n['index'].list(), np.vsplit(e2n['elem2node'], e2n['elem2node'].shape[0]))
     #             )
     def index_elem_tuples(self):
+        """creates a list of tuple (index of face, nodes of faces)"""
         list_of_tuples = []
         for _, e2n in self.items():
             ind = e2n['index'].list() # optim: here, .list() is not mandatory but avoid massively calling .list().getitem()
@@ -314,12 +320,18 @@ class elem_connectivity():
                 # remove these faces
                 for uface in uniqueface_dict.keys():
                     face_pairs.pop(uface)
+                # print('list of face + cell', listfaces)
+                # print('uniquefaces', uniqueface_dict)
+                # print(f2c)
+                # print('faces pairs', face_pairs)
                 # get all first face of each pair of tuple (face,ielem)
                 intfaces = face_from_ufacedict(face_pairs)  # 10% COST
                 internalfaces.add_elems(ftype, intfaces)
                 # get all elements connections via faces
                 # get index of connected cells # 25% COST
                 f2c = np.array(list(map(lambda flist: [flist[0][1], flist[1][1]], face_pairs.values()))) 
+                # print('int faces', intfaces)
+                # print(f2c)
                 iface2cell.append(f2c)
 
             return internalfaces, iface2cell, boundaryfaces, bface2cell
