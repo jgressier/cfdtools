@@ -1,5 +1,6 @@
-cfdtools
------
+# CFDTOOLS documentation
+
+`cfdtools` is python library dedicated to mesh pre-processing.
 
 [![PyPi Version](https://img.shields.io/pypi/v/cfdtools.svg?style=flat)](https://pypi.org/project/cfdtools)
 [![PyPI pyversions](https://img.shields.io/pypi/pyversions/cfdtools.svg?style=flat)](https://pypi.org/pypi/cfdtools/)
@@ -11,17 +12,17 @@ cfdtools
 [![Slack](https://img.shields.io/static/v1?logo=slack&label=slack&message=contact&style=flat)](https://join.slack.com/t/isae-opendev/shared_invite/zt-obqywf6r-UUuHR4_hc5iTzyL5bFCwpw
 )
 
-### Features
 
-- IC3 v2 or v3 reader
-- IC3 v2 or v3 writer
-- generic format command line: `cfdinfo`, `cfdwrite_ic3v3`
-- specific IC3 command line: `ic3brief`
+## to start
 
-### Installation and usage
+`cfdtools` requires at least python 3.6. To install, `pip` can be directly used to get last stable version.
 
-    pip install cfdtools
+    pip install [--user] cfdtools
 
-### Requirements
+or clone and install `develop` branch
 
-see [requirements.txt](https://github.com/jgressier/cfdtools/blob/master/requirements.txt)
+    git clone https://github.com/jgressier/cfdtools.git
+    cd cfdtools
+    git checkout develop
+    pip install [--user] .
+

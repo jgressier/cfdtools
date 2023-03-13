@@ -16,13 +16,14 @@ class writer():
         """
         Initialization of a ic3 restart file writer.
         """
-        api.io.print('std',"Initialization of IC3 writer V"+self.__version__)
+        api.io.print('std',"> Initialization of IC3 writer V"+self.__version__)
         if not endian in struct_endian.keys():
             raise ValueError("unknown endian key")
         else:
             self.endian = endian
         self.vars = {"nodes":{}, "cells":{}}
         self._mesh = mesh
+        self.params = {}
         # Initialize the simulation state
         self.set_simstate()
         self.set_mesh()
@@ -36,16 +37,25 @@ class writer():
         of a face-to-element and face-to-vertex connectivity
         as per CharlesX implementation.
         """
+        timer = api.Timer()
+        api.io.print('std',"> Check connectivity and compute mandatory")
+        if not self._mesh._faces: # empty dict of faces
+            with api.Timer(task="  generate all faces"):
+                self._mesh.make_face_connectivity()
+        if any([boco.nodebased() for _,boco in self._mesh._bocos.items()]):
+            with api.Timer(task="  change boco marks (node to face)"):
+                self._mesh.bocomarks_set_node_to_face()
+        if any([boco.index.type == 'list' for _,boco in self._mesh._bocos.items()]):
+            with api.Timer(task="  reindex boundary faces with boco marks and compress"):
+                self._mesh.reindex_boundaryfaces()        
+
         api.io.print('std',"Setting coordinates and connectivity arrays..")
 
-        # Keep the coordinates of the points
-        self.coordinates = np.stack((self._mesh._nodes[c] 
+        # Nodes
+        self.coordinates = np.stack(list(self._mesh._nodes[c] 
             for c in ['x', 'y', 'z']), axis=1)
 
         # Compute the number of nodes and elements
-        self.params = {}
-        # Nodes
-        #print(self.coordinates.shape)
         assert self.coordinates.shape[0] == self._mesh.nnode
         self.params["no_count"] = self.coordinates.shape[0]
         # Elements, count throughout all connectivities
@@ -55,17 +65,30 @@ class writer():
         ### will need an actual extract of data
         #
         # Store the information properly
-        self.params["no_count"] = self._mesh._params["no_count"]
-        self.params["fa_count"] = self._mesh._params["fa_count"]
-        self.params["cv_count"] = self._mesh._params["cv_count"]
-        self.params["noofa_count"] = self._mesh._params["noofa_count"]
+        self.params["no_count"] = self._mesh.nnode
+        self.params["fa_count"] = self._mesh.nface
+        self.params["cv_count"] = self._mesh.ncell
 
+        # check face connectivity
+        if 'mixed' in self._mesh._faces.keys():
+            zface2node = self._mesh._faces['mixed']['face2node'].exportto_compressedindex()
+            self.f2e = self._mesh._faces['mixed']['face2cell'].conn
+        else:
+            with api.Timer(task="  compressing faces connectivity"):
+                mixedfaces, f2cell = self._mesh.export_mixedfaces()
+                zface2node = mixedfaces.exportto_compressedindex()
+            self.f2e = f2cell.conn
         self.f2v = {}
-        self.f2v["noofa"] = self._mesh._face2node['listofStarts_f2v'][1:]-self._mesh._face2node['listofStarts_f2v'][:-1]
-        self.f2v["noofa_v"] = self._mesh._face2node['face2vertex']
-        self.f2e = self._mesh._face2cell['cvofa']
-        #print(self.f2e.shape)
-        api.io.print('std',"ok.")
+        self.f2v["noofa"] = zface2node._index[1:]-zface2node._index[:-1]
+        self.f2v["noofa_v"] = zface2node._value
+        self.params["noofa_count"] = zface2node._value.size
+
+        if not 'partition' in self._mesh._cellprop.keys():
+            self.params["partition"] = {}
+            self.params["partition"]['npart'] = 1
+            self.params["partition"]['icvpart'] = np.zeros((self._mesh.ncell,), dtype=np.int32)
+        else:
+            self.params['partition'] = self._mesh._cellprop['partition']
 
     def set_bocos(self, nboco=None):
         """
@@ -74,11 +97,10 @@ class writer():
         __WriteRestartConnectivity method.
         The bocos slicing is expressed in terms of faces.
         """
-        api.io.print('std',"Setting boundary conditions..")
-        self.bocos = self._mesh._bocos
-        self.bocos.pop("nfa_b")
-        self.bocos.pop("nfa_bp")
-        api.io.print('std',"ok.")
+        api.io.print('std',"Setting boundary conditions...")
+        self.bocos = {key: boco for key, boco in self._mesh._bocos.items() if not boco.type=='internal'}
+        # self.bocos.pop("nfa_b")
+        # self.bocos.pop("nfa_bp")
 
     def set_simstate(self, state={}):
         """
@@ -114,12 +136,12 @@ class writer():
         for key, item in self._mesh._celldata.items():
             api.io.print('std',"  cell data: "+key)
             self.vars["cells"][key] = item
-        api.io.print('std',"ok.")
         
     def write_data(self, filename):
         """
         Main method of the ic3 restart file writer
         """
+        api.io.print('std',f"> WRITING FILE {filename}")
         self.filename = filename
         # Open the file for binary reading
         self.fid = open(self.filename, "wb")
@@ -211,13 +233,15 @@ class writer():
         Also the number of nodes, faces and volumes for later checks.
         """
         # First the header for counts
+        nnode, nface, ncell = (self.params[key] for key in ('no_count', 'fa_count', 'cv_count'))
+        api.io.print('std',f"  sizes: {nnode} nodes, {nface} faces and reference to {ncell} cells")
         header = restartSectionHeader()
         header.name = "NO_FA_CV_NOOFA_COUNTS"
         header.id = ic3_restart_codes["UGP_IO_NO_FA_CV_NOOFA_COUNTS"]
         header.skip = header.hsize
-        header.idata[0] = self.params["no_count"]
-        header.idata[1] = self.params["fa_count"]
-        header.idata[2] = self.params["cv_count"]
+        header.idata[0] = nnode
+        header.idata[1] = nface
+        header.idata[2] = ncell
         header.idata[3] = self.params["noofa_count"]
         header.write(self.fid, self.endian)
         #
@@ -227,69 +251,98 @@ class writer():
         # Connectivities
         # Faces-to-nodes connectivities
         # Header
+        api.io.print('std',f"  face to node connectivity")
         header = restartSectionHeader()
         header.name = "NOOFA_I_AND_V"
         header.id = ic3_restart_codes["UGP_IO_NOOFA_I_AND_V"]
-        header.skip = header.hsize + type2nbytes["int32"] * self.params["fa_count"] + \
+        header.skip = header.hsize + type2nbytes["int32"] * nface + \
                                      type2nbytes["int32"] * self.params["noofa_count"]
-        header.idata[0] = self.params["fa_count"]
+        header.idata[0] = nface
         header.idata[1] = self.params["noofa_count"]
         header.write(self.fid, self.endian)
         # Node count per face
-        BinaryWrite(self.fid, self.endian, "i"*self.params["fa_count"], self.f2v["noofa"].tolist()) # remove first 0
+        BinaryWrite(self.fid, self.endian, "i"*nface, self.f2v["noofa"].tolist()) # remove first 0
         # Flattened face-to-node connectivity
         BinaryWrite(self.fid, self.endian, "i"*self.params["noofa_count"], self.f2v["noofa_v"].tolist())
+        # print('noofa',self.f2v["noofa"] )
+        # print('noofa_v',self.f2v["noofa_v"] )
         # Faces-to-cells connectivities
         # Header
+        api.io.print('std',f"  face to cell connectivity")
         header = restartSectionHeader()
         header.name = "CVOFA"
         header.id = ic3_restart_codes["UGP_IO_CVOFA"]
-        header.skip = header.hsize + type2nbytes["int32"] * self.params["fa_count"] * 2
-        header.idata[0] = self.params["fa_count"]
+        header.skip = header.hsize + type2nbytes["int32"] * nface * 2
+        header.idata[0] = nface
         header.idata[1] = 2
         header.write(self.fid, self.endian)
         # Flattened face-to-cell connectivity
         #print("W",self.f2e)
         # print(self.f2e.ravel())
-        BinaryWrite(self.fid, self.endian, "i"*self.params["fa_count"]*2, self.f2e.ravel().tolist())
+        BinaryWrite(self.fid, self.endian, "i"*nface*2, self.f2e.ravel().tolist())
+        #print('cellofface',self.f2e.ravel().tolist() )
         # Face zones, a.k.a boundary condition patches
-        for key in self.bocos.keys():
+        api.io.print('std',f"  marks (face based)")
+        last_boco = 0
+        for key, boco in self.bocos.items():
+            assert key == boco.name
+            assert boco.geodim in ('face', 'bdface'), "boco marks must be faces index"
             # Header
             header = restartSectionHeader()
             header.name = key
             header.id = ic3_restart_codes["UGP_IO_FA_ZONE"]
             header.skip = header.hsize
             # diff# print(self.bocos[key]["type"], type2zonekind)
-            header.idata[0] = type2zonekind[self.bocos[key]["type"]]
-            header.idata[1] = self.bocos[key]["fa_range"][0]
-            header.idata[2] = self.bocos[key]["fa_range"][1]
-            if "periodic_transform" in self.bocos[key].keys():
-                for idx, val in enumerate(self.bocos[key]["periodic_transform"]):
+            assert boco.type in type2zonekind.keys(), f"unsupported type of boco for IC3 output: {boco.type}"
+            ifmin, ifmax = boco.index.range()
+            api.io.print('std',f"  . ({boco.type}) {boco.name}: {ifmin}-{ifmax}")
+            header.idata[0] = type2zonekind[boco.type]
+            assert boco.index.type == 'range', "indexing must be a range and may need reordering"
+            header.idata[1] = ifmin
+            header.idata[2] = ifmax
+            last_boco = max(last_boco, ifmax)
+            if "periodic_transform" in boco.properties.keys():
+                for idx, val in enumerate(boco.properties["periodic_transform"]):
                     header.rdata[idx] = val
             header.write(self.fid, self.endian)
-        # Partition information
         # Header
+        header = restartSectionHeader()
+        header.name = 'internal-domain'
+        header.id = ic3_restart_codes["UGP_IO_FA_ZONE"]
+        header.skip = header.hsize
+        ifmin, ifmax = last_boco+1, self.params['fa_count']-1 # last face
+        api.io.print('std',f"  additional mark (FA_ZONE) for internal faces: {ifmin}-{ifmax}")
+        header.idata[0] = type2zonekind['internal']
+        header.idata[1] = ifmin
+        header.idata[2] = ifmax
+        if "periodic_transform" in boco.properties.keys():
+            for idx, val in enumerate(boco.properties["periodic_transform"]):
+                header.rdata[idx] = val
+        header.write(self.fid, self.endian)        # Partition information
+        # Header
+        api.io.print('std',f"  cell based partition info")
         header = restartSectionHeader()
         header.name = "CV_PART"
         header.id = ic3_restart_codes["UGP_IO_CV_PART"]
-        header.skip = header.hsize + type2nbytes["int32"] * self.params["cv_count"]
-        header.idata[0] = self.params["cv_count"]
-        header.idata[1] = self._mesh._cellprop['partition'].get('npart', 1)
+        header.skip = header.hsize + type2nbytes["int32"] * ncell
+        header.idata[0] = ncell
+        header.idata[1] = self.params['partition'].get('npart', 1)
         header.write(self.fid, self.endian)
         # The ranks of the processors, default to everybody 0
-        BinaryWrite(self.fid, self.endian, "i"*self.params["cv_count"], 
-            self._mesh._cellprop['partition'].get('icvpart', np.zeros((self.params["cv_count"],), dtype=np.int32)))
+        BinaryWrite(self.fid, self.endian, "i"*ncell, 
+            self.params['partition'].get('icvpart', np.zeros((ncell,), dtype=np.int32)))
         # Coordinates
         # Header
+        api.io.print('std',f"  nodes coordinates")
         header = restartSectionHeader()
         header.name = "X_NO"
         header.id = ic3_restart_codes["UGP_IO_X_NO"]
-        header.skip = header.hsize + type2nbytes["float64"] * self.params["no_count"] * 3
-        header.idata[0] = self.params["no_count"]
+        header.skip = header.hsize + type2nbytes["float64"] * nnode * 3
+        header.idata[0] = nnode
         header.idata[1] = 3
         header.write(self.fid, self.endian)
         # X, Y and Z
-        BinaryWrite(self.fid, self.endian, "d"*self.params["no_count"]*3, self.coordinates.ravel(order='C'))
+        BinaryWrite(self.fid, self.endian, "d"*nnode*3, self.coordinates.ravel(order='C'))
 
     def __WriteInformativeValues(self):
         """

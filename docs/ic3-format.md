@@ -1,4 +1,4 @@
-# IC3 format V2
+# IC3 format V2 and V3
 
 this->data_set->registerVector<double>("X_NO", NO_DATA, false, false);
   this->data_set->registerScalar<int>("NO_FLAG", NO_DATA, false, false);
@@ -22,24 +22,11 @@ this->data_set->registerVector<double>("X_NO", NO_DATA, false, false);
 
 order of sections is arbitrary and can be one of the following
 
-- `UGP_IO_NO_FA_CV_NOOFA_COUNTS`: size of mesh{
-        msg.str("");
-        msg << " Global nno, nfa, ncv: " << header.idata[0] << " "
-            << header.idata[1] << " " << header.idata[2];
-        Msg(msg.str());
-        // ibermejoComment For even larger mesh support, redeclare
-        // no_,fa_,cv_count as mint8 and
-        // ibermejoComment convert the derived functions using them
-        no_count = (int)header.idata[0];
-        fa_count = (int)header.idata[1];
-        cv_count = (int)header.idata[2];
-        noofa_count = header.idata[3];
-        msg.str("");
-        msg << " noofa_count: " << noofa_count;
-        Msg(msg.str());
-        this->initRead();
-      } break;
-
+- `UGP_IO_NO_FA_CV_NOOFA_COUNTS`: first integers are
+  1. no_count
+  2. fa_count
+  3. cv_count
+  4. noofa_count
 - `UGP_IO_NO_CHECK`
 - `UGP_IO_FA_CHECK`
 - `UGP_IO_CV_CHECK`

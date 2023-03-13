@@ -12,6 +12,7 @@ __pycache__/
 dist
 site
 poetry.lock
+tests/build
 
 # Unit test / coverage reports
 htmlcov/

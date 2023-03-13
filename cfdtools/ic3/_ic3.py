@@ -52,14 +52,11 @@ type2nbytes = {"char":1,
                "float64":8,
                "float128":16,}
 
-# Dictionary to convert number of nodes per face to type of face
-nno2fatype = {2:"line",
-              3:"tri",
-              4:"qua",}
 
-fatype2nno = {"line":2,
-              "tri":3,
-              "qua":4,}
+
+# fatype2nno = {"line":2,
+#               "tri":3,
+#               "qua":4,}
 # Actual number of vertices for a given cell type
 nodes_per_cell = {
     'bi': 2,
@@ -81,37 +78,49 @@ nodes_per_cell = {
 #     5:'pyr',
 # }
 
-faces_per_cell = {
-    'hex': 6,
-    'pri': 5,
-    'pyr': 5,
-    'tet': 4,}
+# faces_per_cell = {
+#     'hex': 6,
+#     'pri': 5,
+#     'pyr': 5,
+#     'tet': 4,}
 
-faces_of_cell = {
-    'hex':['qua']*6,
-    'pri':['tri', 'qua', 'qua', 'qua', 'tri'],
-    'pyr':['qua'] + ['tri']*4,
-    'tet':['tri']*4,}
+# faces_of_cell = {
+#     'hex':['qua']*6,
+#     'pri':['tri', 'qua', 'qua', 'qua', 'tri'],
+#     'pyr':['qua'] + ['tri']*4,
+#     'tet':['tri']*4,}
 
-ifaces_of_cell = {
-    'hex':[[0,3,2,1], [0,1,5,4], [1,2,6,5], [2,3,7,6], [3,0,4,7], [4,5,6,7]],
-    'pri':[[0,2,1], [0,1,4,3], [1,2,5,4], [2,0,3,5], [3,4,5]],
-    'pyr':[[0,3,2,1], [0,1,4], [1,2,4], [2,3,4], [3,0,4]],
-    'tet':[[0,2,1], [0,1,3], [1,2,3], [2,0,3]],}
+# ifaces_of_cell = {
+#     'hex':[[0,3,2,1], [0,1,5,4], [1,2,6,5], [2,3,7,6], [3,0,4,7], [4,5,6,7]],
+#     'pri':[[0,2,1], [0,1,4,3], [1,2,5,4], [2,0,3,5], [3,4,5]],
+#     'pyr':[[0,3,2,1], [0,1,4], [1,2,4], [2,3,4], [3,0,4]],
+#     'tet':[[0,2,1], [0,1,3], [1,2,3], [2,0,3]],}
 
+# #define FA_ZONE_UNKNOWN          -1
+# #define FA_ZONE_PERIODIC_UNKNOWN -2
+
+# #define FA_ZONE_BOUNDARY          1
+
+# #define FA_ZONE_PERIODIC_CART     2
+# #define FA_ZONE_PERIODIC_CYL_X    3
+# #define FA_ZONE_PERIODIC_CYL_Y    4
+# #define FA_ZONE_PERIODIC_CYL_Z    5
+
+# #define FA_ZONE_INTERNAL          6
+
+# // range for all and periodic zones (tommie needs this?)...
+# #define FA_ZONE_FIRST             1
+# #define FA_ZONE_LAST              6
+# #define FA_ZONE_PERIODIC_FIRST    2
+# #define FA_ZONE_PERIODIC_LAST     5
 type2zonekind = {"boundary":1,
-                 "periodic_cart":2,
-                 "periodic_cylx":3,
-                 "periodic_cyly":4,
-                 "periodic_cylz":5,
+                 "perio_cart":2,
+                 "perio_cylx":3,
+                 "perio_cyly":4,
+                 "perio_cylz":5,
                  "internal":6}
 # Dictionary to convert zone kind to zone type (as a string)
-zonekind2type = {1:"boundary",
-                 2:"periodic_cart",
-                 3:"periodic_cylx",
-                 4:"periodic_cyly",
-                 5:"periodic_cylz",
-                 6:"internal"}
+zonekind2type = {itype: type for type,itype in type2zonekind.items()}
 
 struct_endian = { 'native':'@', 'little':'<', 'big':'>'}
 

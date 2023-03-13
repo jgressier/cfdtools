@@ -16,6 +16,23 @@ pip show cfdtools
 
 ## Versions
 
+### [0.3.0](https://pypi.org/project/cfdtools/) (2023-03-13)
+
+#### new
+
+- internal structured 3D mesh `cfdtools.meshbase.simple.Cube`
+- `cfdwritecube` command line
+- support GMSH 2.x and 4.x as a reader
+- `morph`function for meshbase object
+- core: computation of face/node and face/cell connectivities from cell/node
+- command `ic3probe_plotline`
+- new common option `--outpath`
+- export to vtk (not yet available as a command line)
+
+#### changed
+
+- new connectivities, boundary conditions marks
+
 ### [0.2.0](https://pypi.org/project/cfdtools/) (2022-03-22)
 
 #### new
