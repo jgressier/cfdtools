@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cfdtools"
-version = "0.2.0"
+version = "0.3.0"
 description = "Tools for mesh and solution management in CFD"
 authors = ["j.gressier <jeremie.gressier@isae-supaero.fr>"]
 license = "MIT"
@@ -20,6 +20,7 @@ ic3brief = 'cfdtools._cli:ic3brief'
 ic3probe_plotline = 'cfdtools._cli:ic3probe_plotline'
 cfdwrite_ic3v2 = 'cfdtools._cli:write_ic3v2'
 cfdwrite_ic3v3 = 'cfdtools._cli:write_ic3v3'
+cfdwrite_ic3 = 'cfdtools._cli:write_ic3v3'
 
 [tool.poetry.dependencies]
 python = "^3.6"

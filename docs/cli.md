@@ -17,6 +17,8 @@ transform mesh or variables:
 - `--remove-cell-data varname1 varname2` removes the listed names (should be at the end of command line if several names)
 - `--remove-node-data varname1 varname2` removes the listed names (should be at the end of command line if several names)
 
+`cfdwrite_ic3` is a shortname for last current IC3 writer, namely `cfdwrite_ic3v3`.
+
 ## automatic format detection
 
 For all `cfd*` tools, generic file input is supported by an automatic detection of file format through its file extension. If extension is not the required of missing, one can force format with `--fmt <format>`
