@@ -15,6 +15,9 @@ import cfdtools.probes.data as probedata
 
 #print(api._fileformat_map)
 
+def cli_header(name):
+    api.io.print('std',"CFDTOOLS - "+name)
+
 class cli_argparser():
     def __init__(self, **kwargs):
         self._parser = argparse.ArgumentParser(**kwargs)
@@ -67,6 +70,7 @@ def info(argv=None):
     Args:
         argv (_type_, optional): _description_. Defaults to None.
     """
+    cli_header("cfdinfo")
     #api.io.set_modes(api.io._available)
     parser = cli_argparser()
     parser.addarg_filenameformat()
@@ -81,6 +85,7 @@ def info(argv=None):
     return True # needed for pytest
 
 def ic3brief(argv=None):
+    cli_header("ic3brief")
     parser = cli_argparser()
     parser.addarg_filenameformat()
     parser.parse_cli_args(argv)
@@ -121,12 +126,15 @@ def write_generic(argv, ext, writer):
     return True # needed for pytest
 
 def write_ic3v2(argv=None):
+    cli_header("cfdwrite_ic3v2")
     return write_generic(argv, '.ic3', ic3.writerV2.writer)
 
 def write_ic3v3(argv=None):
+    cli_header("cfdwrite_ic3v3")
     return write_generic(argv, '.ic3', ic3.writerV3.writer)
 
 def writecube(argv=None):
+    cli_header("cfdwritecube")
     """call specific printinfo function from reader
 
     Args:
@@ -152,6 +160,7 @@ def writecube(argv=None):
     return True # needed for pytest
 
 def ic3probe_plotline(argv=None):
+    cli_header("ic3probe_plotline")
     parser = cli_argparser(description="Process line probes from IC3")
     parser.addarg_prefix()
     #parser.add_argument("filenames", nargs="*", help="list of files")
