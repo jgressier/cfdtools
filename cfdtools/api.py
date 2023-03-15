@@ -6,6 +6,11 @@ _fileformat_map = {}
 
 def fileformat_reader(name, extension):
     """decorator to register fileformat properties for given name in api._fileformat_map
+
+    a reader is a class which is initialized with a filename
+    and has the following functions
+    - read_data() 
+    - export_mesh() which returns a meshbase._mesh.mesh class
     """
     def decorator(thisclass):
         properties = { 'reader': thisclass, 'ext': extension }

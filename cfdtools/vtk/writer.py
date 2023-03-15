@@ -25,3 +25,6 @@ class writer():
 
     def write_mesh(self, filename):
         self._grid.save(filename)
+
+    def pyvista_grid(self):
+        return self._grid

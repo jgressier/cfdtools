@@ -1,6 +1,9 @@
 mkdocs-material
 mkdocs-include-markdown-plugin
 mkdocs-exclude
-# ipykernel
-# mkdocs-jupyter
+ipykernel
+mkdocs-jupyter
 mkdocstrings
+ipywidgets
+trame
+pyvista
