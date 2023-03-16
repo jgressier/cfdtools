@@ -33,13 +33,13 @@ matplotlib = { version="^3.1", optional = true }
 #aerokit = "^1.0"
 pytest = "^6.0"
 pytest-cov = "^2.11.1"
-#mkdocs = "^1.1"
-#mkdocs-material = "^6.2.5"
-#mkdocs-jupyter = "^0.15"
-#markdown-include = "^0.6.0"
-#mkdocs-include-markdown-plugin = ""
-#mkdocs-exclude = ""
-#pylint = "^2.6.0"
+mkdocs = "^1.1"
+mkdocs-material = "^6.2.5"
+mkdocs-jupyter = "^0.15"
+markdown-include = "^0.6.0"
+mkdocs-include-markdown-plugin = ""
+mkdocs-exclude = ""
+pylint = "^2.6.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

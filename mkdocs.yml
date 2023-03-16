@@ -42,7 +42,7 @@ plugins:
       include_source: False
   - exclude:
       glob:
-        - "*.ipynb"
-        - "examples/*"
-        - "*/*.ipynb"
+        # - "*.ipynb"
+        # - "examples/*"
+        # - "*/*.ipynb"
         - ".ipynb_checkpoints"
