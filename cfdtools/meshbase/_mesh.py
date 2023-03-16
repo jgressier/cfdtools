@@ -78,7 +78,7 @@ class submeshmark():
 class mesh():
     """versatile mesh object
 
-    nodes are compulsory
+    nodes are compulsory for a valid mesh
 
     cells (to nodes) connectivity is not compulsory but may be necessary
     for many operations
@@ -194,6 +194,15 @@ class mesh():
                                         index_face_tuples)]
                 boco.geodim = 'bdface'
                 boco.index = conn.indexlist(list=listface_index)
+
+    def seekmark(self, name: str)->submeshmark:
+        """look for diffent marks set to find mark name"""
+        # only _bocos for now
+        return self._bocos[name]
+    
+    def exportmark_asmesh(self, name):
+        meshmark = self.seekmark(name)
+        newmesh = mesh()
  
     def set_params(self, params):
         self._params = params
@@ -294,5 +303,3 @@ class mesh():
         '''
         newx, newy, newz = fmorph(self._nodes['x'], self._nodes['y'], self._nodes['z'])
         self.set_nodescoord_xyz(newx, newy, newz)
-
-    
