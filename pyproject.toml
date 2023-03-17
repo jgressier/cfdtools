@@ -1,19 +1,33 @@
-[tool.poetry]
+[project]
 name = "cfdtools"
 version = "0.3.0"
 description = "Tools for mesh and solution management in CFD"
-authors = ["j.gressier <jeremie.gressier@isae-supaero.fr>"]
-license = "MIT"
-repository = "https://github.com/jgressier/cfdtools"
-documentation = "https://cfdtools.readthedocs.io/en/latest/"
+authors = [{name="J. Gressier", email="jeremie.gressier@isae-supaero.fr"}]
+readme = "README.md"
+license = { file = "LICENSE" }
 classifiers = [
-    "Development Status :: 1 - Planning",
+    "Development Status :: 3 - Alpha",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Physics",
     "Topic :: Software Development :: Libraries :: Python Modules" ]
-exclude = [ "examples" ]
+requires-python = ">=3.6"
+dependencies = [
+    "numpy >= 1.15",
+    "h5py", "pyvista" ]
 
-[tool.poetry.scripts]
+[project.urls]
+Homepage = "https://github.com/jgressier/cfdtools"
+Documentation = "https://cfdtools.readthedocs.io/en/latest/"
+
+[tool.setuptools] # to help find cfdtools folder as a package
+packages = ["cfdtools"]
+
+[project.scripts]
 cfdinfo = 'cfdtools._cli:info'
 cfdwritecube = 'cfdtools._cli:writecube'
 ic3brief = 'cfdtools._cli:ic3brief'
@@ -22,28 +36,22 @@ cfdwrite_ic3v2 = 'cfdtools._cli:write_ic3v2'
 cfdwrite_ic3v3 = 'cfdtools._cli:write_ic3v3'
 cfdwrite_ic3 = 'cfdtools._cli:write_ic3v3'
 
-[tool.poetry.dependencies]
-python = "^3.6"
-numpy = "^1.15"
-matplotlib = { version="^3.1", optional = true }
-#aerokit = { version="1.0", optional = true }
-
-[tool.poetry.dev-dependencies]
-#matplotlib = "^3.1"
-#aerokit = "^1.0"
-pytest = "^6.0"
-pytest-cov = "^2.11.1"
-mkdocs = "^1.1"
-mkdocs-material = "^6.2.5"
-mkdocs-jupyter = "^0.15"
-markdown-include = "^0.6.0"
-mkdocs-include-markdown-plugin = ""
-mkdocs-exclude = ""
-pylint = "^2.6.0"
+[project.optional-dependencies]
+dev = [ 
+    "pytest >= 6.0", 
+    "pytest-cov >= 2.11.1",
+    "pylint >= 2.6.0" ]
+doc = [ 
+    "mkdocs >= 1.1",
+    "mkdocs-material >= 6.2.5", 
+    "mkdocs-jupyter >= 0.15",
+    "markdown-include >= 0.6.0",
+    "mkdocs-include-markdown-plugin",
+    "mkdocs-exclude" ]
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires      = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
 
 [tool.pytest.ini_options]
 minversion = "6.0"
@@ -51,3 +59,15 @@ addopts = "--cov -v"
 testpaths = [
     "tests"
 ]
+
+[tool.bumpver]
+current_version = "0.3.0"
+version_pattern = "MAJOR.MINOR.PATCH"
+commit_message = "bump version {old_version} -> {new_version}"
+commit = true
+tag = true
+push = true
+
+[tool.bumpver.file_patterns]
+"pyproject.toml" = ['current_version = "{version}"', 'version = "{version}"']
+"cfdtools/__init__.py" = ['__version__ = "{version}"']
