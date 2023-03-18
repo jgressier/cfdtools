@@ -1,6 +1,6 @@
 [project]
 name = "cfdtools"
-version = "0.3.1"
+version = "0.3.2"
 description = "Tools for mesh and solution management in CFD"
 authors = [{name="J. Gressier", email="jeremie.gressier@isae-supaero.fr"}]
 readme = "README.md"
@@ -11,7 +11,11 @@ classifiers = [
     "Natural Language :: English",
     "Operating System :: OS Independent",
     "Programming Language :: Python",
-    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.6",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Physics",
     "Topic :: Software Development :: Libraries :: Python Modules" ]
@@ -24,8 +28,8 @@ dependencies = [
 Homepage = "https://github.com/jgressier/cfdtools"
 Documentation = "https://cfdtools.readthedocs.io/en/latest/"
 
-[tool.setuptools] # to help find cfdtools folder as a package
-packages = ["cfdtools"]
+[tool.setuptools.packages.find] # to help find cfdtools folder as a package
+include = ["cfdtools/*"]
 
 [project.scripts]
 cfdinfo = 'cfdtools._cli:info'
@@ -61,7 +65,7 @@ testpaths = [
 ]
 
 [tool.bumpver]
-current_version = "0.3.1"
+current_version = "0.3.2"
 version_pattern = "MAJOR.MINOR.PATCH"
 commit_message = "bump version {old_version} -> {new_version}"
 commit = true
