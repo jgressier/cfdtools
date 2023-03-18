@@ -1,8 +1,11 @@
 name: publish master to pypi
 
 on:
-  release:
-    types: [published]
+  push:
+    branches:
+      - master
+  # release:
+  #   types: [published]
 
 jobs:
   build:
@@ -21,7 +24,7 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install build twine
         python -m build
-    - name: Publish on testpypi
+    - name: Publish on pypi
       run: |
         twine upload dist/*
       env:
