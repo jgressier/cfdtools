@@ -10,7 +10,7 @@ mkdocs:
 
 build:
   apt_packages:
-    - Xvfb
+    - xvfb
 
 # Optionally build your docs in additional formats such as PDF
 formats:
