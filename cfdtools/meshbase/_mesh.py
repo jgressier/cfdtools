@@ -126,7 +126,7 @@ class mesh():
         self._nodes['z'] = z
 
     def nodescoord(self, ndarray=False):
-        coords = (self._nodes[c] for c in ['x', 'y', 'z'])
+        coords = tuple(self._nodes[c] for c in ['x', 'y', 'z'])
         return np.column_stack(coords) if ndarray else coords
     
     def set_cell2node(self, cell2node: conn.elem_connectivity):

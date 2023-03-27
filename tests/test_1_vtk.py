@@ -1,5 +1,6 @@
-import cfdtools.cgns as cgns
-import cfdtools.ic3.writerV3 as ic3writer
+import cfdtools.meshbase.simple as sm
+from cfdtools.vtk import vtkMesh
+import cfdtools.vtk as vtk
 import cfdtools.api as api
 from pathlib import Path
 import pytest
@@ -7,12 +8,19 @@ import pytest
 _datadir=Path("./tests/data")
 _builddir=Path("./tests/build")
 
-@pytest.mark.parametrize("filename", ["cavity-degen.hdf"])
-def test_reader(filename):
-    input = cgns.cgnsMesh(_datadir.joinpath(filename))
-    input.read_data()
-    rmesh = input.export_mesh()
-    assert rmesh.check()
+def test_cube():
+    cube = sm.Cube(10, 10, 10)
+    mesh = cube.export_mesh()
+    vtkmesh = vtkMesh(mesh)
+    vtkmesh.write_mesh(_builddir/"cube.vtu")
+
+# @pytest.mark.parametrize("filename", ["cavity-degen.hdf"])
+# def test_reader(filename):
+#     input = cgns.cgnsMesh(_datadir.joinpath(filename))
+#     input.read_data()
+#     rmesh = input.export_mesh()
+#     assert rmesh.check()
+
 
 # @pytest.mark.parametrize("filename", ["cavity-degen.hdf"
 #     input = cgns.reader(_datadir.joinpath(filename))
