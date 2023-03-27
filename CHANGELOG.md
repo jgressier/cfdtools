@@ -16,7 +16,13 @@ pip show cfdtools
 
 ## Versions
 
-### [0.3.0](https://pypi.org/project/cfdtools/) (2023-03-13)
+### [0.4.0](https://pypi.org/project/cfdtools/) (2023-03-28)
+
+#### new
+
+- cgns import (hdf5 direct reader)
+  
+### [0.3.3](https://pypi.org/project/cfdtools/) (2023-03-13)
 
 #### new
 

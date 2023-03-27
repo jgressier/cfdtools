@@ -1,1 +1,1 @@
-from cfdtools.cgns import cgns
+from cfdtools.cgns.cgns import cgnsMesh
