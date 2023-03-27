@@ -8,7 +8,7 @@ import numpy as np
 class submeshmark():
 
     # authorized geomdim type and actual dimension
-    _available_geomdim = (
+    _available_geodim = (
         'node', 'intnode', 'bdnode',
         'face', 'intface', 'bdface',
         'cell' )
@@ -37,7 +37,7 @@ class submeshmark():
 
     @geodim.setter
     def geodim(self, geodim):
-        assert geodim in self._available_geomdim
+        assert geodim in self._available_geodim
         self._geodim = geodim
 
     @property
@@ -46,7 +46,7 @@ class submeshmark():
 
     @index.setter
     def index(self, index: conn.indexlist):
-        assert self.geodim in self._available_geomdim
+        assert self.geodim in self._available_geodim
         self._index = index
 
     @property
@@ -73,7 +73,7 @@ class submeshmark():
         self._properties = properties
 
     def __str__(self):
-        return f"{self.name} ({self.geodim}): {self.index}"
+        return f"{self.name:12} ({self.geodim}): {self.index}"
 
 class mesh():
     """versatile mesh object
@@ -186,14 +186,17 @@ class mesh():
             return all(map(lambda n: n in nodelist, face))
         assert 'boundary' in self._faces.keys()
         index_face_tuples = self._faces['boundary']['face2node'].index_elem_tuples()
+        #print(index_face_tuples)
         for _, boco in self._bocos.items():
             if boco.nodebased():
                 nodeset = set(boco.index.list())
+                # get all face index whose nodes are all in nodeset
                 listface_index = [i for i,_ in 
                                 filter(lambda t: face_in_nodelist(t[1], nodeset), 
                                         index_face_tuples)]
                 boco.geodim = 'bdface'
                 boco.index = conn.indexlist(list=listface_index)
+                #print(boco.name, nodeset, boco.index.list())
 
     def seekmark(self, name: str)->submeshmark:
         """look for diffent marks set to find mark name"""
@@ -270,7 +273,7 @@ class mesh():
             api.io.print("std", "  no face/node connectivity")
         api.io.print('std', f"bocos: {' '.join(self._bocos.keys())}")
         for name, boco in self._bocos.items():
-            api.io.print("std", f"  BC {name}: {boco}")
+            api.io.print("std", f"  BC {boco}")
         api.io.print("std", "params:",self._params)
 
     def _check_cell2node(self):

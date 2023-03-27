@@ -212,7 +212,7 @@ class elem_connectivity():
         nodeperface = zconn._index[1:]-zconn._index[:-1]
         uniq, counts = np.unique(nodeperface, return_counts=True)
         for facesize, nface in zip(uniq, counts):
-            typef = ele.nnode_face[facesize]
+            typef = ele.face_from_nnode[facesize]
             index = np.argwhere(nodeperface==facesize)
             zind  = zconn._index[index]
             nodes = np.hstack(tuple(zconn._value[zind+i] for i in range(facesize)))

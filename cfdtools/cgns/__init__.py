@@ -1,1 +1,1 @@
-from cfdtools.cgns._gmsh import reader
+from cfdtools.cgns import cgns
