@@ -1,7 +1,7 @@
 numpy >= 1.15
 #aerokit >= 1.1
-h5py
-pyvista
+h5py >= 3.1
+pyvista >= 0.38
 matplotlib >= 3.1
 pytest >= 6.0
 pytest-cov >= 2.11.1
