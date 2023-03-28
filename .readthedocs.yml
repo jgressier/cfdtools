@@ -8,6 +8,10 @@ version: 2
 mkdocs:
   configuration: mkdocs.yml
 
+build:
+  apt_packages:
+    - xvfb
+
 # Optionally build your docs in additional formats such as PDF
 formats:
    - pdf

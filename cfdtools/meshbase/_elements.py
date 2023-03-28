@@ -12,7 +12,8 @@ elem_properties = [ # itype, name, nnode, geodim,
     ]
 
 elem_dim = { e: d for _, e, _, d in elem_properties }
-nnode_face = { n: e for _, e, n, d in elem_properties if d <= 2 }
+nnode_elem = { e: n for _, e, n, _ in elem_properties}
+face_from_nnode = { n: e for _, e, n, d in elem_properties if d <= 2 }
 
 # define list of faces from an element type
 #   faces are defined with inward normal 

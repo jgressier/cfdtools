@@ -5,6 +5,7 @@ import cfdtools.api as api
 # readers
 import cfdtools.ic3 as ic3 #.reader_legacy # needed to map readers
 import cfdtools.gmsh as gmsh
+import cfdtools.cgns as cgns
 import cfdtools.meshbase.simple as simplemesh
 import cfdtools.probes.plot as probeplot
 import cfdtools.probes.data as probedata

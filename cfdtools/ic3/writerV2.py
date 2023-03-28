@@ -302,8 +302,9 @@ class writer():
             header.idata[2] = ifmax
             last_boco = max(last_boco, ifmax)
             if "periodic_transform" in boco.properties.keys():
-                for idx, val in enumerate(boco.properties["periodic_transform"]):
-                    header.rdata[idx] = val
+                if boco.properties["periodic_transform"] is not None:
+                    for idx, val in enumerate(boco.properties["periodic_transform"]):
+                        header.rdata[idx] = val
             header.write(self.fid, self.endian)
         # Header
         header = restartSectionHeader()
@@ -315,9 +316,7 @@ class writer():
         header.idata[0] = type2zonekind['internal']
         header.idata[1] = ifmin
         header.idata[2] = ifmax
-        if "periodic_transform" in boco.properties.keys():
-            for idx, val in enumerate(boco.properties["periodic_transform"]):
-                header.rdata[idx] = val
+        header.rdata[:] = 0.
         header.write(self.fid, self.endian)        # Partition information
         # Header
         api.io.print('std',f"  cell based partition info")
