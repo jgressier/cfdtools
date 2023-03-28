@@ -90,7 +90,7 @@ class reader(binreader):
 
     def export_mesh(self):
         #return self.mesh["coordinates"], self.mesh["connectivity"]["e2v"], self.mesh["bocos"], self.variables["nodes"], self.variables["cells"], (self.simulation_state, self.mesh["params"])
-        meshdata = _mesh.mesh(self.mesh['params']['cv_count'], self.mesh['params']['no_count'])
+        meshdata = _mesh.Mesh(self.mesh['params']['cv_count'], self.mesh['params']['no_count'])
         meshdata.set_nodescoord_nd(self.mesh['coordinates'])
         face2cell = conn.indexindirection(self.mesh['connectivity']['cvofa']['cvofa'])
         face2node = conn.elem_connectivity()

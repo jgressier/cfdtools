@@ -151,7 +151,7 @@ class reader(api._files):
 
     def export_mesh(self):
         api.io.print('std',f'> export gmsh mesh to cfdtools mesh data')
-        meshdata = _mesh.mesh(nnode=len(self._coords[0]))
+        meshdata = _mesh.Mesh(nnode=len(self._coords[0]))
         meshdata.set_nodescoord_xyz(*self._coords)
         # meshdata.set_face2node(self.mesh['connectivity']['noofa'])
         cellconn = _conn.elem_connectivity()

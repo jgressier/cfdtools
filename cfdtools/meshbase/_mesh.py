@@ -75,7 +75,7 @@ class submeshmark():
     def __str__(self):
         return f"{self.name:12} ({self.geodim}): {self.index}"
 
-class mesh():
+class Mesh():
     """versatile mesh object
 
     nodes are compulsory for a valid mesh
@@ -205,7 +205,17 @@ class mesh():
     
     def exportmark_asmesh(self, name):
         meshmark = self.seekmark(name)
-        newmesh = mesh()
+        newmesh = Mesh()
+
+    def export_extruded(self, 
+                        direction = np.array([0., 0., 1.]),
+                        range=[0., 1.], 
+                        domain="fluid"):
+        extrude_range = np.array(range)
+        nrange = extrude_range.size
+        assert nrange > 1, "extrusion only possible for at least 2 planes"
+        newmesh = Mesh(ncell=self.ncell*nrange, nnode=self.nnode*nrange)
+        return newmesh
  
     def set_params(self, params):
         self._params = params

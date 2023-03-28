@@ -49,7 +49,7 @@ class Cube():
 
 
     def export_mesh(self):
-        meshdata = _mesh.mesh(ncell=self.ncell, nnode=self.nnode)
+        meshdata = _mesh.Mesh(ncell=self.ncell, nnode=self.nnode)
         # set cell connectivity
         cell2node = conn.elem_connectivity()
         hexanode, ielem = self._elems()
