@@ -215,6 +215,11 @@ class Mesh():
         nrange = extrude_range.size
         assert nrange > 1, "extrusion only possible for at least 2 planes"
         newmesh = Mesh(ncell=self.ncell*nrange, nnode=self.nnode*nrange)
+        # extrude nodes
+        
+        # extrude cells
+        # extrude faces if any
+        # extrude/extend marks
         return newmesh
  
     def set_params(self, params):
