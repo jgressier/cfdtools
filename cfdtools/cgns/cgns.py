@@ -59,7 +59,7 @@ class cgnszone():
             # extract cell connectivity only
             if ele.elem_dim[etype] == self._geodim:
                 #print(elements["ElementRange/ data"][:])
-                index = conn.indexlist(range=elements["ElementRange/ data"][:])
+                index = conn.indexlist(range=elements["ElementRange/ data"][:]-1)
                 econ = elements["ElementConnectivity/ data"][:].reshape((-1,ele.nnode_elem[etype]))-1
                 #print(econ)
                 cellconn.add_elems(etype, econ, index)
