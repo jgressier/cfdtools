@@ -6,9 +6,11 @@ import cfdtools.api as api
 import cfdtools.ic3 as ic3 #.reader_legacy # needed to map readers
 import cfdtools.gmsh as gmsh
 import cfdtools.cgns as cgns
+import cfdtools.vtk as vtk
 import cfdtools.meshbase.simple as simplemesh
 import cfdtools.probes.plot as probeplot
 import cfdtools.probes.data as probedata
+import numpy as np
 
 # To add a command line tool, just add the function pyproject.toml in section
 # [tool.poetry.scripts]
@@ -31,6 +33,8 @@ class cli_argparser():
         self.add_argument('filename', help="file")
         self.add_argument('--fmt', help="input format", choices=self._available_readers)
         self.add_argument('--outpath', help="output folder")
+        self.add_argument("--check", action="store_true", dest="check", help="process some checks")
+        self.add_argument("--info", action="store_true", dest="info", help="print information")
 
     def addarg_prefix(self):
         self.add_argument('prefix', help="prefix of files")
@@ -39,6 +43,10 @@ class cli_argparser():
         self.add_argument('--remove-node-data', nargs='+', help="list of data to remove",)
         self.add_argument('--remove-face-data', nargs='+', help="list of data to remove",)
         self.add_argument('--remove-cell-data', nargs='+', help="list of data to remove",)
+
+    def addarg_transform(self):
+        self.add_argument('--extrude', type=int, help="total number of planes",)
+        self.add_argument('--scale', nargs=3, type=float, help="x, y, z scaling coefficients00",)
 
     def parse_cli_args(self, argv):
         self._args = self._parser.parse_args(argv)
@@ -64,6 +72,7 @@ class cli_argparser():
         self._fileformat = thisfmt[0]
         self._reader = api._fileformat_map[self._fileformat].get('reader', None)
         self._writer = api._fileformat_map[self._fileformat].get('writer', None)
+
 
 def info(argv=None):
     """call specific printinfo function from reader
@@ -100,6 +109,7 @@ def write_generic(argv, ext, writer):
     parser = cli_argparser()
     parser.addarg_filenameformat()
     parser.addarg_data()
+    parser.addarg_transform()
     parser.parse_cli_args(argv)
     parser.parse_filenameformat()
     #
@@ -122,8 +132,15 @@ def write_generic(argv, ext, writer):
     file.change_suffix(ext)
     if file.find_safe_newfile() > 0:
         api.io.print("std","change output to safe new name "+file.filename)
+    if parser.args().extrude:
+        cfdmesh = cfdmesh.export_extruded(extrude=np.linspace(0., 1., parser.args().extrude+1, endpoint=True))
+    if parser.args().scale:
+        cfdmesh.scale(parser.args().scale)
+    if parser.args().info:
+        cfdmesh.printinfo()
     output = writer(cfdmesh)
     output.write_data(file.filename)
+    api.io.print('std', f"file {file.filename} written")
     return True # needed for pytest
 
 def write_ic3v2(argv=None):
@@ -133,6 +150,10 @@ def write_ic3v2(argv=None):
 def write_ic3v3(argv=None):
     cli_header("cfdwrite_ic3v3")
     return write_generic(argv, '.ic3', ic3.writerV3.writer)
+
+def write_vtk(argv=None):
+    cli_header("cfdwrite_vtk")
+    return write_generic(argv, '.vtu', vtk.vtkMesh)
 
 def writecube(argv=None):
     cli_header("cfdwritecube")

@@ -20,9 +20,9 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install build twine
         python -m build
-    - name: Publish on testpypi
-      run: |
-        twine upload -r testpypi dist/*
-      env:
-        TWINE_PASSWORD: ${{ secrets.TESTPYPI }}
-        TWINE_USERNAME: __token__
+    # - name: Publish on testpypi
+    #   run: |
+    #     twine upload -r testpypi dist/*
+    #   env:
+    #     TWINE_PASSWORD: ${{ secrets.TESTPYPI }}
+    #     TWINE_USERNAME: __token__

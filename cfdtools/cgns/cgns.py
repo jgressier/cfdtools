@@ -1,7 +1,7 @@
 # cgns.py
 from cfdtools.api import io, fileformat_reader
 from cfdtools.hdf5 import h5file, h5_str
-from cfdtools.meshbase._mesh import mesh, submeshmark
+from cfdtools.meshbase._mesh import Mesh, submeshmark
 import cfdtools.meshbase._connectivity as conn
 import cfdtools.meshbase._elements as ele
 import numpy as np
@@ -133,7 +133,7 @@ class cgnsMesh():
             name = zone
         cgzone = cgnszone(self._zones[name], self._geodim)
         io.print('std', f"Parse zone {name} ({self._geodim}D) ncell: {cgzone.ncell}, nnode: {cgzone.nnode}")
-        meshdata = mesh(ncell=cgzone.ncell, nnode=cgzone.nnode)
+        meshdata = Mesh(ncell=cgzone.ncell, nnode=cgzone.nnode)
         # get coordinates
         meshdata.set_nodescoord_xyz(*cgzone.coords())
         # # cell connectivity

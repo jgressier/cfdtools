@@ -338,3 +338,37 @@ class elem_connectivity():
         
         faces_neighbour = __build_face_and_neighbour()
         return __find_duplicates(faces_neighbour)
+
+    def nodelist(self):
+        """create list of (unique) nodes from element connectivity"""
+        nodeset = set()
+        for _, econ in self.items():
+            nodeset.update(econ['elem2node'].ravel().tolist())
+        return list(nodeset)
+
+
+    def extrude(self, nplanes: int, inodeshift: int):
+        """_summary_
+
+        Args:
+            n (int): number of planes
+            inodeshift (int): number of nodes of each plane
+        """
+        assert nplanes > 1
+        ncell = nplanes-1
+        newcon = elem_connectivity()
+        for etype, econ in self.items():
+            nelem = econ['elem2node'].shape[0]
+            elemcon = np.tile(econ['elem2node'], (ncell, 2))
+            fnnode = ele.nnode_elem[etype]
+            elemcon[:,fnnode:2*fnnode] += inodeshift 
+            for i in range(ncell):
+                elemcon[i*nelem:(i+1)*nelem,:] += i*inodeshift 
+            #print(etype, econ['elem2node'], elemcon)
+            index = np.tile(econ['index'].list(), (ncell))
+            for i in range(ncell):
+                index[i*nelem:(i+1)*nelem] += i*inodeshift
+            newcon.add_elems(ele.extruded_face[etype], 
+                             elemcon, 
+                             indexlist(list=index.tolist()))
+        return newcon
