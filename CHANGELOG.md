@@ -21,6 +21,10 @@ pip show cfdtools
 #### new
 
 - cgns import (hdf5 direct reader)
+- extrusion of 2D mesh
+- `cfdwrite_vtk` command line
+- new option `--extrude n` to command lines
+- new option `--scale x y z` to command lines
   
 ### [0.3.3](https://pypi.org/project/cfdtools/) (2023-03-13)
 
@@ -67,6 +71,7 @@ pip show cfdtools
 
 - command line `cfdinfo`
 - new `v2 IC3` writer
+
 #### fixed
 
 - v2 IC3 reader 

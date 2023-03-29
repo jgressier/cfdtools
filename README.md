@@ -13,10 +13,10 @@ cfdtools
 
 ### Features
 
-- IC3 v2 or v3 reader
-- IC3 v2 or v3 writer
-- generic format command line: `cfdinfo`, `cfdwrite_ic3v3`
-- specific IC3 command line: `ic3brief`
+    - IC3 v2 or v3 reader
+    - IC3 v2 or v3 writer
+    - generic format command line: `cfdinfo`, `cfdwrite_ic3v3`
+    - specific IC3 command line: `ic3brief`
 
 ### Installation and usage
 
