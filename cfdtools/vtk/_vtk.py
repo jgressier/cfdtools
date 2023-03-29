@@ -9,6 +9,8 @@ import cfdtools.api as api
 
 
 map_ele = {
+    'bar2'  : CellType.LINE,
+    'quad4' : CellType.QUAD,
     'hexa8' : CellType.HEXAHEDRON
 }
 
@@ -27,7 +29,7 @@ class vtkMesh():
             for etype, elem2node in self._mesh._cell2node.items() }
         self._grid = pv.UnstructuredGrid(self._celldict, self._coords)
 
-    def write_mesh(self, filename):
+    def write_data(self, filename):
         self._grid.save(filename)
 
     def pyvista_grid(self):

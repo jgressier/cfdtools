@@ -38,6 +38,7 @@ ic3probe_plotline = 'cfdtools._cli:ic3probe_plotline'
 cfdwrite_ic3v2 = 'cfdtools._cli:write_ic3v2'
 cfdwrite_ic3v3 = 'cfdtools._cli:write_ic3v3'
 cfdwrite_ic3 = 'cfdtools._cli:write_ic3v3'
+cfdwrite_vtk = 'cfdtools._cli:write_vtk'
 
 [project.optional-dependencies]
 dev = [ 

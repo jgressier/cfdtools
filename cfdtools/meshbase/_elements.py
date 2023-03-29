@@ -2,18 +2,19 @@ import cfdtools.api as api
 
 geodim = { 'point': 0, 'line':1, 'surface':2, 'volume':3}
 
-elem_properties = [ # itype, name, nnode, geodim, 
-    (0, 'node1',  1, 0),
-    (0, 'bar2',   2, 1),
-    (0, 'tri3',   3, 2),
-    (0, 'quad4',  4, 2),
-    (0, 'tetra4', 4, 3),
-    (0, 'hexa8',  8, 3),
+elem_properties = [ # itype, name, nnode, geodim, extruded
+    (0, 'node1',  1, 0, 'bar2'),
+    (0, 'bar2',   2, 1, 'quad4'),
+    (0, 'tri3',   3, 2, 'penta6'),
+    (0, 'quad4',  4, 2, 'hexa8'),
+    (0, 'tetra4', 4, 3, 'none'),
+    (0, 'hexa8',  8, 3, 'none'),
     ]
 
-elem_dim = { e: d for _, e, _, d in elem_properties }
-nnode_elem = { e: n for _, e, n, _ in elem_properties}
-face_from_nnode = { n: e for _, e, n, d in elem_properties if d <= 2 }
+elem_dim = { e: d for _, e, _, d, _ in elem_properties }
+nnode_elem = { e: n for _, e, n, _, _ in elem_properties}
+face_from_nnode = { n: e for _, e, n, d, _ in elem_properties if d <= 2 }
+extruded_face = { e: ex for _, e, n, d, ex in elem_properties if d <= 2 }
 
 # define list of faces from an element type
 #   faces are defined with inward normal 

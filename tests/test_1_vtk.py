@@ -12,7 +12,7 @@ def test_cube():
     cube = sm.Cube(10, 10, 10)
     mesh = cube.export_mesh()
     vtkmesh = vtkMesh(mesh)
-    vtkmesh.write_mesh(_builddir/"cube.vtu")
+    vtkmesh.write_data(_builddir/"cube.vtu")
 
 # @pytest.mark.parametrize("filename", ["cavity-degen.hdf"])
 # def test_reader(filename):

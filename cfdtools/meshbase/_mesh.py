@@ -130,10 +130,10 @@ class Mesh():
         return np.column_stack(coords) if ndarray else coords
     
     def set_cell2node(self, cell2node: conn.elem_connectivity):
-        """set cell to node connectivity as a dict
+        """set cell to node connectivity
 
         Args:
-            cell2node (dict): dict of ndarray
+            cell2node (elem_connectivity): connectivity of cells
         """
         self._cell2node = cell2node
         self._ncell = self._cell2node.nelem
@@ -209,17 +209,47 @@ class Mesh():
 
     def export_extruded(self, 
                         direction = np.array([0., 0., 1.]),
-                        range=[0., 1.], 
+                        extrude=[0., 1.], 
                         domain="fluid"):
-        extrude_range = np.array(range)
+        extrude_range = np.array(extrude)
         nrange = extrude_range.size
         assert nrange > 1, "extrusion only possible for at least 2 planes"
         newmesh = Mesh(ncell=self.ncell*nrange, nnode=self.nnode*nrange)
+        # SHOULD CHECK DIRECTION AND MESH ORIENTATION
         # extrude nodes
-        
+        nnode = self.nnode
+        newcoords = np.tile(self.nodescoord(ndarray=True), (nrange, 1))
+        for i, s in enumerate(extrude_range):
+            newcoords[i*nnode:(i+1)*nnode, :] += s*np.array(direction)
+        newmesh.set_nodescoord_nd(newcoords)
         # extrude cells
+        newmesh.set_cell2node(self._cell2node.extrude(nrange, nnode))
         # extrude faces if any
-        # extrude/extend marks
+        # extrude/extend existing marks
+        for name, boco in self._bocos.items():
+            assert boco.nodebased(), "extrusion only possible with node marks"
+            newboco = submeshmark(boco.name)
+            newboco.geodim = boco.geodim
+            newboco.type = boco.type
+            index = np.tile(boco.index.list(), (nrange, 1))
+            for i in range(nrange):
+                index[i*nrange:(i+1)*nrange] += i*nnode
+            newboco.index = conn.indexlist(list=index)
+            newmesh.add_boco(newboco)
+        # create initial 2D domain as boco
+        newboco = submeshmark(name=domain+'0')
+        newboco.geodim = 'bdnode'
+        newboco.type = 'boundary'
+        index = self._cell2node.nodelist()
+        newboco.index = conn.indexlist(list=index)
+        newmesh.add_boco(newboco)
+        # create extruded 2D domain as boco
+        newboco = submeshmark(name=domain+'1')
+        newboco.geodim = 'bdnode'
+        newboco.type = 'boundary'
+        index = (np.array(index)+(nrange-1)*nnode).tolist()
+        newboco.index = conn.indexlist(list=index)
+        newmesh.add_boco(newboco)
         return newmesh
  
     def set_params(self, params):
@@ -321,3 +351,12 @@ class Mesh():
         '''
         newx, newy, newz = fmorph(self._nodes['x'], self._nodes['y'], self._nodes['z'])
         self.set_nodescoord_xyz(newx, newy, newz)
+
+    def scale(self, scale_xyz):
+        '''
+        scale x, y, z positions 
+        '''
+        self.set_nodescoord_xyz(
+            self._nodes['x']*scale_xyz[0],
+            self._nodes['y']*scale_xyz[1],
+            self._nodes['z']*scale_xyz[2])

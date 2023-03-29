@@ -28,3 +28,9 @@ def test_ic3writev2(args):
 def test_ic3writev3(args):
     _builddir.mkdir(exist_ok = True)
     assert cli.write_ic3v3(args+["--outpath"]+[str(_builddir)])
+
+@pytest.mark.parametrize("args", 
+                         [["--fmt", "CGNS", "./tests/data/cavity-degen.hdf"] ])
+def test_vtkwrite(args):
+    _builddir.mkdir(exist_ok = True)
+    assert cli.write_vtk(args+["--outpath"]+[str(_builddir)])
