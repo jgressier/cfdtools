@@ -14,13 +14,13 @@ class indexlist:
 
     __available_types = ['list', 'range']
 
-    def __init__(self, range=None, list=None):
+    def __init__(self, irange=None, ilist=None):
         self._type = None
-        assert (range is None) or (list is None)
-        if range is not None:
-            self.set_range(range)
-        if list is not None:
-            self.set_list(list)
+        assert (irange is None) or (ilist is None)
+        if irange is not None:
+            self.set_range(irange)
+        if ilist is not None:
+            self.set_list(ilist)
 
     @property
     def type(self):
@@ -67,9 +67,9 @@ class indexlist:
 
     def shift(self, i):
         if self._type == 'range':
-            return indexlist(range=[self._range[0] + i, self._range[1] + i])
+            return indexlist(irange=[self._range[0] + i, self._range[1] + i])
         elif self._type == 'list':
-            return indexlist(list=[j + i for j in self._list])
+            return indexlist(ilist=[j + i for j in self._list])
 
     def compress(self):
         """try to make it a range"""
@@ -85,7 +85,7 @@ class indexlist:
 
     def __add__(self, other):
         # TODO: may be optimized to keep ranges
-        return indexlist(list=self.list() + other.list())
+        return indexlist(ilist=self.list() + other.list())
 
     def __str__(self):
         if self._type == 'range':
@@ -165,7 +165,7 @@ class elem_connectivity:
     def add_elems(self, etype: str, elem2node: np.ndarray, index: indexlist = None):
         dim = elem2node.shape[0]
         ind = (
-            indexlist(range=[self._nelem, self._nelem + dim - 1])
+            indexlist(irange=[self._nelem, self._nelem + dim - 1])
             if index is None
             else index
         )
@@ -242,7 +242,7 @@ class elem_connectivity:
             index = np.argwhere(nodeperface == facesize)
             zind = zconn._index[index]
             nodes = np.hstack(tuple(zconn._value[zind + i] for i in range(facesize)))
-            self.add_elems(typef, nodes, indexlist(list=index))
+            self.add_elems(typef, nodes, indexlist(ilist=index))
 
     # @profile
     def exportto_compressedindex(self) -> compressed_listofindex:
@@ -432,6 +432,6 @@ class elem_connectivity:
             for i in range(ncell):
                 index[i * nelem : (i + 1) * nelem] += i * inodeshift
             newcon.add_elems(
-                ele.extruded_face[etype], elemcon, indexlist(list=index.tolist())
+                ele.extruded_face[etype], elemcon, indexlist(ilist=index.tolist())
             )
         return newcon

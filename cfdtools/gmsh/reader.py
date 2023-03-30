@@ -167,7 +167,7 @@ class reader(api._files):
                 boco.geodim = 'bdnode'
                 boco.properties['type'] = bc_dict['type']
                 boco.properties['periodic_transform'] = bc_dict['periodic_transform']
-                boco.index = _conn.indexlist(list=bc_dict['slicing'])
+                boco.index = _conn.indexlist(ilist=bc_dict['slicing'])
                 meshdata.add_boco(boco)
         # meshdata.set_celldata(self.variables['cells'])
         # meshdata.set_nodedata(self.variables['nodes'])

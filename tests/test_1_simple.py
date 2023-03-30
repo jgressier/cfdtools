@@ -1,10 +1,10 @@
-import pytest
+# import pytest
 import cfdtools.meshbase.simple as simplemesh
 from pathlib import Path
-import filecmp
+# import filecmp
 
-_datadir = Path("./tests/data")
-_builddir = Path("./tests/build")
+# _datadir = Path("./tests/data")
+# _builddir = Path("./tests/build")
 
 
 def test_cube_mini():

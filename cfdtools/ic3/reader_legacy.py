@@ -351,7 +351,7 @@ class reader(binreader):
             boco = _mesh.submeshmark(h.name)
             boco.type = zonekind2type[h.idata[0]]
             boco.geodim = 'intface' if boco.type == 'internal' else 'bdface'
-            boco.index = conn.indexlist(range=[h.idata[1], h.idata[2]])
+            boco.index = conn.indexlist(irange=[h.idata[1], h.idata[2]])
             boco.properties["periodic_transform"] = h.rdata
             #
             famin, famax = boco.index.range()

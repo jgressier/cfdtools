@@ -19,17 +19,17 @@ _builddir = Path("./tests/build")
     ],
 )
 def test_reader(filename):
-    input = gmsh.reader(_datadir.joinpath(filename))
-    input.read_data()
-    rmesh = input.export_mesh()
+    gmesh = gmsh.reader(_datadir.joinpath(filename))
+    gmesh.read_data()
+    rmesh = gmesh.export_mesh()
     assert rmesh.check()
 
 
 @pytest.mark.parametrize("filename", ["box3d-v22.msh", "box3d-v41.msh", "test_3d.msh"])
 def test_convert_ic3(filename):
-    input = gmsh.reader(_datadir.joinpath(filename))
-    input.read_data()
-    rmesh = input.export_mesh()
+    gmesh = gmsh.reader(_datadir.joinpath(filename))
+    gmesh.read_data()
+    rmesh = gmesh.export_mesh()
     ic3write = ic3writer.writer(rmesh)
     _builddir.mkdir(exist_ok=True)
     outfile = api._files(_builddir / Path(filename))

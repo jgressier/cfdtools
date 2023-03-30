@@ -222,7 +222,7 @@ class Mesh:
                     )
                 ]
                 boco.geodim = 'bdface'
-                boco.index = conn.indexlist(list=listface_index)
+                boco.index = conn.indexlist(ilist=listface_index)
                 # print(boco.name, nodeset, boco.index.list())
 
     def seekmark(self, name: str) -> submeshmark:
@@ -233,6 +233,7 @@ class Mesh:
     def exportmark_asmesh(self, name):
         meshmark = self.seekmark(name)
         newmesh = Mesh()
+        return newmesh
 
     def export_extruded(
         self, direction=np.array([0.0, 0.0, 1.0]), extrude=[0.0, 1.0], domain="fluid"
@@ -260,21 +261,21 @@ class Mesh:
             index = np.tile(boco.index.list(), (nrange, 1))
             for i in range(nrange):
                 index[i * nrange : (i + 1) * nrange] += i * nnode
-            newboco.index = conn.indexlist(list=index)
+            newboco.index = conn.indexlist(ilist=index)
             newmesh.add_boco(newboco)
         # create initial 2D domain as boco
         newboco = submeshmark(name=domain + '0')
         newboco.geodim = 'bdnode'
         newboco.type = 'boundary'
         index = self._cell2node.nodelist()
-        newboco.index = conn.indexlist(list=index)
+        newboco.index = conn.indexlist(ilist=index)
         newmesh.add_boco(newboco)
         # create extruded 2D domain as boco
         newboco = submeshmark(name=domain + '1')
         newboco.geodim = 'bdnode'
         newboco.type = 'boundary'
         index = (np.array(index) + (nrange - 1) * nnode).tolist()
-        newboco.index = conn.indexlist(list=index)
+        newboco.index = conn.indexlist(ilist=index)
         newmesh.add_boco(newboco)
         return newmesh
 
@@ -323,11 +324,11 @@ class Mesh:
         assert min(newindex) == 0, "inconsistency: there must not be -1 index"
         # reindex boco
         for _, boco in self._bocos.items():
-            boco.index = conn.indexlist(list=newindex[boco.index.list()])
+            boco.index = conn.indexlist(ilist=newindex[boco.index.list()])
             boco.index.compress()  # try to (and must) make it a range
         # reindex boundary faces
         for _, fdict in self._faces['boundary']['face2node'].items():
-            fdict['index'] = conn.indexlist(list=newindex[fdict['index'].list()])
+            fdict['index'] = conn.indexlist(ilist=newindex[fdict['index'].list()])
             # fdict['index'].compress() # not expected
         if 'face2cell' in self._faces['boundary']:
             self._faces['boundary']['face2cell'].conn = self._faces['boundary'][

@@ -12,7 +12,7 @@ def test_indexlist_initlist0():
 
 def test_indexlist_initlist1():
     ilist = [10, 12, 15, 20]
-    iconn = conn.indexlist(list=ilist)
+    iconn = conn.indexlist(ilist=ilist)
     assert iconn.list() == ilist  # test property
 
 

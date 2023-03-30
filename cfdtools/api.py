@@ -64,12 +64,12 @@ class api_output:
     _available = list(_prefix.keys())
     _default = ['internal', 'error', 'warning', 'std']
 
-    def __init__(self, list=None):
+    def __init__(self, iolist=None):
         self._api_output = []
-        if list is None:
+        if iolist is None:
             self.set_default()
         else:
-            self.set_modes(list)
+            self.set_modes(iolist)
 
     def set_modes(self, modes):
         modelist = modes if type(modes) is list else [modes]
@@ -119,8 +119,8 @@ class _files:
         s = '  filename: ' + self.filename
         return s
 
-    def change_dir(self, dir):
-        self._path = Path(dir) / Path(self._path.name)
+    def change_dir(self, newdir):
+        self._path = Path(newdir) / Path(self._path.name)
 
     def remove_dir(self):
         self._path = Path(self._path.name)

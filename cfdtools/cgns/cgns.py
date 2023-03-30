@@ -56,7 +56,7 @@ class cgnszone:
             # extract cell connectivity only
             if ele.elem_dim[etype] == self._geodim:
                 # print(elements["ElementRange/ data"][:])
-                index = conn.indexlist(range=elements["ElementRange/ data"][:] - 1)
+                index = conn.indexlist(irange=elements["ElementRange/ data"][:] - 1)
                 econ = (
                     elements["ElementConnectivity/ data"][:].reshape(
                         (-1, ele.nnode_elem[etype])
@@ -79,7 +79,7 @@ class cgnszone:
         boco.properties['periodic_transform'] = None
         assert "PointList" in BC.keys(), "only PointList implemented"
         nodelist = (BC["PointList/ data"][:] - 1).ravel().tolist()
-        boco.index = conn.indexlist(list=nodelist)  # must start at 0
+        boco.index = conn.indexlist(ilist=nodelist)  # must start at 0
         if boco.index.size == self.nnode:
             boco.type = 'internal'
         return boco

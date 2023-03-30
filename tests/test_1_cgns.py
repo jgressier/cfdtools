@@ -1,6 +1,6 @@
 import cfdtools.cgns as cgns
-import cfdtools.ic3.writerV3 as ic3writer
-import cfdtools.api as api
+#import cfdtools.ic3.writerV3 as ic3writer
+#import cfdtools.api as api
 from pathlib import Path
 import pytest
 
@@ -10,9 +10,9 @@ _builddir = Path("./tests/build")
 
 @pytest.mark.parametrize("filename", ["cavity-degen.hdf"])
 def test_reader(filename):
-    input = cgns.cgnsMesh(_datadir.joinpath(filename))
-    input.read_data()
-    rmesh = input.export_mesh()
+    cgmesh = cgns.cgnsMesh(_datadir.joinpath(filename))
+    cgmesh.read_data()
+    rmesh = cgmesh.export_mesh()
     assert rmesh.check()
 
 
