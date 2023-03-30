@@ -4,8 +4,9 @@ import cfdtools.api as api
 from pathlib import Path
 import pytest
 
-_datadir=Path("./tests/data")
-_builddir=Path("./tests/build")
+_datadir = Path("./tests/data")
+_builddir = Path("./tests/build")
+
 
 @pytest.mark.parametrize("filename", ["cavity-degen.hdf"])
 def test_reader(filename):
@@ -13,6 +14,7 @@ def test_reader(filename):
     input.read_data()
     rmesh = input.export_mesh()
     assert rmesh.check()
+
 
 # @pytest.mark.parametrize("filename", ["cavity-degen.hdf"
 #     input = cgns.reader(_datadir.joinpath(filename))

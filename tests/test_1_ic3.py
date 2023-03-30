@@ -5,10 +5,13 @@ import cfdtools.ic3.writerV3 as ic3wv3
 from pathlib import Path
 import filecmp
 
-_datadir=Path("./tests/data")
-_builddir=Path("./tests/build")
+_datadir = Path("./tests/data")
+_builddir = Path("./tests/build")
 
-@pytest.mark.parametrize("filename", ["Box3x3x2v2.ic3", "Box3x3x2v3.ic3", "nrg-tinycube-v2.ic3"])
+
+@pytest.mark.parametrize(
+    "filename", ["Box3x3x2v2.ic3", "Box3x3x2v3.ic3", "nrg-tinycube-v2.ic3"]
+)
 def test_reader(filename):
     ic3mesh = ic3reader.reader(_datadir.joinpath(filename))
     ic3mesh.read_data()
@@ -16,9 +19,10 @@ def test_reader(filename):
     rmesh = ic3mesh.export_mesh()
     assert rmesh.check()
 
+
 @pytest.mark.parametrize("filename", ["Box3x3x2v2.ic3", "nrg-tinycube-v2.ic3"])
 def test_writer_v2_litend(filename):
-    _builddir.mkdir(exist_ok = True)
+    _builddir.mkdir(exist_ok=True)
     basefile = _datadir / filename
     outfile = _builddir / filename
     ic3read = ic3reader.reader(basefile)
@@ -28,6 +32,7 @@ def test_writer_v2_litend(filename):
     ic3write = ic3wv2.writer(rmesh, endian='little')
     ic3write.write_data(outfile)
     assert filecmp.cmp(basefile, outfile)
+
 
 # @pytest.mark.parametrize("filename", ["sam_sd3.ic3"])
 # def test_writer_v3_litend(filename):
