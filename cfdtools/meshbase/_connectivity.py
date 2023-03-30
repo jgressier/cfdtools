@@ -63,7 +63,10 @@ class indexlist:
     def set_list(self, ilist):
         self._delete()
         self._type = 'list'
-        self._list = ilist
+        if isinstance(ilist, list):
+            self._list = ilist
+        elif isinstance(ilist, np.ndarray):
+            self._list = ilist.tolist()
 
     def shift(self, i):
         if self._type == 'range':
