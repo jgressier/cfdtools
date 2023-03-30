@@ -61,6 +61,7 @@ class indexlist:
             api.error_stop(f"unknown type: {self._type}")
 
     def set_list(self, ilist):
+        assert isinstance(ilist, list)
         self._delete()
         self._type = 'list'
         self._list = ilist

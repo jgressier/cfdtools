@@ -210,7 +210,6 @@ class Mesh:
 
         assert 'boundary' in self._faces.keys()
         index_face_tuples = self._faces['boundary']['face2node'].index_elem_tuples()
-        # print(index_face_tuples)
         for _, boco in self._bocos.items():
             if boco.nodebased():
                 nodeset = set(boco.index.list())
@@ -244,24 +243,25 @@ class Mesh:
         newmesh = Mesh(ncell=self.ncell * nrange, nnode=self.nnode * nrange)
         # SHOULD CHECK DIRECTION AND MESH ORIENTATION
         # extrude nodes
-        nnode = self.nnode
-        newcoords = np.tile(self.nodescoord(ndarray=True), (nrange, 1))
+        ntotnode = self.nnode
+        newcoords = np.tile(self.nodescoord(ndarray=True), (nrange,1))
         for i, s in enumerate(extrude_range):
-            newcoords[i * nnode : (i + 1) * nnode, :] += s * np.array(direction)
+            newcoords[i * ntotnode : (i + 1) * ntotnode, :] += s * np.array(direction)
         newmesh.set_nodescoord_nd(newcoords)
         # extrude cells
-        newmesh.set_cell2node(self._cell2node.extrude(nrange, nnode))
+        newmesh.set_cell2node(self._cell2node.extrude(nrange, ntotnode))
         # extrude faces if any
         # extrude/extend existing marks
-        for name, boco in self._bocos.items():
+        for _, boco in self._bocos.items():
             assert boco.nodebased(), "extrusion only possible with node marks"
             newboco = submeshmark(boco.name)
             newboco.geodim = boco.geodim
             newboco.type = boco.type
-            index = np.tile(boco.index.list(), (nrange, 1))
+            index = np.tile(boco.index.list(), (nrange))
+            nbcnode = boco.index.size
             for i in range(nrange):
-                index[i * nrange : (i + 1) * nrange] += i * nnode
-            newboco.index = conn.indexlist(ilist=index)
+                index[i * nbcnode : (i + 1) * nbcnode] += i * ntotnode
+            newboco.index = conn.indexlist(ilist=index.tolist())
             newmesh.add_boco(newboco)
         # create initial 2D domain as boco
         newboco = submeshmark(name=domain + '0')
@@ -274,7 +274,7 @@ class Mesh:
         newboco = submeshmark(name=domain + '1')
         newboco.geodim = 'bdnode'
         newboco.type = 'boundary'
-        index = (np.array(index) + (nrange - 1) * nnode).tolist()
+        index = (np.array(index) + (nrange - 1) * ntotnode).tolist()
         newboco.index = conn.indexlist(ilist=index)
         newmesh.add_boco(newboco)
         return newmesh
@@ -324,11 +324,11 @@ class Mesh:
         assert min(newindex) == 0, "inconsistency: there must not be -1 index"
         # reindex boco
         for _, boco in self._bocos.items():
-            boco.index = conn.indexlist(ilist=newindex[boco.index.list()])
+            boco.index = conn.indexlist(ilist=newindex[boco.index.list()].tolist())
             boco.index.compress()  # try to (and must) make it a range
         # reindex boundary faces
         for _, fdict in self._faces['boundary']['face2node'].items():
-            fdict['index'] = conn.indexlist(ilist=newindex[fdict['index'].list()])
+            fdict['index'] = conn.indexlist(ilist=newindex[fdict['index'].list()].tolist())
             # fdict['index'].compress() # not expected
         if 'face2cell' in self._faces['boundary']:
             self._faces['boundary']['face2cell'].conn = self._faces['boundary'][
