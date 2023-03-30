@@ -56,12 +56,12 @@ import copy as _copy
 # CharlesX variables dico
 _cxNames = ['IC3', 'ic3', 'CharlesX', 'cx', 'charlesx']
 _cxDico = {
-    'P':   'P',
-    'p':   'P',
-    'Ps':  'P',
+    'P': 'P',
+    'p': 'P',
+    'Ps': 'P',
     'rho': 'RHO',
-    'T':   'T',
-    'V':  'U',
+    'T': 'T',
+    'V': 'U',
     'Vx': 'U_X',
     'Vy': 'U_Y',
     'Vz': 'U_Z',
@@ -71,7 +71,8 @@ _cxDico = {
     'mulam_avg': 'MU_LAM_AVG',
     't_avg': 'T_AVG',
     'u_rms': 'U_RMS',
-    'u_rey': 'U_REY'}
+    'u_rey': 'U_REY',
+}
 
 # OpenFOAM variables dico (just examples, to modify ...)
 _ofNames = ['OpenFOAM', 'of', 'openfoam', 'ofoam']
@@ -82,11 +83,11 @@ _ofDico = {
     'mulam_avg': '???',
     't_avg': '???',
     'u_rms': '???',
-    'u_rey': '???'}
+    'u_rey': '???',
+}
 
 # Database with all software denominations
-_dataBase = [[_cxNames, _cxDico],
-             [_ofNames, _ofDico]]
+_dataBase = [[_cxNames, _cxDico], [_ofNames, _ofDico]]
 
 _default = 'IC3'
 
@@ -94,6 +95,7 @@ _default = 'IC3'
 # -----------------------------------------------------------------
 # DO NOT MODIFY THIS PART ...
 # -----------------------
+
 
 class _DicoVar(object):
     """
@@ -117,15 +119,16 @@ class _DicoVar(object):
                 print('---- HADES::DicoVar ----')
                 print('--> Using {} variables denomination'.format(self._softName))
         if not softOK:
-            raise ValueError('Not variable denomination database for {}'
-                             .format(software))
+            raise ValueError(
+                'Not variable denomination database for {}'.format(software)
+            )
 
     # Main class methods
     def keys(self):
         """
         return list of keys in dictionnary
         """
-        return self._dv.keys()            
+        return self._dv.keys()
 
     def get(self, var):
         """
@@ -138,7 +141,9 @@ class _DicoVar(object):
         if var in self._dv:
             return self._dv[var]
         else:
-            raise ValueError('{} variable not in {} database dictionnary'.format(var, self._softName))
+            raise ValueError(
+                '{} variable not in {} database dictionnary'.format(var, self._softName)
+            )
 
     def addVar(self, var, sVar):
         """
@@ -150,8 +155,12 @@ class _DicoVar(object):
         if var not in self._dv:
             self._dv[var] = sVar
         else:
-            raise ValueError('{} variable already in {}'.format(var, self._softName) + 'database dictionnary.\n' +'Use setVar function instead')
-        
+            raise ValueError(
+                '{} variable already in {}'.format(var, self._softName)
+                + 'database dictionnary.\n'
+                + 'Use setVar function instead'
+            )
+
     def setVar(self, var, sVar):
         """
         Set a variable name with a new denomination in the selected software database
@@ -165,7 +174,9 @@ class _DicoVar(object):
             print('---- HADES::DicoVar ----')
             print('--> Changing denomination of {} into {}'.format(var, sVar))
         else:
-            raise ValueError('{} variable not in {} database dictionnary'.format(var, self._softName))
+            raise ValueError(
+                '{} variable not in {} database dictionnary'.format(var, self._softName)
+            )
 
     def printDatabase(self):
         """Print the variables denomination for the selected software"""
@@ -180,8 +191,6 @@ class _DicoVar(object):
 
     def __getitem__(self, var):
         return self.get(var)
-
-
 
 
 # The main _DicoVar variable
@@ -204,5 +213,5 @@ def printDicoVar():
     """Print the variables denominations for the selected software"""
     dicoVar.printDatabase()
 
-# -----------------------------------------------------------------
 
+# -----------------------------------------------------------------

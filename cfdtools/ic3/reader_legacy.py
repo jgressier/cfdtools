@@ -1,17 +1,27 @@
 # coding: utf8
 
 # Import modules
-#import struct
+# import struct
 import numpy as np
 import sys
 import cfdtools.api as api
 import cfdtools.meshbase._mesh as _mesh
 import cfdtools.meshbase._data as _data
 import cfdtools.meshbase._connectivity as conn
-#import cfdtools.ic3._ic3 as ic3b
-from cfdtools.ic3._ic3 import binreader, type2nbytes, restartSectionHeader, ic3_restart_codes, BinaryRead, zonekind2type, properties_ugpcode
+
+# import cfdtools.ic3._ic3 as ic3b
+from cfdtools.ic3._ic3 import (
+    binreader,
+    type2nbytes,
+    restartSectionHeader,
+    ic3_restart_codes,
+    BinaryRead,
+    zonekind2type,
+    properties_ugpcode,
+)
 
 ###################################################################################################
+
 
 @api.fileformat_reader('IC3', '.ic3')
 class reader(binreader):
@@ -29,29 +39,31 @@ class reader(binreader):
         self.ic3_version = -1
 
     def __str__(self):
-        s = '    filename: '+self.filename
-        s+= '\n   simulation: '+str(list(self.simulation_state.keys()))
-        s+= '\n    mesh keys: '+str(list(self.mesh.keys()))
-        s+= '\nvariable keys: '+str(list(self.variables.keys()))
+        s = '    filename: ' + self.filename
+        s += '\n   simulation: ' + str(list(self.simulation_state.keys()))
+        s += '\n    mesh keys: ' + str(list(self.mesh.keys()))
+        s += '\nvariable keys: ' + str(list(self.variables.keys()))
         return s
 
     def printinfo(self):
         print(self)
         print("- mesh properties")
-        for key,item in self.mesh.items():
-            if isinstance(item,dict):
-                for key2,item2 in item.items():
-                    if isinstance(item2,dict):
-                        for key3,item3 in item2.items():
-                            api._printreadable('  mesh.'+key+'.'+key2+'.'+key3, item3)
+        for key, item in self.mesh.items():
+            if isinstance(item, dict):
+                for key2, item2 in item.items():
+                    if isinstance(item2, dict):
+                        for key3, item3 in item2.items():
+                            api._printreadable(
+                                '  mesh.' + key + '.' + key2 + '.' + key3, item3
+                            )
                     else:
-                        api._printreadable('  mesh.'+key+'.'+key2, item2)
+                        api._printreadable('  mesh.' + key + '.' + key2, item2)
             else:
-                api._printreadable('  mesh.'+key, item)
+                api._printreadable('  mesh.' + key, item)
         print("- variable properties")
-        for key,item in self.variables.items():
-            for key2,value in item.items():
-                api._printreadable('variables.'+key+'.'+key2, value)
+        for key, item in self.variables.items():
+            for key2, value in item.items():
+                api._printreadable('variables.' + key + '.' + key2, value)
                 # for key3,value3 in value.items():
                 #     print('variables.'+key+'.'+key2+'.'+key3+':'+str(type(value3)))
 
@@ -63,13 +75,13 @@ class reader(binreader):
                   the lot of variables stored in the restart file
                   information on the state of the simulation
         '''
-        api.io.print('std',"READER RESTART IC3")
+        api.io.print('std', "READER RESTART IC3")
 
-        if not self.exists(): #pragma: no cover
-            api.error("Fatal error. File %s cannot be found."%(self.filename))
+        if not self.exists():  # pragma: no cover
+            api.error("Fatal error. File %s cannot be found." % (self.filename))
 
         # Open the file for binary reading
-        api.io.print('debug','opening ',self.filename)
+        api.io.print('debug', 'opening ', self.filename)
         self.fid = open(self.filename, "rb")
 
         api.io.print('std', "binary file header")
@@ -89,8 +101,10 @@ class reader(binreader):
         del self.fid
 
     def export_mesh(self):
-        #return self.mesh["coordinates"], self.mesh["connectivity"]["e2v"], self.mesh["bocos"], self.variables["nodes"], self.variables["cells"], (self.simulation_state, self.mesh["params"])
-        meshdata = _mesh.Mesh(self.mesh['params']['cv_count'], self.mesh['params']['no_count'])
+        # return self.mesh["coordinates"], self.mesh["connectivity"]["e2v"], self.mesh["bocos"], self.variables["nodes"], self.variables["cells"], (self.simulation_state, self.mesh["params"])
+        meshdata = _mesh.Mesh(
+            self.mesh['params']['cv_count'], self.mesh['params']['no_count']
+        )
         meshdata.set_nodescoord_nd(self.mesh['coordinates'])
         face2cell = conn.indexindirection(self.mesh['connectivity']['cvofa']['cvofa'])
         face2node = conn.elem_connectivity()
@@ -117,156 +131,233 @@ class reader(binreader):
         '''
 
         # Initialize the mesh
-        self.mesh = {"params":{"no_count":0, "fa_count":0, "cv_count":0, "noofa_count":0, "nboco":0},
-                     "connectivity":{"noofa":{}, "cvofa":{}, "nkeys":0},
-                     "coordinates":None,
-                     "bocos":{"nfa_b":0, "nfa_bp":0},
-                     "partition":None}
+        self.mesh = {
+            "params": {
+                "no_count": 0,
+                "fa_count": 0,
+                "cv_count": 0,
+                "noofa_count": 0,
+                "nboco": 0,
+            },
+            "connectivity": {"noofa": {}, "cvofa": {}, "nkeys": 0},
+            "coordinates": None,
+            "bocos": {"nfa_b": 0, "nfa_bp": 0},
+            "partition": None,
+        }
 
         # Get the header
         h = restartSectionHeader()
-        if (not h.readVar(self.fid, self.byte_swap,["UGP_IO_NO_FA_CV_NOOFA_COUNTS"])): exit()
+        if not h.readVar(self.fid, self.byte_swap, ["UGP_IO_NO_FA_CV_NOOFA_COUNTS"]):
+            exit()
 
         # Store the size informations at the right place
         self.mesh["params"]["no_count"] = h.idata[0]
         self.mesh["params"]["fa_count"] = h.idata[1]
         self.mesh["params"]["cv_count"] = h.idata[2]
         self.mesh["params"]["noofa_count"] = h.idata[3]
-        api.io.print("std", "mesh with {} cells, {} faces and {} nodes".format(h.idata[2], h.idata[1], h.idata[0]))
+        api.io.print(
+            "std",
+            "mesh with {} cells, {} faces and {} nodes".format(
+                h.idata[2], h.idata[1], h.idata[0]
+            ),
+        )
         del h
 
         # Integrity check
         if self.check_integrity:
             # Check the restart is whole by counting the global ids of no, fa and cv
             # For nodes
-            api.io.print('std', "\t Checking nodes integrity .."); sys.stdout.flush()
+            api.io.print('std', "\t Checking nodes integrity ..")
+            sys.stdout.flush()
             h = restartSectionHeader()
-            if(not h.readVar(self.fid, self.byte_swap,["UGP_IO_NO_CHECK"])): exit()
+            if not h.readVar(self.fid, self.byte_swap, ["UGP_IO_NO_CHECK"]):
+                exit()
 
             assert h.idata[0] == self.mesh["params"]["no_count"]
             assert h.id[0] == ic3_restart_codes["UGP_IO_NO_CHECK"]
             nodes_id = np.empty((self.mesh["params"]["no_count"],), dtype=np.int32)
-            for loopi in range(self.mesh["params"]["no_count"]):  # xrange to range (python3 portage)
+            for loopi in range(
+                self.mesh["params"]["no_count"]
+            ):  # xrange to range (python3 portage)
                 s = BinaryRead(self.fid, "i", self.byte_swap, type2nbytes["int32"])
                 nodes_id[loopi] = s[0]
             assert np.allclose(nodes_id, np.arange(self.mesh["params"]["no_count"]))
-            api.io.print('std', "end of node integrity") ; sys.stdout.flush()
+            api.io.print('std', "end of node integrity")
+            sys.stdout.flush()
             del nodes_id, h
             # For faces
-            api.io.print('std', "\t Checking faces integrity .."); sys.stdout.flush()
+            api.io.print('std', "\t Checking faces integrity ..")
+            sys.stdout.flush()
             h = restartSectionHeader()
-            if(not h.readVar(self.fid, self.byte_swap,["UGP_IO_FA_CHECK"])): exit()
+            if not h.readVar(self.fid, self.byte_swap, ["UGP_IO_FA_CHECK"]):
+                exit()
             faces_id = np.empty((self.mesh["params"]["fa_count"],), dtype=np.int32)
-            for loopi in range(self.mesh["params"]["fa_count"]):  # xrange to range (python3 portage)
+            for loopi in range(
+                self.mesh["params"]["fa_count"]
+            ):  # xrange to range (python3 portage)
                 s = BinaryRead(self.fid, "i", self.byte_swap, type2nbytes["int32"])
                 faces_id[loopi] = s[0]
             assert np.allclose(faces_id, np.arange(self.mesh["params"]["fa_count"]))
-            api.io.print('std', "end of face integrity"); sys.stdout.flush()
+            api.io.print('std', "end of face integrity")
+            sys.stdout.flush()
             del faces_id, h
             # For cells
-            api.io.print('std', "\t Checking cells integrity .."); sys.stdout.flush()
+            api.io.print('std', "\t Checking cells integrity ..")
+            sys.stdout.flush()
             h = restartSectionHeader()
-            if(not h.readVar(self.fid, self.byte_swap,["UGP_IO_CV_CHECK"])): exit()
+            if not h.readVar(self.fid, self.byte_swap, ["UGP_IO_CV_CHECK"]):
+                exit()
             assert h.idata[0] == self.mesh["params"]["cv_count"]
             assert h.id[0] == ic3_restart_codes["UGP_IO_CV_CHECK"]
             cells_id = np.empty((self.mesh["params"]["cv_count"],), dtype=np.int32)
-            for loopi in range(self.mesh["params"]["cv_count"]):  # xrange to range (python3 portage)
+            for loopi in range(
+                self.mesh["params"]["cv_count"]
+            ):  # xrange to range (python3 portage)
                 s = BinaryRead(self.fid, "i", self.byte_swap, type2nbytes["int32"])
                 cells_id[loopi] = s[0]
             assert np.allclose(cells_id, np.arange(self.mesh["params"]["cv_count"]))
-            api.io.print('std', "end of cell integrity"); sys.stdout.flush()
+            api.io.print('std', "end of cell integrity")
+            sys.stdout.flush()
             del cells_id, h
 
         # The two connectivities now
         #
-        #- First, NOOFA
+        # - First, NOOFA
         #
-        api.io.print('std', "\t Parsing face to node connectivity .."); sys.stdout.flush()
+        api.io.print('std', "\t Parsing face to node connectivity ..")
+        sys.stdout.flush()
         h = restartSectionHeader()
-        if (not h.readVar(self.fid, self.byte_swap,["UGP_IO_NOOFA_I_AND_V"])): exit()
+        if not h.readVar(self.fid, self.byte_swap, ["UGP_IO_NOOFA_I_AND_V"]):
+            exit()
         #
         assert h.idata[0] == self.mesh["params"]["fa_count"]
         assert h.idata[1] == self.mesh["params"]["noofa_count"]
         # Get the node count per face
         nno_per_face = np.empty((self.mesh["params"]["fa_count"],), dtype=np.int32)
-        for loopi in range(self.mesh["params"]["fa_count"]): # xrange to range (python3 portage)
+        for loopi in range(
+            self.mesh["params"]["fa_count"]
+        ):  # xrange to range (python3 portage)
             s = BinaryRead(self.fid, "i", self.byte_swap, type2nbytes["int32"])
             nno_per_face[loopi] = s[0]
         uniq, counts = np.unique(nno_per_face, return_counts=True)
         for facesize, nfacesize in zip(uniq, counts):
-            api.io.print('std',f"  {nfacesize} faces of {facesize} nodes")
+            api.io.print('std', f"  {nfacesize} faces of {facesize} nodes")
         # Initialize the proper connectivity arrays in self.mesh
-        face2node_index = np.concatenate(([0,], np.cumsum(nno_per_face)))
+        face2node_index = np.concatenate(
+            (
+                [
+                    0,
+                ],
+                np.cumsum(nno_per_face),
+            )
+        )
         face2node_value = np.zeros((np.sum(nno_per_face),), dtype=np.int64)
         assert face2node_index[0] == 0
         assert face2node_index[-2] == face2node_value.size - nno_per_face[-1]
         # Now loop on the restart file to fill the connectivities
-        for loopi in range(self.mesh["params"]["fa_count"]):  # xrange to range (python3 portage)
-            sta, sto = face2node_index[loopi], face2node_index[loopi+1]
-            s = BinaryRead(self.fid, "i"*nno_per_face[loopi], self.byte_swap, type2nbytes["int32"]*nno_per_face[loopi])
+        for loopi in range(
+            self.mesh["params"]["fa_count"]
+        ):  # xrange to range (python3 portage)
+            sta, sto = face2node_index[loopi], face2node_index[loopi + 1]
+            s = BinaryRead(
+                self.fid,
+                "i" * nno_per_face[loopi],
+                self.byte_swap,
+                type2nbytes["int32"] * nno_per_face[loopi],
+            )
             face2node_value[sta:sto] = np.asarray(s).astype(np.int64)
         face2node_index = face2node_index
         zface2node = conn.compressed_listofindex(face2node_index, face2node_value)
         zface2node.check()
         self.mesh["connectivity"]["noofa"] = zface2node
-        api.io.print('std', "end of face/vertex connectivity"); sys.stdout.flush()
+        api.io.print('std', "end of face/vertex connectivity")
+        sys.stdout.flush()
         del nno_per_face, h, uniq, counts
         #
-        #- Second, CVOFA
+        # - Second, CVOFA
         #
-        api.io.print('std', "  parsing face to cell connectivity..."); sys.stdout.flush()
+        api.io.print('std', "  parsing face to cell connectivity...")
+        sys.stdout.flush()
         h = restartSectionHeader()
-        if (not h.readVar(self.fid, self.byte_swap,["UGP_IO_CVOFA"])): exit()
+        if not h.readVar(self.fid, self.byte_swap, ["UGP_IO_CVOFA"]):
+            exit()
 
         assert h.idata[0] == self.mesh["params"]["fa_count"]
         assert h.idata[1] == 2
         # Initialize the proper connectivity arrays in self.mesh
-        self.mesh["connectivity"]["cvofa"]["cvofa"] = np.zeros((self.mesh["params"]["fa_count"], 2), dtype=np.int64)
+        self.mesh["connectivity"]["cvofa"]["cvofa"] = np.zeros(
+            (self.mesh["params"]["fa_count"], 2), dtype=np.int64
+        )
         # Now loop on the restart file to fill the connectivities
-        for loopi in range(self.mesh["params"]["fa_count"]):  # xrange to range (python3 portage)
-            s = BinaryRead(self.fid, "ii", self.byte_swap, type2nbytes["int32"]*self.mesh["connectivity"]["cvofa"]["cvofa"].shape[1])
-            self.mesh["connectivity"]["cvofa"]["cvofa"][loopi, :] = np.asarray(s).astype(np.int64)
-        api.io.print('std', "end of face/cell connectivity"); sys.stdout.flush()
-        #print("RA",self.mesh["connectivity"]["cvofa"]["cvofa"])
+        for loopi in range(
+            self.mesh["params"]["fa_count"]
+        ):  # xrange to range (python3 portage)
+            s = BinaryRead(
+                self.fid,
+                "ii",
+                self.byte_swap,
+                type2nbytes["int32"]
+                * self.mesh["connectivity"]["cvofa"]["cvofa"].shape[1],
+            )
+            self.mesh["connectivity"]["cvofa"]["cvofa"][loopi, :] = np.asarray(
+                s
+            ).astype(np.int64)
+        api.io.print('std', "end of face/cell connectivity")
+        sys.stdout.flush()
+        # print("RA",self.mesh["connectivity"]["cvofa"]["cvofa"])
         del h
         # Checks and a few associations
-        assert self.mesh["connectivity"]["cvofa"]["cvofa"].max() < self.mesh["params"]["cv_count"]
-        assert self.mesh["connectivity"]["cvofa"]["cvofa"].max() == self.mesh["params"]["cv_count"]-1
-        uniq, counts = np.unique(self.mesh["connectivity"]["cvofa"]["cvofa"][:,1], return_counts=True)
+        assert (
+            self.mesh["connectivity"]["cvofa"]["cvofa"].max()
+            < self.mesh["params"]["cv_count"]
+        )
+        assert (
+            self.mesh["connectivity"]["cvofa"]["cvofa"].max()
+            == self.mesh["params"]["cv_count"] - 1
+        )
+        uniq, counts = np.unique(
+            self.mesh["connectivity"]["cvofa"]["cvofa"][:, 1], return_counts=True
+        )
         # Number of assigned boundary faces
         try:
-            iwhere = np.where(uniq==-1)[0][0]
+            iwhere = np.where(uniq == -1)[0][0]
         except IndexError:
             self.mesh["params"]["nfa_b"] = 0
         else:
             self.mesh["params"]["nfa_b"] = counts[iwhere]
         del uniq, counts
         # Number of periodic boundary faces
-        self.mesh["params"]["nfa_bp"] = np.count_nonzero(self.mesh["connectivity"]["cvofa"]["cvofa"][:,1] < -1)
+        self.mesh["params"]["nfa_bp"] = np.count_nonzero(
+            self.mesh["connectivity"]["cvofa"]["cvofa"][:, 1] < -1
+        )
         # All periodic boundary faces to -1
         # mask = self.mesh["connectivity"]["cvofa"]["cvofa"][:,1] < -1
         # self.mesh["connectivity"]["cvofa"]["cvofa"][:,1][mask] = -1
-        #print("RC",self.mesh["connectivity"]["cvofa"]["cvofa"])
+        # print("RC",self.mesh["connectivity"]["cvofa"]["cvofa"])
         #
         # The boundary conditions now
-        api.io.print('std', "Parsing boundary conditions ..."); sys.stdout.flush()
-        self.mesh['bocos'] = [] # init list of bocos
+        api.io.print('std', "Parsing boundary conditions ...")
+        sys.stdout.flush()
+        self.mesh['bocos'] = []  # init list of bocos
         while True:
             h = restartSectionHeader()
-            if(not h.readVar(self.fid, self.byte_swap,["UGP_IO_FA_ZONE"],reset_offset=False)): break
+            if not h.readVar(
+                self.fid, self.byte_swap, ["UGP_IO_FA_ZONE"], reset_offset=False
+            ):
+                break
             # UGP_IO_FA_ZONE header
             # 3 ints: kind, face range (begin, start)
             self.mesh["params"]["nboco"] += 1
             boco = _mesh.submeshmark(h.name)
             boco.type = zonekind2type[h.idata[0]]
-            boco.geodim = 'intface' if boco.type=='internal' else 'bdface' 
+            boco.geodim = 'intface' if boco.type == 'internal' else 'bdface'
             boco.index = conn.indexlist(range=[h.idata[1], h.idata[2]])
             boco.properties["periodic_transform"] = h.rdata
             #
             famin, famax = boco.index.range()
             sta = face2node_index[famin]
             try:
-                sto = face2node_index[famax+1]
+                sto = face2node_index[famax + 1]
             except IndexError:
                 sto = face2node_value.size
             #
@@ -278,33 +369,51 @@ class reader(binreader):
         sys.stdout.flush()
 
         # Parse the header of the partition information
-        api.io.print('std', "\t Parsing partitioning information ..."); sys.stdout.flush()
+        api.io.print('std', "\t Parsing partitioning information ...")
+        sys.stdout.flush()
         h = restartSectionHeader()
-        if(not h.readVar(self.fid, self.byte_swap,["UGP_IO_CV_PART"])): exit()
+        if not h.readVar(self.fid, self.byte_swap, ["UGP_IO_CV_PART"]):
+            exit()
 
         self.mesh["partition"] = {}
         self.mesh["partition"]['npart'] = h.idata[1]
-        self.mesh["partition"]['icvpart'] = np.zeros((self.mesh["params"]["cv_count"],), dtype=np.int32)
-        for loopi in range(self.mesh["params"]["cv_count"]):  # xrange to range (python3 portage)
+        self.mesh["partition"]['icvpart'] = np.zeros(
+            (self.mesh["params"]["cv_count"],), dtype=np.int32
+        )
+        for loopi in range(
+            self.mesh["params"]["cv_count"]
+        ):  # xrange to range (python3 portage)
             s = BinaryRead(self.fid, "i", self.byte_swap, type2nbytes["int32"])
             self.mesh["partition"]['icvpart'][loopi] = s[0]
-        #print(h)
+        # print(h)
         api.io.print('std', "end of partition")
         sys.stdout.flush()
 
         # The coordinates of the vertices finally
-        api.io.print('std', "\t Parsing vertices coordinates .."); sys.stdout.flush()
+        api.io.print('std', "\t Parsing vertices coordinates ..")
+        sys.stdout.flush()
         h = restartSectionHeader()
-        if(not h.readVar(self.fid, self.byte_swap,["UGP_IO_X_NO"])): exit()
+        if not h.readVar(self.fid, self.byte_swap, ["UGP_IO_X_NO"]):
+            exit()
 
         assert h.idata[0] == self.mesh["params"]["no_count"]
         assert h.idata[1] == 3
-        self.mesh["coordinates"] = np.zeros((self.mesh["params"]["no_count"], 3), dtype=np.float64)
-        for loopi in range(self.mesh["params"]["no_count"]):  # xrange to range (python3 portage)
-            s = BinaryRead(self.fid, "ddd", self.byte_swap, type2nbytes["float64"]*self.mesh["coordinates"].shape[1])
+        self.mesh["coordinates"] = np.zeros(
+            (self.mesh["params"]["no_count"], 3), dtype=np.float64
+        )
+        for loopi in range(
+            self.mesh["params"]["no_count"]
+        ):  # xrange to range (python3 portage)
+            s = BinaryRead(
+                self.fid,
+                "ddd",
+                self.byte_swap,
+                type2nbytes["float64"] * self.mesh["coordinates"].shape[1],
+            )
             self.mesh["coordinates"][loopi, :] = np.asarray(s)
         self.mesh["coordinates"] = np.ascontiguousarray(self.mesh["coordinates"])
-        api.io.print('std', "end of node coordinates"); sys.stdout.flush()
+        api.io.print('std', "end of node coordinates")
+        sys.stdout.flush()
 
     def _ReadInformativeValues(self):
         '''
@@ -317,27 +426,34 @@ class reader(binreader):
         '''
 
         # Initialize the state dictionary
-        self.simulation_state = {"step":0, "dt":0, "time":0, "wgt":{}}
+        self.simulation_state = {"step": 0, "dt": 0, "time": 0, "wgt": {}}
 
         # First, a header saying data to introduce to this block we are parsing now
 
+        # removed as not used at the moment
+        # h = restartSectionHeader()
+        # if(not readVar(self.fid, self.byte_swap,"UGP_IO_DAT)A")
+        # if (not varfound): exit()
 
-        #removed as not used at the moment
-        #h = restartSectionHeader()
-        #if(not readVar(self.fid, self.byte_swap,"UGP_IO_DAT)A")
-        #if (not varfound): exit()
-
-        reset_offset=True
+        reset_offset = True
         while True:
             h = restartSectionHeader()
-            if (not h.readVar(self.fid, self.byte_swap,["UGP_IO_I0"],reset_offset=reset_offset)): break
-            else: reset_offset=False
+            if not h.readVar(
+                self.fid, self.byte_swap, ["UGP_IO_I0"], reset_offset=reset_offset
+            ):
+                break
+            else:
+                reset_offset = False
             self.simulation_state[h.name.lower()] = h.idata[0]
-        reset_offset=True
+        reset_offset = True
         while True:
             h = restartSectionHeader()
-            if (not h.readVar(self.fid, self.byte_swap,["UGP_IO_D0"],reset_offset=reset_offset)): break
-            else: reset_offset=False
+            if not h.readVar(
+                self.fid, self.byte_swap, ["UGP_IO_D0"], reset_offset=reset_offset
+            ):
+                break
+            else:
+                reset_offset = False
             self.simulation_state[h.name.lower()] = h.rdata[0]
 
     # def get_datacell_properties(self):
@@ -352,12 +468,15 @@ class reader(binreader):
             raise ValueError("unknown IC3 version number")
         elif self.ic3_version < 3:
             pass
-            # ignore ints 
+            # ignore ints
             # if intndof != 0: # 0 is expected value for version 1 and 2
             #     api.io.print("warning", "unexpected non zero value for ndof in IC3 version 1 and 2")
-        else: # version >= 3
-            if intndof == 0: # 0 is NOT expected 
-                api.io.print("warning", "unexpected zero value for ndof in IC3 version 3; set to 1 !")
+        else:  # version >= 3
+            if intndof == 0:  # 0 is NOT expected
+                api.io.print(
+                    "warning",
+                    "unexpected zero value for ndof in IC3 version 3; set to 1 !",
+                )
                 ndof = 1
             else:
                 ndof = intndof
@@ -380,118 +499,264 @@ class reader(binreader):
 
         # Initialize the variable dictionary
         ncv = self.mesh["params"]["cv_count"]
-        self.variables = {"nodes":{}, "cells":{}, "faces":{}}
+        self.variables = {"nodes": {}, "cells": {}, "faces": {}}
 
         # First come the scalars
         api.io.print('std', "\t First the scalars ...")
-        reset_offset=True
+        reset_offset = True
         while True:
             h = restartSectionHeader()
-            if (not h.readVar(self.fid, self.byte_swap,
-                ["UGP_IO_NO_D1","UGP_IO_NO_II1","UGP_IO_FA_D1","UGP_IO_CV_D1","UGP_IO_CV_II1"],
-                reset_offset=reset_offset)): break
-            reset_offset=False
+            if not h.readVar(
+                self.fid,
+                self.byte_swap,
+                [
+                    "UGP_IO_NO_D1",
+                    "UGP_IO_NO_II1",
+                    "UGP_IO_FA_D1",
+                    "UGP_IO_CV_D1",
+                    "UGP_IO_CV_II1",
+                ],
+                reset_offset=reset_offset,
+            ):
+                break
+            reset_offset = False
             #
             typechar = properties_ugpcode[h.id[0]]['structcode']
             typesize = properties_ugpcode[h.id[0]]['size']
             nptype = properties_ugpcode[h.id[0]]['numpytype']
             #
             if h.idata[0] == self.mesh["params"]["no_count"]:
-                self.variables["nodes"][h.name] = np.zeros((self.mesh["params"]["no_count"],), dtype=nptype)
-                s = BinaryRead(self.fid, typechar*self.mesh["params"]["no_count"], self.byte_swap, typesize*self.mesh["params"]["no_count"])
+                self.variables["nodes"][h.name] = np.zeros(
+                    (self.mesh["params"]["no_count"],), dtype=nptype
+                )
+                s = BinaryRead(
+                    self.fid,
+                    typechar * self.mesh["params"]["no_count"],
+                    self.byte_swap,
+                    typesize * self.mesh["params"]["no_count"],
+                )
                 self.variables["nodes"][h.name] = np.asarray(s)
-                api.io.print('std', "\t %s%s:\t %+.5e / %+.5e / %+.5e (min/mean/max)."%(h.name, ' '*(20-len(h.name)), np.asarray(s).min(), np.mean(np.asarray(s)), np.asarray(s).max()))
+                api.io.print(
+                    'std',
+                    "\t %s%s:\t %+.5e / %+.5e / %+.5e (min/mean/max)."
+                    % (
+                        h.name,
+                        ' ' * (20 - len(h.name)),
+                        np.asarray(s).min(),
+                        np.mean(np.asarray(s)),
+                        np.asarray(s).max(),
+                    ),
+                )
             elif h.idata[0] == self.mesh["params"]["fa_count"]:
-                self.variables["faces"][h.name] = np.zeros((self.mesh["params"]["fa_count"],), dtype=nptype)
-                s = BinaryRead(self.fid, typechar*self.mesh["params"]["fa_count"], self.byte_swap, typesize*self.mesh["params"]["fa_count"])
+                self.variables["faces"][h.name] = np.zeros(
+                    (self.mesh["params"]["fa_count"],), dtype=nptype
+                )
+                s = BinaryRead(
+                    self.fid,
+                    typechar * self.mesh["params"]["fa_count"],
+                    self.byte_swap,
+                    typesize * self.mesh["params"]["fa_count"],
+                )
                 self.variables["faces"][h.name] = np.asarray(s)
-                api.io.print('std', "\t %s%s:\t %+.5e / %+.5e / %+.5e (min/mean/max)."%(h.name, ' '*(20-len(h.name)), np.asarray(s).min(), np.mean(np.asarray(s)), np.asarray(s).max()))
+                api.io.print(
+                    'std',
+                    "\t %s%s:\t %+.5e / %+.5e / %+.5e (min/mean/max)."
+                    % (
+                        h.name,
+                        ' ' * (20 - len(h.name)),
+                        np.asarray(s).min(),
+                        np.mean(np.asarray(s)),
+                        np.asarray(s).max(),
+                    ),
+                )
             elif h.idata[0] == ncv:
-                api.io.print("internal", "cell variable section of size {}x{}".format(h.idata[0], h.idata[1]))
+                api.io.print(
+                    "internal",
+                    "cell variable section of size {}x{}".format(
+                        h.idata[0], h.idata[1]
+                    ),
+                )
                 ndof = self._set_ndof_properties(h.idata[1])
-                pdata = np.zeros((ndof*ncv,), dtype=nptype)
-                s = BinaryRead(self.fid, typechar*ndof*ncv, self.byte_swap, typesize*ndof*ncv)
+                pdata = np.zeros((ndof * ncv,), dtype=nptype)
+                s = BinaryRead(
+                    self.fid,
+                    typechar * ndof * ncv,
+                    self.byte_swap,
+                    typesize * ndof * ncv,
+                )
                 pdata = np.asarray(s)
                 # If multiple connectivities, gotta order the tables correctly
                 if self.mesh["connectivity"]["nkeys"] > 1:
                     aux = copy.deepcopy(pdata)
                     pdata = np.empty((0,), dtype=aux.dtype)
-                    for uns_type, indices in self.mesh["connectivity"]["cell_indices"].items():
+                    for uns_type, indices in self.mesh["connectivity"][
+                        "cell_indices"
+                    ].items():
                         pdata = np.concatenate((pdata, aux[indices]))
                 self.variables["cells"][h.name] = _data.celldata(ndof=ndof)
                 self.variables["cells"][h.name].set_data(pdata)
-                api.io.print('std', "\t %s%s:\t %+.5e / %+.5e / %+.5e (min/mean/max)."%(h.name, ' '*(20-len(h.name)), np.asarray(s).min(), np.mean(np.asarray(s)), np.asarray(s).max()))
+                api.io.print(
+                    'std',
+                    "\t %s%s:\t %+.5e / %+.5e / %+.5e (min/mean/max)."
+                    % (
+                        h.name,
+                        ' ' * (20 - len(h.name)),
+                        np.asarray(s).min(),
+                        np.mean(np.asarray(s)),
+                        np.asarray(s).max(),
+                    ),
+                )
             else:
-                api.io.print('std', "Fatal error. Incoherence in dataset %s. Exiting."%(h.name))
+                api.io.print(
+                    'std', "Fatal error. Incoherence in dataset %s. Exiting." % (h.name)
+                )
                 exit()
         api.io.print('std', "  end of scalars")
-        
 
         # Then the vectors
         api.io.print('std', "\t Then the vectors ..")
-        reset_offset=True
+        reset_offset = True
         while True:
             h = restartSectionHeader()
-            if(not h.readVar(self.fid, self.byte_swap,["UGP_IO_NO_D3","UGP_IO_FA_D3","UGP_IO_CV_D3"],reset_offset=reset_offset)): break
-            reset_offset=False
+            if not h.readVar(
+                self.fid,
+                self.byte_swap,
+                ["UGP_IO_NO_D3", "UGP_IO_FA_D3", "UGP_IO_CV_D3"],
+                reset_offset=reset_offset,
+            ):
+                break
+            reset_offset = False
 
             if h.idata[0] == self.mesh["params"]["no_count"]:
-                self.variables["nodes"][h.name] = np.zeros((self.mesh["params"]["no_count"], 3), dtype=np.float64)
-                s = BinaryRead(self.fid, "ddd"*self.mesh["params"]["no_count"], self.byte_swap, type2nbytes["float64"]*self.mesh["params"]["no_count"]*3)
+                self.variables["nodes"][h.name] = np.zeros(
+                    (self.mesh["params"]["no_count"], 3), dtype=np.float64
+                )
+                s = BinaryRead(
+                    self.fid,
+                    "ddd" * self.mesh["params"]["no_count"],
+                    self.byte_swap,
+                    type2nbytes["float64"] * self.mesh["params"]["no_count"] * 3,
+                )
                 self.variables["nodes"][h.name] = np.asarray(s).reshape((-1, 3))
-                api.io.print('std', "\t %s%s:\t %+.5e / %+.5e / %+.5e (min/mean/max)."%(h.name, ' '*(20-len(h.name)), np.asarray(s).min(), np.mean(np.asarray(s)), np.asarray(s).max()))
+                api.io.print(
+                    'std',
+                    "\t %s%s:\t %+.5e / %+.5e / %+.5e (min/mean/max)."
+                    % (
+                        h.name,
+                        ' ' * (20 - len(h.name)),
+                        np.asarray(s).min(),
+                        np.mean(np.asarray(s)),
+                        np.asarray(s).max(),
+                    ),
+                )
             elif h.idata[0] == self.mesh["params"]["fa_count"]:
-                self.variables["faces"][h.name] = np.zeros((self.mesh["params"]["fa_count"], 3), dtype=np.float64)
-                s = BinaryRead(self.fid, "ddd"*self.mesh["params"]["fa_count"], self.byte_swap, type2nbytes["float64"]*self.mesh["params"]["fa_count"]*3)
+                self.variables["faces"][h.name] = np.zeros(
+                    (self.mesh["params"]["fa_count"], 3), dtype=np.float64
+                )
+                s = BinaryRead(
+                    self.fid,
+                    "ddd" * self.mesh["params"]["fa_count"],
+                    self.byte_swap,
+                    type2nbytes["float64"] * self.mesh["params"]["fa_count"] * 3,
+                )
                 self.variables["faces"][h.name] = np.asarray(s).reshape((-1, 3))
-                api.io.print('std', "\t %s%s:\t %+.5e / %+.5e / %+.5e (min/mean/max)."%(h.name, ' '*(20-len(h.name)), np.asarray(s).min(), np.mean(np.asarray(s)), np.asarray(s).max()))
+                api.io.print(
+                    'std',
+                    "\t %s%s:\t %+.5e / %+.5e / %+.5e (min/mean/max)."
+                    % (
+                        h.name,
+                        ' ' * (20 - len(h.name)),
+                        np.asarray(s).min(),
+                        np.mean(np.asarray(s)),
+                        np.asarray(s).max(),
+                    ),
+                )
             elif h.idata[0] == ncv:
                 ndof = self._set_ndof_properties(h.idata[1])
-                pdata = np.zeros((ndof*ncv, 3), dtype=np.float64)
-                s = BinaryRead(self.fid, "ddd"*ndof*ncv, self.byte_swap, type2nbytes["float64"]*ndof*ncv*3)
+                pdata = np.zeros((ndof * ncv, 3), dtype=np.float64)
+                s = BinaryRead(
+                    self.fid,
+                    "ddd" * ndof * ncv,
+                    self.byte_swap,
+                    type2nbytes["float64"] * ndof * ncv * 3,
+                )
                 pdata = np.asarray(s).reshape((-1, 3))
                 # If multiple connectivities, gotta order the tables correctly
                 if self.mesh["connectivity"]["nkeys"] > 1:
                     aux = copy.deepcopy(pdata)
                     pdata = np.empty((0, 3), dtype=aux.dtype)
-                    for uns_type, indices in self.mesh["connectivity"]["cell_indices"].items():
+                    for uns_type, indices in self.mesh["connectivity"][
+                        "cell_indices"
+                    ].items():
                         pdata = np.concatenate((pdata, aux[indices, :]), axis=0)
                 self.variables["cells"][h.name] = _data.celldata(ndof=ndof)
                 self.variables["cells"][h.name].set_data(pdata)
-                api.io.print('std', "\t %s%s:\t %+.5e / %+.5e / %+.5e (min/mean/max)."%(h.name, ' '*(20-len(h.name)), np.asarray(s).min(), np.mean(np.asarray(s)), np.asarray(s).max()))
+                api.io.print(
+                    'std',
+                    "\t %s%s:\t %+.5e / %+.5e / %+.5e (min/mean/max)."
+                    % (
+                        h.name,
+                        ' ' * (20 - len(h.name)),
+                        np.asarray(s).min(),
+                        np.mean(np.asarray(s)),
+                        np.asarray(s).max(),
+                    ),
+                )
             else:
-                api.io.print('std', "Fatal error. Incoherence in dataset %s. Exiting."%(h.name))
+                api.io.print(
+                    'std', "Fatal error. Incoherence in dataset %s. Exiting." % (h.name)
+                )
                 exit()
         api.io.print('std', "  end of vectors")
-        
 
         # Then the tensors
         api.io.print('std', "\t Then the tensors ..")
-        reset_offset=True
+        reset_offset = True
         while True:
             h = restartSectionHeader()
-            if(not h.readVar(self.fid, self.byte_swap,["UGP_IO_CV_D33"],reset_offset=reset_offset)): break
-            reset_offset=False
+            if not h.readVar(
+                self.fid, self.byte_swap, ["UGP_IO_CV_D33"], reset_offset=reset_offset
+            ):
+                break
+            reset_offset = False
 
             if h.idata[0] == ncv:
                 ndof = self._set_ndof_properties(h.idata[1])
-                pdata = np.zeros((ndof*ncv, 3, 3), dtype=np.float64)
-                s = BinaryRead(self.fid, "d"*ndof*ncv*3*3, self.byte_swap, type2nbytes["float64"]*ndof*ncv*3*3)
+                pdata = np.zeros((ndof * ncv, 3, 3), dtype=np.float64)
+                s = BinaryRead(
+                    self.fid,
+                    "d" * ndof * ncv * 3 * 3,
+                    self.byte_swap,
+                    type2nbytes["float64"] * ndof * ncv * 3 * 3,
+                )
                 pdata = np.asarray(s).reshape((-1, 3, 3))
                 # If multiple connectivities, gotta order the tables correctly
                 if self.mesh["connectivity"]["nkeys"] > 1:
                     aux = copy.deepcopy(pdata)
                     pdata = np.empty((0, 3, 3), dtype=aux.dtype)
-                    for uns_type, indices in self.mesh["connectivity"]["cell_indices"].items():
+                    for uns_type, indices in self.mesh["connectivity"][
+                        "cell_indices"
+                    ].items():
                         pdata = np.concatenate((pdata, aux[indices, :, :]), axis=0)
                 self.variables["cells"][h.name] = _data.celldata(ndof=ndof)
                 self.variables["cells"][h.name].set_data(pdata)
-                api.io.print('std', "\t %s%s:\t %+.5e / %+.5e / %+.5e (min/mean/max)."%(h.name, ' '*(20-len(h.name)), np.asarray(s).min(), np.mean(np.asarray(s)), np.asarray(s).max()))
+                api.io.print(
+                    'std',
+                    "\t %s%s:\t %+.5e / %+.5e / %+.5e (min/mean/max)."
+                    % (
+                        h.name,
+                        ' ' * (20 - len(h.name)),
+                        np.asarray(s).min(),
+                        np.mean(np.asarray(s)),
+                        np.asarray(s).max(),
+                    ),
+                )
             else:
-                api.io.print('std', "Fatal error. Incoherence in dataset %s. Exiting."%(h.name))
+                api.io.print(
+                    'std', "Fatal error. Incoherence in dataset %s. Exiting." % (h.name)
+                )
                 exit()
         api.io.print('std', "  end of tensors")
-        
 
     # def __reachedEOF(self):
     #     '''
@@ -510,6 +775,7 @@ class reader(binreader):
     #        return False
 
     #     return True
+
 
 ###################################################################################################
 

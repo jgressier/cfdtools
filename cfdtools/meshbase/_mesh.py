@@ -5,13 +5,19 @@ from cfdtools.utils.math import minavgmax
 import itertools
 import numpy as np
 
-class submeshmark():
+
+class submeshmark:
 
     # authorized geomdim type and actual dimension
     _available_geodim = (
-        'node', 'intnode', 'bdnode',
-        'face', 'intface', 'bdface',
-        'cell' )
+        'node',
+        'intnode',
+        'bdnode',
+        'face',
+        'intface',
+        'bdface',
+        'cell',
+    )
 
     _available_types = (
         'internal',
@@ -60,10 +66,10 @@ class submeshmark():
 
     def nodebased(self):
         return self._geodim in {'node', 'bdnode', 'intnode'}
-    
+
     def facebased(self):
         return self._geodim in {'face', 'bdface', 'intface'}
-    
+
     @property
     def properties(self):
         return self._properties
@@ -75,7 +81,8 @@ class submeshmark():
     def __str__(self):
         return f"{self.name:12} ({self.geodim}): {self.index}"
 
-class Mesh():
+
+class Mesh:
     """versatile mesh object
 
     nodes are compulsory for a valid mesh
@@ -87,9 +94,10 @@ class Mesh():
         - `mixed` internal and boundaries, with mixed index
         - separated `internal` and `boundary` with separated index
 
-    
+
     """
-    __available_facetypes = ( 'mixed', 'internal', 'boundary')
+
+    __available_facetypes = ('mixed', 'internal', 'boundary')
 
     def __init__(self, ncell=0, nnode=0):
         self._ncell = ncell
@@ -115,9 +123,9 @@ class Mesh():
 
     def set_nodescoord_nd(self, xyz: np.ndarray):
         assert xyz.shape[0] == self.nnode
-        for i,c in enumerate(['x', 'y', 'z']):
-            self._nodes[c] = xyz[:,i]
-    
+        for i, c in enumerate(['x', 'y', 'z']):
+            self._nodes[c] = xyz[:, i]
+
     def set_nodescoord_xyz(self, x, y, z):
         for c in [x, y, z]:
             assert len(c) == self.nnode
@@ -128,7 +136,7 @@ class Mesh():
     def nodescoord(self, ndarray=False):
         coords = tuple(self._nodes[c] for c in ['x', 'y', 'z'])
         return np.column_stack(coords) if ndarray else coords
-    
+
     def set_cell2node(self, cell2node: conn.elem_connectivity):
         """set cell to node connectivity
 
@@ -139,7 +147,12 @@ class Mesh():
         self._ncell = self._cell2node.nelem
         self._check_cell2node()
 
-    def add_faces(self, facetype: str, face2node: conn.elem_connectivity, face2cell: conn.indexindirection = None):
+    def add_faces(
+        self,
+        facetype: str,
+        face2node: conn.elem_connectivity,
+        face2cell: conn.indexindirection = None,
+    ):
         """set faces connectivity with face type et optional face/cell connectivity
 
         Args:
@@ -148,10 +161,14 @@ class Mesh():
             face2cell (conn.indexindirection, optional): _description_. Defaults to None.
         """
         if facetype in self.__available_facetypes:
-            self._faces[facetype] = {'face2node' : face2node, 'face2cell': face2cell}
+            self._faces[facetype] = {'face2node': face2node, 'face2cell': face2cell}
         else:
-            api.io.error_stop(f"bad face type: {facetype} since {self.__available_facetypes} expected")
-        self.nface = np.sum([fcon['face2node'].nelem for _, fcon in self._faces.items()])
+            api.io.error_stop(
+                f"bad face type: {facetype} since {self.__available_facetypes} expected"
+            )
+        self.nface = np.sum(
+            [fcon['face2node'].nelem for _, fcon in self._faces.items()]
+        )
 
     def pop_faces(self, facetype: str):
         if facetype in self.__available_facetypes:
@@ -162,14 +179,19 @@ class Mesh():
 
     def export_mixedfaces(self):
         mixedfaces_con = conn.elem_connectivity()
-        mixedfaces_con.importfrom_merge((self._faces['boundary']['face2node'], 
-                                         self._faces['internal']['face2node']))
+        mixedfaces_con.importfrom_merge(
+            (self._faces['boundary']['face2node'], self._faces['internal']['face2node'])
+        )
         face2cell = conn.indexindirection()
-        face2cell.conn = np.concatenate((self._faces['boundary']['face2cell'].conn, 
-                                         self._faces['internal']['face2cell'].conn), axis=0)
-        #print('merge',face2cell.conn)
+        face2cell.conn = np.concatenate(
+            (
+                self._faces['boundary']['face2cell'].conn,
+                self._faces['internal']['face2cell'].conn,
+            ),
+            axis=0,
+        )
+        # print('merge',face2cell.conn)
         return mixedfaces_con, face2cell
-                                                  
 
     def add_boco(self, boco: submeshmark):
         self._bocos[boco.name] = boco
@@ -182,45 +204,49 @@ class Mesh():
         face/node connectivity must exist and must be splitted into
         'internal'/'boundary' instead of 'mixed'
         """
+
         def face_in_nodelist(face, nodelist):
             return all(map(lambda n: n in nodelist, face))
+
         assert 'boundary' in self._faces.keys()
         index_face_tuples = self._faces['boundary']['face2node'].index_elem_tuples()
-        #print(index_face_tuples)
+        # print(index_face_tuples)
         for _, boco in self._bocos.items():
             if boco.nodebased():
                 nodeset = set(boco.index.list())
                 # get all face index whose nodes are all in nodeset
-                listface_index = [i for i,_ in 
-                                filter(lambda t: face_in_nodelist(t[1], nodeset), 
-                                        index_face_tuples)]
+                listface_index = [
+                    i
+                    for i, _ in filter(
+                        lambda t: face_in_nodelist(t[1], nodeset), index_face_tuples
+                    )
+                ]
                 boco.geodim = 'bdface'
                 boco.index = conn.indexlist(list=listface_index)
-                #print(boco.name, nodeset, boco.index.list())
+                # print(boco.name, nodeset, boco.index.list())
 
-    def seekmark(self, name: str)->submeshmark:
+    def seekmark(self, name: str) -> submeshmark:
         """look for diffent marks set to find mark name"""
         # only _bocos for now
         return self._bocos[name]
-    
+
     def exportmark_asmesh(self, name):
         meshmark = self.seekmark(name)
         newmesh = Mesh()
 
-    def export_extruded(self, 
-                        direction = np.array([0., 0., 1.]),
-                        extrude=[0., 1.], 
-                        domain="fluid"):
+    def export_extruded(
+        self, direction=np.array([0.0, 0.0, 1.0]), extrude=[0.0, 1.0], domain="fluid"
+    ):
         extrude_range = np.array(extrude)
         nrange = extrude_range.size
         assert nrange > 1, "extrusion only possible for at least 2 planes"
-        newmesh = Mesh(ncell=self.ncell*nrange, nnode=self.nnode*nrange)
+        newmesh = Mesh(ncell=self.ncell * nrange, nnode=self.nnode * nrange)
         # SHOULD CHECK DIRECTION AND MESH ORIENTATION
         # extrude nodes
         nnode = self.nnode
         newcoords = np.tile(self.nodescoord(ndarray=True), (nrange, 1))
         for i, s in enumerate(extrude_range):
-            newcoords[i*nnode:(i+1)*nnode, :] += s*np.array(direction)
+            newcoords[i * nnode : (i + 1) * nnode, :] += s * np.array(direction)
         newmesh.set_nodescoord_nd(newcoords)
         # extrude cells
         newmesh.set_cell2node(self._cell2node.extrude(nrange, nnode))
@@ -233,25 +259,25 @@ class Mesh():
             newboco.type = boco.type
             index = np.tile(boco.index.list(), (nrange, 1))
             for i in range(nrange):
-                index[i*nrange:(i+1)*nrange] += i*nnode
+                index[i * nrange : (i + 1) * nrange] += i * nnode
             newboco.index = conn.indexlist(list=index)
             newmesh.add_boco(newboco)
         # create initial 2D domain as boco
-        newboco = submeshmark(name=domain+'0')
+        newboco = submeshmark(name=domain + '0')
         newboco.geodim = 'bdnode'
         newboco.type = 'boundary'
         index = self._cell2node.nodelist()
         newboco.index = conn.indexlist(list=index)
         newmesh.add_boco(newboco)
         # create extruded 2D domain as boco
-        newboco = submeshmark(name=domain+'1')
+        newboco = submeshmark(name=domain + '1')
         newboco.geodim = 'bdnode'
         newboco.type = 'boundary'
-        index = (np.array(index)+(nrange-1)*nnode).tolist()
+        index = (np.array(index) + (nrange - 1) * nnode).tolist()
         newboco.index = conn.indexlist(list=index)
         newmesh.add_boco(newboco)
         return newmesh
- 
+
     def set_params(self, params):
         self._params = params
 
@@ -273,76 +299,102 @@ class Mesh():
     def pop_nodedata(self, name):
         return self._nodedata.pop(name) if name in self._nodedata.keys() else None
 
-    def pop_celldata(self, name):        
+    def pop_celldata(self, name):
         return self._celldata.pop(name) if name in self._celldata.keys() else None
-    
+
     def reindex_boundaryfaces(self):
-        assert 'boundary' in self._faces.keys(), "can only reindex faces according to boco if separated in 'boundary' list"
-        for _,boco in self._bocos.items():
+        assert (
+            'boundary' in self._faces.keys()
+        ), "can only reindex faces according to boco if separated in 'boundary' list"
+        for _, boco in self._bocos.items():
             assert boco.geodim in ('face', 'bdface'), "boco marks must be faces index"
-        oldindex = list(itertools.chain(*[ boco.index.list() for _,boco in self._bocos.items() ]))
-        assert np.all(np.unique(oldindex)==sorted(oldindex)), "some faces are marked by several boundary marks"
+        oldindex = list(
+            itertools.chain(*[boco.index.list() for _, boco in self._bocos.items()])
+        )
+        assert np.all(
+            np.unique(oldindex) == sorted(oldindex)
+        ), "some faces are marked by several boundary marks"
         assert min(oldindex) == 0, "first face index (0) is not marked as a boundary"
-        assert max(oldindex) == len(oldindex)-1, "boundary faces must be indexed first before reindexing"
+        assert (
+            max(oldindex) == len(oldindex) - 1
+        ), "boundary faces must be indexed first before reindexing"
         newindex = np.full_like(oldindex, -1)
         newindex[oldindex] = np.arange(len(oldindex))
         assert min(newindex) == 0, "inconsistency: there must not be -1 index"
         # reindex boco
-        for _,boco in self._bocos.items():
+        for _, boco in self._bocos.items():
             boco.index = conn.indexlist(list=newindex[boco.index.list()])
-            boco.index.compress() # try to (and must) make it a range
+            boco.index.compress()  # try to (and must) make it a range
         # reindex boundary faces
         for _, fdict in self._faces['boundary']['face2node'].items():
             fdict['index'] = conn.indexlist(list=newindex[fdict['index'].list()])
-            #fdict['index'].compress() # not expected
+            # fdict['index'].compress() # not expected
         if 'face2cell' in self._faces['boundary']:
-            self._faces['boundary']['face2cell'].conn = self._faces['boundary']['face2cell'].conn[oldindex,:]
+            self._faces['boundary']['face2cell'].conn = self._faces['boundary'][
+                'face2cell'
+            ].conn[oldindex, :]
 
     def printinfo(self, detailed=False):
         api.io.print("std", f"nnode: {self.nnode}")
         for c in ('x', 'y', 'z'):
-            api.io.print("std", "  {} min:avg:max = {:.3f}:{:.3f}:{:.3f}".format(c, *minavgmax(self._nodes[c])))
-            
+            api.io.print(
+                "std",
+                "  {} min:avg:max = {:.3f}:{:.3f}:{:.3f}".format(
+                    c, *minavgmax(self._nodes[c])
+                ),
+            )
+
         api.io.print("std", f"ncell: {self.ncell}")
         if self._cell2node:
             self._cell2node.print()
         else:
             api.io.print("std", "  no cell/node connectivity")
-        api.io.print('std', "nnode:",self.nnode)
-        api.io.print('std', "nface:",self.nface)
+        api.io.print('std', "nnode:", self.nnode)
+        api.io.print('std', "nface:", self.nface)
         if self._faces:
             for t, facedict in self._faces.items():
-                api.io.print("std", f"  type {t}: {' '.join(facedict['face2node'].elems())}")
+                api.io.print(
+                    "std", f"  type {t}: {' '.join(facedict['face2node'].elems())}"
+                )
                 facedict['face2node'].print(prefix='  . ', detailed=detailed)
         else:
             api.io.print("std", "  no face/node connectivity")
         api.io.print('std', f"bocos: {' '.join(self._bocos.keys())}")
         for name, boco in self._bocos.items():
             api.io.print("std", f"  BC {boco}")
-        api.io.print("std", "params:",self._params)
+        api.io.print("std", "params:", self._params)
 
     def _check_cell2node(self):
         if self._cell2node is not None:
-            assert isinstance(self._cell2node, conn.elem_connectivity), "cell2node connecitivity is not the expected class"
-            assert self.ncell == self._cell2node.nelem, f"inconsistent size of cells {self.ncell} and {self._cell2node.nelem}"
-        #for etype, conn in self._cell2node.items():
+            assert isinstance(
+                self._cell2node, conn.elem_connectivity
+            ), "cell2node connecitivity is not the expected class"
+            assert (
+                self.ncell == self._cell2node.nelem
+            ), f"inconsistent size of cells {self.ncell} and {self._cell2node.nelem}"
+        # for etype, conn in self._cell2node.items():
         #    assert etype in ele.elem2faces.keys()
         return True
 
     def make_face_connectivity(self):
-        intfaces, intf2c, boundfaces, boundf2c = self._cell2node.create_faces_from_elems()
-        self.pop_faces('mixed') # remove if it exists
+        (
+            intfaces,
+            intf2c,
+            boundfaces,
+            boundf2c,
+        ) = self._cell2node.create_faces_from_elems()
+        self.pop_faces('mixed')  # remove if it exists
         self.add_faces('internal', intfaces, intf2c)
         self.add_faces('boundary', boundfaces, boundf2c)
 
     def check(self):
         # check cell2node and cell numbers
-        assert(self.ncell >0)
-        assert(self.nnode >0)
+        assert self.ncell > 0
+        assert self.nnode > 0
         self._check_cell2node()
-        #api.io.print('std','ckeck: at least cell/node or face/node face/cell connectivity')
-        #assert(not self._cell2node or (not self._face2node and not self._face2cell))
-        #assert self._check_cell2node() # not compulsory
+        # api.io.print('std','ckeck: at least cell/node or face/node face/cell connectivity')
+        # assert(not self._cell2node or (not self._face2node and not self._face2cell))
+        # assert self._check_cell2node() # not compulsory
         return True
 
     def morph(self, fmorph):
@@ -354,9 +406,10 @@ class Mesh():
 
     def scale(self, scale_xyz):
         '''
-        scale x, y, z positions 
+        scale x, y, z positions
         '''
         self.set_nodescoord_xyz(
-            self._nodes['x']*scale_xyz[0],
-            self._nodes['y']*scale_xyz[1],
-            self._nodes['z']*scale_xyz[2])
+            self._nodes['x'] * scale_xyz[0],
+            self._nodes['y'] * scale_xyz[1],
+            self._nodes['z'] * scale_xyz[2],
+        )

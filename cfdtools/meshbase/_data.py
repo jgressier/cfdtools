@@ -2,10 +2,12 @@ import cfdtools.api as api
 
 _data_representation = []
 
-class indexeddata():
+
+class indexeddata:
     def __init__(self, type='nodal', index='direct'):
         self._type = type
         self._index = index
+
 
 class celldata(indexeddata):
     def __init__(self, type='cellaverage', index='direct', ndof=1):

@@ -6,22 +6,19 @@ import cfdtools.meshbase._connectivity as conn
 import cfdtools.meshbase._elements as ele
 import numpy as np
 
-ele_cgns2local = {
-    2: 'node1',
-    3: 'bar2',
-    5: 'tri3',
-    7: 'quad4',
-    17: 'hexa8'
-}
+ele_cgns2local = {2: 'node1', 3: 'bar2', 5: 'tri3', 7: 'quad4', 17: 'hexa8'}
+
 
 def cgnstype(obj):
     cgnsdatatype = obj.attrs.get('label')
     return cgnsdatatype
 
-def dict_cgnstype(obj, cgtype):
-    return { name: obj for name, obj in obj.items() if cgnstype(obj) == cgtype }
 
-class cgnszone():
+def dict_cgnstype(obj, cgtype):
+    return {name: obj for name, obj in obj.items() if cgnstype(obj) == cgtype}
+
+
+class cgnszone:
     def __init__(self, zone, geodim=None) -> None:
         self._zone = zone
         self._zonetype = h5_str(zone["ZoneType/ data"])
@@ -34,16 +31,16 @@ class cgnszone():
         self._BCs = {}
         for zbc in self._zonebc.values():
             self._BCs.update(dict_cgnstype(zbc, b'BC_t'))
-        #print(self._BCs)
- 
+        # print(self._BCs)
+
     @property
     def nnode(self):
-        return self._zone[' data'][0,0]
+        return self._zone[' data'][0, 0]
 
     @property
     def ncell(self):
-        return self._zone[' data'][1,0]
-    
+        return self._zone[' data'][1, 0]
+
     def coords(self):
         x = self._zone['GridCoordinates']['CoordinateX/ data'][:]
         y = self._zone['GridCoordinates']['CoordinateY/ data'][:]
@@ -55,13 +52,18 @@ class cgnszone():
         for name, elements in self._elems.items():
             cgnstype = elements[" data"][0]
             etype = ele_cgns2local[cgnstype]
-            #print(cgnstype,etype, ele.elem_dim[etype], self._geodim)
+            # print(cgnstype,etype, ele.elem_dim[etype], self._geodim)
             # extract cell connectivity only
             if ele.elem_dim[etype] == self._geodim:
-                #print(elements["ElementRange/ data"][:])
-                index = conn.indexlist(range=elements["ElementRange/ data"][:]-1)
-                econ = elements["ElementConnectivity/ data"][:].reshape((-1,ele.nnode_elem[etype]))-1
-                #print(econ)
+                # print(elements["ElementRange/ data"][:])
+                index = conn.indexlist(range=elements["ElementRange/ data"][:] - 1)
+                econ = (
+                    elements["ElementConnectivity/ data"][:].reshape(
+                        (-1, ele.nnode_elem[etype])
+                    )
+                    - 1
+                )
+                # print(econ)
                 cellconn.add_elems(etype, econ, index)
         return cellconn
 
@@ -71,19 +73,19 @@ class cgnszone():
     def export_BC(self, BC):
         name = h5_str(BC["FamilyName/ data"])
         boco = submeshmark(name)
-        boco.geodim = 'node' # don't know if node, intnode or bdnode
+        boco.geodim = 'node'  # don't know if node, intnode or bdnode
         boco.type = 'boundary'
         boco.properties['BCtype'] = h5_str(BC[" data"])
         boco.properties['periodic_transform'] = None
         assert "PointList" in BC.keys(), "only PointList implemented"
-        nodelist = (BC["PointList/ data"][:]-1).ravel().tolist()
-        boco.index = conn.indexlist(list=nodelist) # must start at 0
+        nodelist = (BC["PointList/ data"][:] - 1).ravel().tolist()
+        boco.index = conn.indexlist(list=nodelist)  # must start at 0
         if boco.index.size == self.nnode:
             boco.type = 'internal'
         return boco
 
-class cgnsfile(h5file):
 
+class cgnsfile(h5file):
     def __init__(self, filename: str):
         super().__init__(filename)
         self.open()
@@ -94,13 +96,17 @@ class cgnsfile(h5file):
 
     def printinfo(self):
         super().printinfo()
-    
+
     def list_bases(self):
-        return [ bname for bname, base in self._h5file.items()
-                       if cgnstype(base) == b'CGNSBase_t' ]
+        return [
+            bname
+            for bname, base in self._h5file.items()
+            if cgnstype(base) == b'CGNSBase_t'
+        ]
+
 
 @fileformat_reader('CGNS', '.cgns')
-class cgnsMesh():
+class cgnsMesh:
     def __init__(self, filename) -> None:
         self._filename = filename
 
@@ -109,30 +115,35 @@ class cgnsMesh():
         # get BASE list
         self._bases = self._file.list_bases()
         for base in self._bases:
-            #print('base', self._file._h5file[base].name, self._file._h5file[base][" data"][:])
+            # print('base', self._file._h5file[base].name, self._file._h5file[base][" data"][:])
             self._zones = dict_cgnstype(self._file._h5file[base], b'Zone_t')
 
     def printinfo(self):
-        #super().printinfo()
+        # super().printinfo()
         self._file.printinfo()
         io.print('std', 'CGNS version:', self._file._cgnsver)
-        io.print('std', 'bases:',self._bases)
-        io.print('std', 'zones:',list(self._zones.keys()))
+        io.print('std', 'bases:', self._bases)
+        io.print('std', 'zones:', list(self._zones.keys()))
         for zn, z in self._zones.items():
             io.print('std', f"  Zone {zn}")
-            #for bcn, bc in 
+            # for bcn, bc in
 
     def export_mesh(self, zone=None):
         io.print('std', f"> export mesh ")
         # geo dimension from base
         self._geodim = self._file._h5file[self._bases[0]][" data"][0]
         if zone is None:
-            assert len(self._zones)==1, "Multiple zones found, must specify which zone to export"
+            assert (
+                len(self._zones) == 1
+            ), "Multiple zones found, must specify which zone to export"
             name = list(self._zones.keys())[0]
         else:
             name = zone
         cgzone = cgnszone(self._zones[name], self._geodim)
-        io.print('std', f"Parse zone {name} ({self._geodim}D) ncell: {cgzone.ncell}, nnode: {cgzone.nnode}")
+        io.print(
+            'std',
+            f"Parse zone {name} ({self._geodim}D) ncell: {cgzone.ncell}, nnode: {cgzone.nnode}",
+        )
         meshdata = Mesh(ncell=cgzone.ncell, nnode=cgzone.nnode)
         # get coordinates
         meshdata.set_nodescoord_xyz(*cgzone.coords())
@@ -147,9 +158,10 @@ class cgnsMesh():
             else:
                 io.print('std', f"  add boco {boco}")
                 meshdata.add_boco(boco)
-        #meshdata.check()
+        # meshdata.check()
         meshdata.printinfo()
         return meshdata
+
 
 if __name__ == "__main__":
     f = cgnsMesh(filename="./examples/MESH.nogit/cavity-degen.hdf")

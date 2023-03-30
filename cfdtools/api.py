@@ -1,55 +1,68 @@
-from pathlib import Path 
+from pathlib import Path
 import numpy as np
 import time
 
 _fileformat_map = {}
+
 
 def fileformat_reader(name, extension):
     """decorator to register fileformat properties for given name in api._fileformat_map
 
     a reader is a class which is initialized with a filename
     and has the following functions
-    - read_data() 
+    - read_data()
     - export_mesh() which returns a meshbase._mesh.mesh class
     """
+
     def decorator(thisclass):
-        properties = { 'reader': thisclass, 'ext': extension }
+        properties = {'reader': thisclass, 'ext': extension}
         if name in _fileformat_map.keys():
             _fileformat_map[name].update(properties)
-        else: 
+        else:
             _fileformat_map[name] = properties
         return thisclass
+
     return decorator
 
+
 def fileformat_writer(name, extension):
-    """decorator to register fileformat properties for given name  in api._fileformat_map
-    """
+    """decorator to register fileformat properties for given name  in api._fileformat_map"""
+
     def decorator(thisclass):
-        properties = { 'writer': thisclass, 'ext': extension }
+        properties = {'writer': thisclass, 'ext': extension}
         if name in _fileformat_map.keys():
             _fileformat_map[name].update(properties)
-        else: 
+        else:
             _fileformat_map[name] = properties
         return thisclass
+
     return decorator
+
 
 def _printreadable(string, value):
     if isinstance(value, (int, float, str, np.int32, np.int64)):
-        print(string+':',value)
+        print(string + ':', value)
     elif isinstance(value, np.ndarray):
         if value.size <= 10:
-            print(string+': ndarray',value.shape, value)
+            print(string + ': ndarray', value.shape, value)
         else:
-            print(string+': ndarray',value.shape)
+            print(string + ': ndarray', value.shape)
     else:
-        print(string+': '+str(type(value)))
+        print(string + ': ' + str(type(value)))
 
-class api_output():
-    """class to handle library outputs
-    """
-    _prefix = {'internal': 'int:', 'error': 'ERROR:', 'warning':'WARNING:', 'std':'', 'debug':'debug:'}
+
+class api_output:
+    """class to handle library outputs"""
+
+    _prefix = {
+        'internal': 'int:',
+        'error': 'ERROR:',
+        'warning': 'WARNING:',
+        'std': '',
+        'debug': 'debug:',
+    }
     _available = list(_prefix.keys())
-    _default = ['internal', 'error', 'warning', 'std' ]
+    _default = ['internal', 'error', 'warning', 'std']
 
     def __init__(self, list=None):
         self._api_output = []
@@ -64,7 +77,7 @@ class api_output():
         if check:
             self._api_output = modelist
         else:
-            self.print('internal','some output modes are unknown')
+            self.print('internal', 'some output modes are unknown')
         return check
 
     def get_modes(self):
@@ -75,17 +88,19 @@ class api_output():
 
     def print(self, mode, *args, **kwargs):
         if mode in self._api_output:
-            print(self._prefix[mode],*args, **kwargs)
+            print(self._prefix[mode], *args, **kwargs)
+
 
 io = api_output()
-#print(io.get_modes())
+# print(io.get_modes())
+
 
 def error_stop(msg):
-    #io.print('error', msg)
+    # io.print('error', msg)
     raise RuntimeError(msg)
 
-class _files():
 
+class _files:
     def __init__(self, filename: str):
         self._path = Path(filename)
 
@@ -101,7 +116,7 @@ class _files():
         return self._path.exists()
 
     def __str__(self):
-        s = '  filename: '+self.filename
+        s = '  filename: ' + self.filename
         return s
 
     def change_dir(self, dir):
@@ -123,19 +138,21 @@ class _files():
         i = 0
         while safepath.exists():
             i += 1
-            #safepath = safepath.with_stem(stem+f'({i})') # only python >= 3.9
-            #print(dir,stem,f'({i})',suff)
-            safepath = Path(dir/(stem+f'({i})'+suff))
+            # safepath = safepath.with_stem(stem+f'({i})') # only python >= 3.9
+            # print(dir,stem,f'({i})',suff)
+            safepath = Path(dir / (stem + f'({i})' + suff))
         self._path = safepath
-        return i>0
-            
+        return i > 0
+
     def printinfo(self):
         print(self)
+
 
 class TimerError(Exception):
     """A custom exception used to report errors in use of Timer class"""
 
-class Timer: # from https://realpython.com/python-timer/
+
+class Timer:  # from https://realpython.com/python-timer/
     default_tab = 60
     default_msg = ""
 
@@ -162,17 +179,22 @@ class Timer: # from https://realpython.com/python-timer/
         if self._start_time is None:
             raise TimerError(f"Timer is not running. Use .start() to start it")
         elapsed_time = time.perf_counter() - self._start_time
-        normalized_time_ms = 0. if self._nelem is None else 1e6*elapsed_time / self._nelem
+        normalized_time_ms = (
+            0.0 if self._nelem is None else 1e6 * elapsed_time / self._nelem
+        )
         if self._nelem is None:
-            io.print('std',f"{' '*(self._tab-self._col)}wtime: {elapsed_time:0.4f}s")
+            io.print('std', f"{' '*(self._tab-self._col)}wtime: {elapsed_time:0.4f}s")
         else:
-            io.print('std',f"{' '*(self._tab-self._col)}wtime: {elapsed_time:0.4f}s | {normalized_time_ms:0.4f}µs/elem")
+            io.print(
+                'std',
+                f"{' '*(self._tab-self._col)}wtime: {elapsed_time:0.4f}s | {normalized_time_ms:0.4f}µs/elem",
+            )
         # reset
         self._reset()
-    
+
     def __enter__(self):
         io.print('std', self._task, end='')
-        self._col = len(self._task)+1
+        self._col = len(self._task) + 1
         self.start()
 
     def __exit__(self, *exitoptions):

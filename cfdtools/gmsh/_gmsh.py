@@ -4,7 +4,8 @@
 import collections
 import cfdtools.meshbase._mesh as _mesh
 import cfdtools.meshbase._connectivity as _conn
-#import os
+
+# import os
 
 import cfdtools.api as api
 import numpy as np
@@ -27,7 +28,7 @@ gmshtype_elem = {
     12: "hexa27",
     13: "prism18",
     14: "pyra14",
-    15: "node1"
+    15: "node1",
 }
 # # Actual number of vertices for a given cell type
 # nodes_per_cell = {
