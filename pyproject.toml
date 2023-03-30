@@ -1,6 +1,6 @@
 [project]
 name = "cfdtools"
-version = "0.4.0"
+version = "0.4.1"
 description = "Tools for mesh and solution management in CFD"
 authors = [{name="J. Gressier", email="jeremie.gressier@isae-supaero.fr"}]
 readme = "README.md"
@@ -65,7 +65,7 @@ testpaths = [
 ]
 
 [tool.bumpver]
-current_version = "v0.4.0"
+current_version = "v0.4.1"
 version_pattern = "vMAJOR.MINOR.PATCH"
 commit_message = "bump version {old_version} to {new_version}"
 commit = true
