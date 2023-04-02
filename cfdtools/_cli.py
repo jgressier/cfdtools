@@ -151,9 +151,13 @@ def write_generic(argv, ext, writer):
     parser.parse_cli_args(argv)
     parser.parse_filenameformat()
     #
+    timer = api.Timer()
+    timer.start()
     file = api._files(parser.args().filename)
     r = parser._reader(file.filename)
     r.read_data()
+    ncell = r.ncell
+    timer.stop(nelem=ncell)
     cfdmesh = r.export_mesh()
     #
     if parser.args().remove_cell_data:
@@ -171,9 +175,13 @@ def write_generic(argv, ext, writer):
     if file.find_safe_newfile() > 0:
         api.io.print("std", "change output to safe new name " + file.filename)
     if parser.args().extrude:
+        timer.start()
+        nz = parser.args().extrude
+        api.io.print(f'> extrusion along nz={nz} cells, {nz*ncell} total cells')
         cfdmesh = cfdmesh.export_extruded(
-            extrude=np.linspace(0.0, 1.0, parser.args().extrude + 1, endpoint=True)
+            extrude=np.linspace(0.0, 1.0, nz+1, endpoint=True)
         )
+        timer.stop(nelem=nz*ncell)
     if parser.args().scale:
         cfdmesh.scale(parser.args().scale)
     if parser.args().info:

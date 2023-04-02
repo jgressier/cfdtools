@@ -19,6 +19,10 @@ import numpy as np
 class reader(api._files):
     """Implementation of the reader to read Gmsh meshes."""
 
+    @property 
+    def ncell(self):
+        return self._ncell
+    
     def read_data(self):
         api.io.print('std', f'> GMSH reader: starts reading {self.filename}')
         # Check file exists
@@ -55,12 +59,14 @@ class reader(api._files):
         bnd, bnd2fam = collections.defaultdict(list), {}
 
         # Volume Connectivity
+        self._ncell = 0
         api.io.print("std", "  extract volume connectivity")
         bnd_connect = 1
         for elt in elts:
             if elt[1] in gmshtype_elem.keys():
                 elt_type = gmshtype_elem[elt[1]]
                 if elt_type in mesh_elt:
+                    self._ncell += 1
                     if elt_type not in connectivity.keys():
                         connectivity[elt_type] = []
                     ntag = elt[2]  # expected to be 2

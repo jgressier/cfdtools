@@ -38,6 +38,10 @@ class reader(binreader):
         self.check_integrity = cIntegrity
         self.ic3_version = -1
 
+    @property 
+    def ncell(self):
+        return self._ncell
+    
     def __str__(self):
         s = '    filename: ' + self.filename
         s += '\n   simulation: ' + str(list(self.simulation_state.keys()))
@@ -97,6 +101,7 @@ class reader(binreader):
         self._ReadRestartVar()
         #
         # Before returning, close the file
+        self._ncell = self.mesh['params']['cv_count'] # for generic writer and timer
         self.fid.close()
         del self.fid
 

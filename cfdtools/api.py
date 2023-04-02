@@ -90,6 +90,16 @@ class api_output:
         if mode in self._api_output:
             print(self._prefix[mode], *args, **kwargs)
 
+    def print(self, mode, *args, **kwargs):
+        if mode in self._api_output:
+            print(self._prefix[mode], *args, **kwargs)
+
+    def printstd(self, *args, **kwargs):
+        self.print('std', *args, **kwargs)
+
+    def printdebug(self, *args, **kwargs):
+        self.print('debug', *args, **kwargs)
+
 
 io = api_output()
 # print(io.get_modes())
@@ -174,8 +184,10 @@ class Timer:  # from https://realpython.com/python-timer/
             raise TimerError(f"Timer is running. Use .stop() to stop it")
         self._start_time = time.perf_counter()
 
-    def stop(self):
+    def stop(self, nelem=None):
         """Stop the timer, and report the elapsed time"""
+        if nelem is not None:
+            self._nelem = nelem
         if self._start_time is None:
             raise TimerError(f"Timer is not running. Use .start() to start it")
         elapsed_time = time.perf_counter() - self._start_time
@@ -183,12 +195,9 @@ class Timer:  # from https://realpython.com/python-timer/
             0.0 if self._nelem is None else 1e6 * elapsed_time / self._nelem
         )
         if self._nelem is None:
-            io.print('std', f"{' '*(self._tab-self._col)}wtime: {elapsed_time:0.4f}s")
+            io.printstd(f"{' '*(self._tab-self._col)}wtime: {elapsed_time:0.4f}s")
         else:
-            io.print(
-                'std',
-                f"{' '*(self._tab-self._col)}wtime: {elapsed_time:0.4f}s | {normalized_time_ms:0.4f}µs/elem",
-            )
+            io.printstd(f"{' '*(self._tab-self._col)}wtime: {elapsed_time:0.4f}s | {normalized_time_ms:0.4f}µs/elem",)
         # reset
         self._reset()
 

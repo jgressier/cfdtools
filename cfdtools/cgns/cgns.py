@@ -109,14 +109,32 @@ class cgnsfile(h5file):
 class cgnsMesh:
     def __init__(self, filename) -> None:
         self._filename = filename
+        self._ncell = None
 
-    def read_data(self):
+    @property 
+    def ncell(self):
+        return self._ncell
+    
+    def read_data(self, zone=None):
         self._file = cgnsfile(self._filename)
         # get BASE list
         self._bases = self._file.list_bases()
         for base in self._bases:
             # print('base', self._file._h5file[base].name, self._file._h5file[base][" data"][:])
             self._zones = dict_cgnstype(self._file._h5file[base], b'Zone_t')
+        # geo dimension from base
+        self._geodim = self._file._h5file[self._bases[0]][" data"][0]
+        if zone is None:
+            assert (
+                len(self._zones) == 1
+            ), "Multiple zones found, must specify which zone to export"
+            name = list(self._zones.keys())[0]
+        else:
+            name = zone
+        self._zonename = name
+        self._zone = cgnszone(self._zones[name], self._geodim)
+        self._ncell = self._zone.ncell
+
 
     def printinfo(self):
         # super().printinfo()
@@ -128,22 +146,10 @@ class cgnsMesh:
             io.print('std', f"  Zone {zn}")
             # for bcn, bc in
 
-    def export_mesh(self, zone=None):
+    def export_mesh(self):
         io.print('std', f"> export mesh ")
-        # geo dimension from base
-        self._geodim = self._file._h5file[self._bases[0]][" data"][0]
-        if zone is None:
-            assert (
-                len(self._zones) == 1
-            ), "Multiple zones found, must specify which zone to export"
-            name = list(self._zones.keys())[0]
-        else:
-            name = zone
-        cgzone = cgnszone(self._zones[name], self._geodim)
-        io.print(
-            'std',
-            f"Parse zone {name} ({self._geodim}D) ncell: {cgzone.ncell}, nnode: {cgzone.nnode}",
-        )
+        cgzone = self._zone
+        io.printstd(f"Parse zone {self._zonename} ({self._geodim}D) ncell: {cgzone.ncell}, nnode: {cgzone.nnode}",)
         meshdata = Mesh(ncell=cgzone.ncell, nnode=cgzone.nnode)
         # get coordinates
         meshdata.set_nodescoord_xyz(*cgzone.coords())
