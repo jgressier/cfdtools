@@ -1,4 +1,5 @@
 # cgns.py
+from pathlib import Path
 from cfdtools.api import io, fileformat_reader
 from cfdtools.hdf5 import h5file, h5_str
 from cfdtools.meshbase._mesh import Mesh, submeshmark
@@ -71,7 +72,10 @@ class cgnszone:
         pass
 
     def export_BC(self, BC):
-        name = h5_str(BC["FamilyName/ data"])
+        if "FamilyName" in BC.keys():
+            name = h5_str(BC["FamilyName/ data"])
+        else:
+            name = Path(BC.name).name # extract final name of 
         boco = submeshmark(name)
         boco.geodim = 'node'  # don't know if node, intnode or bdnode
         boco.type = 'boundary'

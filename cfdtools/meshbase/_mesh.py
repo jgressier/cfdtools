@@ -307,21 +307,33 @@ class Mesh:
         assert (
             'boundary' in self._faces.keys()
         ), "can only reindex faces according to boco if separated in 'boundary' list"
+        # number of (boundary) faces in face connectivity
+        nbdface = self._faces['boundary']['face2node'].nelem
         for _, boco in self._bocos.items():
             assert boco.geodim in ('face', 'bdface'), "boco marks must be faces index"
         oldindex = list(
             itertools.chain(*[boco.index.list() for _, boco in self._bocos.items()])
         )
-        assert np.all(
-            np.unique(oldindex) == sorted(oldindex)
-        ), "some faces are marked by several boundary marks"
-        assert min(oldindex) == 0, "first face index (0) is not marked as a boundary"
-        assert (
-            max(oldindex) == len(oldindex) - 1
-        ), "boundary faces must be indexed first before reindexing"
+        # checks
+        c_unique = np.all(np.unique(oldindex) == sorted(oldindex))
+        if not c_unique:
+            api.io.print('error', "  some faces are marked by several boundary marks")
+        c_min0 = min(oldindex) == 0
+        if not c_min0:
+            api.io.print('error', "  first face index (0) is not marked as a boundary\n"+
+                           "  some boundary faces may be missing")
+        c_max = max(oldindex) <= len(oldindex) - 1
+        if not c_max:
+            api.io.print('error', "  max face reference is greater than the number of found faces\n"+
+                         "  boundary faces must be indexed first before reindexing")
+        c_lengths = len(oldindex)==nbdface
+        if not c_lengths:
+            api.io.print('error', f"  some boundary faces are not marked: {nbdface-len(oldindex)}")
+        if not (c_unique and c_min0 and c_max):
+            api.error_stop("inconsistent face marks when reordering")
         newindex = np.full_like(oldindex, -1)
         newindex[oldindex] = np.arange(len(oldindex))
-        assert min(newindex) == 0, "inconsistency: there must not be -1 index"
+        assert min(newindex) >= 0, "inconsistency: there must not be -1 index"
         # reindex boco
         for _, boco in self._bocos.items():
             boco.index = conn.indexlist(ilist=newindex[boco.index.list()].tolist())
