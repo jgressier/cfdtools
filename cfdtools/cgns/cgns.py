@@ -7,6 +7,7 @@ import cfdtools.meshbase._connectivity as conn
 import cfdtools.meshbase._elements as ele
 import numpy as np
 
+cg_groupname = {}
 ele_cgns2local = {2: 'node1', 3: 'bar2', 5: 'tri3', 7: 'quad4', 17: 'hexa8'}
 
 
@@ -29,10 +30,11 @@ class cgnszone:
         self._elems = dict_cgnstype(zone, b'Elements_t')
         # look for ZoneBC and BC
         self._zonebc = dict_cgnstype(zone, b'ZoneBC_t')
+        self._zonebc.update(dict_cgnstype(zone, b"ZoneGridConnectivity_t"))
         self._BCs = {}
         for zbc in self._zonebc.values():
             self._BCs.update(dict_cgnstype(zbc, b'BC_t'))
-        # print(self._BCs)
+            self._BCs.update(dict_cgnstype(zbc, b'GridConnectivity_t'))
 
     @property
     def nnode(self):
