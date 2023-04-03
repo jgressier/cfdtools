@@ -151,13 +151,15 @@ def write_generic(argv, ext, writer):
     parser.parse_cli_args(argv)
     parser.parse_filenameformat()
     #
+    file = api._files(parser.args().filename)
+    api.io.print(f'> read mesh file {file.filename}')
     timer = api.Timer()
     timer.start()
-    file = api._files(parser.args().filename)
     r = parser._reader(file.filename)
     r.read_data()
     ncell = r.ncell
     timer.stop(nelem=ncell)
+    api.io.print('std', f"> export mesh ")
     cfdmesh = r.export_mesh()
     #
     if parser.args().remove_cell_data:

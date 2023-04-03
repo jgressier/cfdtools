@@ -153,7 +153,7 @@ class cgnsMesh:
             # for bcn, bc in
 
     def export_mesh(self):
-        io.print('std', f"> export mesh ")
+        # io.print('std', f"> export mesh ") # printed by parent
         cgzone = self._zone
         io.printstd(f"Parse zone {self._zonename} ({self._geodim}D) ncell: {cgzone.ncell}, nnode: {cgzone.nnode}",)
         meshdata = Mesh(ncell=cgzone.ncell, nnode=cgzone.nnode)
@@ -171,7 +171,7 @@ class cgnsMesh:
                 io.print('std', f"  add boco {boco}")
                 meshdata.add_boco(boco)
         # meshdata.check()
-        meshdata.printinfo()
+        # meshdata.printinfo()
         return meshdata
 
 

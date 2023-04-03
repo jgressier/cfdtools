@@ -222,7 +222,34 @@ class Mesh:
                 ]
                 boco.geodim = 'bdface'
                 boco.index = conn.indexlist(ilist=listface_index)
-                # print(boco.name, nodeset, boco.index.list())
+                #print(boco.name, len(nodeset), len(boco.index.list()))
+
+    def list_boco_index(self):
+        return list(itertools.chain(
+            *[boco.index.list() for _, boco in self._bocos.items()])
+        )
+
+    def make_unmarked_BC(self, name="unmarked_faces"):
+        """check all boundaring faces are marked and create a specific boco if not"""
+        if 'boundary' in self._faces.keys():
+            # number of (boundary) faces in face connectivity
+            nbdface = self._faces['boundary']['face2node'].nelem
+            for _, boco in self._bocos.items():
+                assert boco.geodim in ('face', 'bdface'), "boco marks must be faces index"
+            list_marked = self.list_boco_index()
+            list_missing = list(set(self._faces['boundary']['face2node'].all_index())-set(list_marked))
+            if list_missing:
+                boco = submeshmark(name)
+                boco.geodim = 'bdface'
+                boco.type = 'boundary'
+                boco.properties['periodic_transform'] = None
+                boco.index = conn.indexlist(ilist=list_missing)
+                self.add_boco(boco)
+        else:
+            list_missing = []
+            api.io.print('warning', "can only reindex faces according to boco if separated in 'boundary' list")
+        return list_missing
+
 
     def seekmark(self, name: str) -> submeshmark:
         """look for diffent marks set to find mark name"""
@@ -311,9 +338,7 @@ class Mesh:
         nbdface = self._faces['boundary']['face2node'].nelem
         for _, boco in self._bocos.items():
             assert boco.geodim in ('face', 'bdface'), "boco marks must be faces index"
-        oldindex = list(
-            itertools.chain(*[boco.index.list() for _, boco in self._bocos.items()])
-        )
+        oldindex = self.list_boco_index()
         # checks
         c_unique = np.all(np.unique(oldindex) == sorted(oldindex))
         if not c_unique:
@@ -350,8 +375,7 @@ class Mesh:
     def printinfo(self, detailed=False):
         api.io.print("std", f"nnode: {self.nnode}")
         for c in ('x', 'y', 'z'):
-            api.io.print(
-                "std",
+            api.io.printstd(
                 "  {} min:avg:max = {:.3f}:{:.3f}:{:.3f}".format(
                     c, *minavgmax(self._nodes[c])
                 ),
@@ -401,6 +425,7 @@ class Mesh:
         self.add_faces('boundary', boundfaces, boundf2c)
 
     def check(self):
+        """check a consistent mesh with adequate boundary conditions"""
         # check cell2node and cell numbers
         assert self.ncell > 0
         assert self.nnode > 0
@@ -408,6 +433,7 @@ class Mesh:
         # api.io.print('std','ckeck: at least cell/node or face/node face/cell connectivity')
         # assert(not self._cell2node or (not self._face2node and not self._face2cell))
         # assert self._check_cell2node() # not compulsory
+        assert not self.make_unmarked_BC()
         return True
 
     def morph(self, fmorph):

@@ -217,6 +217,9 @@ class elem_connectivity:
                 api.io.print("std", prefix + f"  index: {elemco['index'].list()}")
                 api.io.print("std", prefix + f"  faces: {elemco['elem2node']}")
 
+    def all_index(self):
+        return list(sum([econ['index'].list() for _, econ in self.items()], []))
+
     # def index_elem_tuples(self):
     #     # optim: here, .list() is not mandatory but avoid massively calling .list().getitem()
     #     return list( (i, face.ravel().tolist())

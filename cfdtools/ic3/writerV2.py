@@ -3,7 +3,7 @@ import numpy as np
 import cfdtools.api as api
 
 # import cfdtools.meshbase._mesh as _mesh
-from cfdtools.ic3._ic3 import *
+from cfdtools.ic3._ic3 import ic3_restart_codes, struct_endian, BinaryWrite, restartSectionHeader, type2nbytes, type2zonekind
 
 ###################################################################################################
 
@@ -47,6 +47,10 @@ class writer:
         if any([boco.nodebased() for _, boco in self._mesh._bocos.items()]):
             with api.Timer(task="  change boco marks (node to face)"):
                 self._mesh.bocomarks_set_node_to_face()
+        if 'boundary' in self._mesh._faces.keys():
+            if self._mesh.make_unmarked_BC(name="unmarked"):
+                api.io.printstd("  create a specific boco mark for unmarked faces: (unmarked)")
+        # self._mesh.printinfo()
         if any([boco.index.type == 'list' for _, boco in self._mesh._bocos.items()]):
             with api.Timer(
                 task="  reindex boundary faces with boco marks and compress"

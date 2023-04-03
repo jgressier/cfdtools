@@ -90,10 +90,6 @@ class api_output:
         if mode in self._api_output:
             print(self._prefix[mode], *args, **kwargs)
 
-    def print(self, mode, *args, **kwargs):
-        if mode in self._api_output:
-            print(self._prefix[mode], *args, **kwargs)
-
     def printstd(self, *args, **kwargs):
         self.print('std', *args, **kwargs)
 
