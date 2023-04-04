@@ -248,9 +248,10 @@ class elem_connectivity:
         for _, e2n in self.items():
             ind.extend(e2n['index'].list())
             f2n.extend(e2n['elem2node'].tolist())
-        joinlist = list(
-            chain.from_iterable([tnod[1] for tnod in filter(lambda tup: tup[0] in elemlist, zip(ind, f2n))])
-        )
+        # joinlist = list(
+        #     chain.from_iterable([tnod[1] for tnod in filter(lambda tup: tup[0] in elemlist, zip(ind, f2n))])
+        # )
+        joinlist = list(chain.from_iterable(map(dict(zip(ind, f2n)).get, elemlist)))
         return list(set(joinlist))  # make unique
 
     def importfrom_compressedindex(self, zconn: compressed_listofindex):
