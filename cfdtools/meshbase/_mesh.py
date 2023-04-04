@@ -222,7 +222,7 @@ class Mesh:
                 ]
                 boco.geodim = 'bdface'
                 boco.index = conn.indexlist(ilist=listface_index)
-                #print(boco.name, len(nodeset), len(boco.index.list()))
+                # print(boco.name, len(nodeset), len(boco.index.list()))
 
     def list_boco_index(self):
         return list(itertools.chain(
@@ -233,7 +233,7 @@ class Mesh:
         """check all boundaring faces are marked and create a specific boco if not"""
         if 'boundary' in self._faces.keys():
             # number of (boundary) faces in face connectivity
-            nbdface = self._faces['boundary']['face2node'].nelem
+            # nbdface = self._faces['boundary']['face2node'].nelem
             for _, boco in self._bocos.items():
                 assert boco.geodim in ('face', 'bdface'), "boco marks must be faces index"
             list_marked = self.list_boco_index()
