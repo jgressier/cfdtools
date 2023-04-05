@@ -16,11 +16,11 @@ pip show cfdtools
 
 ## Versions
 
-### [0.4.0](https://pypi.org/project/cfdtools/) (2023-03-28)
+### [0.4.2](https://pypi.org/project/cfdtools/) (2023-04-05)
 
 #### new
 
-- cgns import (hdf5 direct reader)
+- cgns import (hdf5 direct reader) (validated from icem and autogrid)
 - extrusion of 2D mesh
 - `cfdwrite_vtk` command line
 - new option `--extrude n` to command lines
