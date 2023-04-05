@@ -8,7 +8,7 @@ _datadir = Path("./tests/data")
 _builddir = Path("./tests/build")
 
 
-@pytest.mark.parametrize("filename", ["cavity-degen.hdf"])
+@pytest.mark.parametrize("filename", ["cavity-degen.hdf", "cavity-degen-facebc.hdf"])
 def test_reader(filename):
     cgmesh = cgns.cgnsMesh(_datadir.joinpath(filename))
     cgmesh.read_data()

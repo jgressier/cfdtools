@@ -89,18 +89,30 @@ class cgnszone:
         boco.type = 'boundary'
         boco.properties['BCtype'] = h5_str(BC[" data"])
         boco.properties['periodic_transform'] = None
-        assert "PointList" in BC.keys(), "only PointList implemented"
-        indexlist = (BC["PointList/ data"][:] - 1).ravel().tolist() 
-        gridloc = cg_gridlocation(BC)
+        if "PointList" in BC.keys():
+            indexlist = (BC["PointList/ data"][:] - 1).ravel().tolist() 
+            gridloc = cg_gridlocation(BC)
+        elif "ElementList" in BC.keys(): # not in CGNS norm
+            indexlist = (BC["ElementList/ data"][:] - 1).ravel().tolist() 
+            gridloc = "FaceCenter"
+            if len(indexlist) == self.ncell:
+                gridloc = "CellCenter"
+                boco.type = 'internal'
+        else:
+            error_stop(f"Unknown indexing of BC mark: {name}")
+        # convert to node marks
         if gridloc == "FaceCenter":
             nodelist = self.export_facecon().nodes_of_indexlist(indexlist)
         elif gridloc == "Vertex":
             nodelist = indexlist
+            if len(nodelist) == self.nnode:
+                boco.type = 'internal'
+        elif gridloc == "CellCenter":
+            nodelist = indexlist # cells indeed
+            boco.geodim = 'cell'
         else:
             error_stop(f'unknown gridlocation {gridloc}')
         boco.index = conn.indexlist(ilist=nodelist)  # must start at 0
-        if boco.index.size == self.nnode:
-            boco.type = 'internal'
         return boco
 
 
@@ -188,11 +200,11 @@ class cgnsMesh:
         return meshdata
 
 
-if __name__ == "__main__":
-    f = cgnsMesh(filename="./examples/MESH.nogit/cavity-degen.hdf")
-    f.read_data()
-    f.printinfo()
-    f.export_mesh()
+# if __name__ == "__main__":
+#     f = cgnsMesh(filename="./examples/MESH.nogit/cavity-degen.hdf")
+#     f.read_data()
+#     f.printinfo()
+#     f.export_mesh()
 
 # ElementType_t := Enumeration(
 #      ElementTypeNull, ElementTypeUserDefined, NODE, BAR_2, BAR_3,
