@@ -139,7 +139,7 @@ class _files:
         """Returns safe destination, adding (n) if needed"""
         safepath = self._path
         # components strings
-        dir = safepath.parent
+        folder = safepath.parent
         stem = safepath.stem
         suff = safepath.suffix
         i = 0
@@ -147,7 +147,7 @@ class _files:
             i += 1
             # safepath = safepath.with_stem(stem+f'({i})') # only python >= 3.9
             # print(dir,stem,f'({i})',suff)
-            safepath = Path(dir / (stem + f'({i})' + suff))
+            safepath = Path(folder / (stem + f'({i})' + suff))
         self._path = safepath
         return i > 0
 

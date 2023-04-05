@@ -6,12 +6,11 @@ import cfdtools.api as api
 # options definition
 
 varname_syn = {  # name for line_probe
-    "X": ["x"],
+    "X": ["x", "X"],
     "Y": ["y"],
     "Z": ["z"],
     "P": ["p", "ps", "Ps", "PS"],
     "U-X": ["UX", "Ux", "ux", "U_X", "U_x"],
-    "X": ["X", "x"],
 }
 
 

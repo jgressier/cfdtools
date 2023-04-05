@@ -1,9 +1,8 @@
 try:
     import pyvista as pv
     from pyvista import CellType
-
     importpyvista = True
-except:
+except ImportError:
     importpyvista = False
 import cfdtools.meshbase._elements as ele
 import cfdtools.api as api

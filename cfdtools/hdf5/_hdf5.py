@@ -2,9 +2,8 @@ from cfdtools.api import io, _files
 
 try:
     import h5py
-
     import_h5py = True
-except:
+except ImportError:
     import_h5py = False
 
 

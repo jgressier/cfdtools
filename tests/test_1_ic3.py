@@ -1,7 +1,7 @@
 import pytest
 import cfdtools.ic3.reader_legacy as ic3reader
 import cfdtools.ic3.writerV2 as ic3wv2
-import cfdtools.ic3.writerV3 as ic3wv3
+# import cfdtools.ic3.writerV3 as ic3wv3
 from pathlib import Path
 import filecmp
 

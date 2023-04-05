@@ -173,7 +173,7 @@ class cgnsMesh:
         io.print('std', 'CGNS version:', self._file._cgnsver)
         io.print('std', 'bases:', self._bases)
         io.print('std', 'zones:', list(self._zones.keys()))
-        for zn, z in self._zones.items():
+        for zn, _ in self._zones.items():
             io.print('std', f"  Zone {zn}")
             # for bcn, bc in
 
@@ -187,7 +187,7 @@ class cgnsMesh:
         # # cell connectivity
         meshdata.set_cell2node(cgzone.export_cellcon())
         # boundary conditions
-        for name, bc in cgzone._BCs.items():
+        for _, bc in cgzone._BCs.items():
             boco = cgzone.export_BC(bc)
             # filter full domain
             if boco.type in ['internal']:

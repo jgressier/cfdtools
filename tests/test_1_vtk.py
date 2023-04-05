@@ -1,7 +1,7 @@
 import cfdtools.meshbase.simple as sm
 from cfdtools.vtk import vtkMesh
-import cfdtools.vtk as vtk
-import cfdtools.api as api
+# import cfdtools.vtk as vtk
+# import cfdtools.api as api
 from pathlib import Path
 import pytest
 

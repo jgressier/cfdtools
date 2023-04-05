@@ -329,7 +329,6 @@ class reader(api._files):
             counter = 1
             maxnodes = int(coordinates[0][3])
             nodes = 1
-            rng = []
             count = 1
             x = [None] * (maxnodes)
             y = [None] * (maxnodes)

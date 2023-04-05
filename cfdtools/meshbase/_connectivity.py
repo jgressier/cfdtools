@@ -42,11 +42,11 @@ class indexlist:
         else:
             api.error_stop("unable to get range from list connectivity")
 
-    def set_range(self, range):
+    def set_range(self, irange):
         """define range of index with first and last included"""
         self._delete()
         self._type = 'range'
-        self._range = [*range]
+        self._range = [*irange]
 
     def list(self):
         if self._type == 'range':

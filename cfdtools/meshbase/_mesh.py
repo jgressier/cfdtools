@@ -1,6 +1,6 @@
 import cfdtools.api as api
 import cfdtools.meshbase._connectivity as conn
-import cfdtools.meshbase._elements as ele
+# import cfdtools.meshbase._elements as ele
 from cfdtools.utils.math import minavgmax
 import itertools
 import numpy as np
@@ -60,9 +60,9 @@ class submeshmark:
         return self._properties['type']
 
     @type.setter
-    def type(self, type):
+    def type(self, mtype):
         assert type in self._available_types
-        self._properties['type'] = type
+        self._properties['type'] = mtype
 
     def nodebased(self):
         return self._geodim in {'node', 'bdnode', 'intnode'}
