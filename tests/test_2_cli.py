@@ -49,3 +49,13 @@ def test_ic3writev3(args):
 def test_vtkwrite(args):
     _builddir.mkdir(exist_ok=True)
     assert cli.write_vtk(args + ["--outpath"] + [str(_builddir)])
+
+def test_vtkwrite_extrude():
+    args = ["--fmt", "CGNS", "--extrude", "5", "./tests/data/cavity-degen.hdf"]
+    _builddir.mkdir(exist_ok=True)
+    assert cli.write_vtk(args + ["--outpath"] + [str(_builddir)])
+
+def test_vtkwrite_scale():
+    args = ["--fmt", "CGNS", "--scale", "2.", ".5", "1.", "./tests/data/cavity-degen.hdf"]
+    _builddir.mkdir(exist_ok=True)
+    assert cli.write_vtk(args + ["--outpath"] + [str(_builddir)])

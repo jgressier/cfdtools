@@ -9,6 +9,7 @@ exclude_lines =
     def __repr__
     def __str__
     if self.debug:
+    error_stop
     if settings.DEBUG
     raise AssertionError
     raise NameError

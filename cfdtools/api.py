@@ -1,3 +1,4 @@
+from functools import wraps
 from pathlib import Path
 import numpy as np
 import time
@@ -204,3 +205,14 @@ class Timer:  # from https://realpython.com/python-timer/
 
     def __exit__(self, *exitoptions):
         self.stop()
+
+
+def memoize(f):
+    cache = {}
+    @wraps(f)
+    def wrapper(*args):
+        if not args in cache:
+            cache[args] = f(*args)
+        #Warning: You may wish to do a deepcopy here if returning objects
+        return cache[args]
+    return wrapper
