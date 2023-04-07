@@ -61,7 +61,7 @@ class submeshmark:
 
     @type.setter
     def type(self, mtype):
-        assert type in self._available_types
+        assert mtype in self._available_types
         self._properties['type'] = mtype
 
     def nodebased(self):
