@@ -3,11 +3,12 @@ from pathlib import Path
 
 import cfdtools.api as api
 
-# readers
+# readers and writers - must be imported to update api format dict
 import cfdtools.ic3 as ic3  # .reader_legacy # needed to map readers
-#import cfdtools.gmsh as gmsh
-#import cfdtools.cgns as cgns
+import cfdtools.gmsh as gmsh
+import cfdtools.cgns as cgns
 import cfdtools.vtk as vtk
+#
 import cfdtools.meshbase.simple as simplemesh
 import cfdtools.probes.plot as probeplot
 import cfdtools.probes.data as probedata
