@@ -13,10 +13,10 @@ cfdtools
 
 ### Features
 
-- readers: IC3, VTK, GMSH, CGNS
-- writers: IC3, VTK
+- readers: IC3 (v2, v3), GMSH (v2, v4), CGNS (hdf5)
+- writers: IC3 (v2, v3), VTK
 - generic options for command line writers: extrusion
-- generic format command line: `cfdinfo`
+- generic format command line: `cfdinfo`, `cfdwrite_ic3v3`
 - specific IC3 command line: `ic3brief`
 - specific VTK command line: `vtkbrief`
 
