@@ -7,6 +7,53 @@ import itertools
 import numpy as np
 
 
+class meshconnection():
+    """general mesh connectivity
+    """
+    _available_transform = ('local', 'translate', 'rot', 'rotx', 'roty', 'rotz')
+    _available_con = ('match_node', 'match_face', 'match_nface', 'nomatch')
+
+    def __init__(self):
+        self._geodim = None
+        self._properties = {}
+
+    @property
+    def transform(self):
+        return self._transform
+
+    @transform.setter
+    def transform(self, transform):
+        assert transform in self._available_transform
+        self._transform = transform
+
+    @property
+    def contype(self):
+        return self._contype
+
+    @contype.setter
+    def contype(self, contype):
+        assert contype in self._available_contype
+        self._contype = contype
+
+    def __getitem__(self, key):
+        return self._properties[key]
+    
+    def set_translation(self, translation: np.ndarray):
+        """set translation"""
+        self.transform = 'translate'
+        self._properties['translation vector'] = translation
+
+    def set_rotation(self, rottype, axis: np.ndarray = None, angle: float = 0.):
+        """set rotation (rotx, roty, rotz) and angle in degree"""
+        self.transform = rottype
+        self._properties['axis'] = {
+            'rotx': np.array([1., 0., 0.]), 
+            'roty': np.array([0., 1., 0.]), 
+            'rotz': np.array([0., 0., 1.]), 
+            'rot': np.array(axis)
+            }.get(rottype)
+        self._properties['angle'] = angle
+
 class submeshmark:
     # authorized geomdim type and actual dimension
     _available_geodim = (
