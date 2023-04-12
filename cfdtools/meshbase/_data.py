@@ -1,27 +1,56 @@
 import cfdtools.api as api
 
-_data_representation = []
 
 
-class indexeddata:
-    def __init__(self, type='nodal', index='direct'):
-        self._type = type
-        self._index = index
+# class indexeddata:
+#     def __init__(self, type='nodal', index='direct'):
+#         self._type = type
+#         self._index = index
+
+_available_Xrep = ('nodal', 'cellaverage', 'spectralcell')
+_available_Trep = ('instant', 'timeevol', 'fourier', 'pod')
 
 
-class celldata(indexeddata):
-    def __init__(self, type='cellaverage', index='direct', ndof=1):
-        super().__init__(type, index)
+class dataset():
+
+    def __init__(self, Xrep='cellaverage', ndof=1, Trep='instant'):
         self._ndof = ndof
+        self._data = dict()
 
-    def set_data(self, data):
-        self._data = data
-
-    def data(self):
-        return self._data
-
+    @property
     def ndof(self):
         return self._ndof
 
-    def __str__(self):
-        return "type: {}\nndof: {}".format(self._type, self._ndof)
+    @ndof.setter
+    def ndof(self, ndof):
+        assert ndof == 1 or self._Xrep == 'spectralcell'
+        self._ndof = ndof
+
+    @property
+    def Xrep(self):
+        return self._Xrep
+
+    @Xrep.setter
+    def Xrep(self, Xrep):
+        self._Xrep = Xrep
+
+    @property
+    def Trep(self):
+        return self._Trep
+
+    @Trep.setter
+    def Trep(self, Trep):
+        self._Trep = Trep
+
+    def add_data(self, name, data, time=None):
+        self._data[name] = data
+
+    def data(self):
+        return self._data
+    
+    def items(self):
+        return self._data.items()
+
+    def __getitem__(self, name):
+        return self._data[name]
+

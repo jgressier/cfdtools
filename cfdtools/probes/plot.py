@@ -87,7 +87,7 @@ def plot_freqmap(data, **kwargs):
     plt.ylabel("frequency", fontsize=10)
     n = data.alldata[var].shape[0]
     f = fftm.fftfreq(n, dtavg)
-    psdmap = np.abs(fftm.fft(data.alldata[var], axis=0))
+    psdmap = np.abs(fftm.fft(data.alldata[var]-np.average(data.alldata[var]), axis=0))
     if kwargs['verbose']:
         api.io.print('std', data.alldata[var].shape, n, psdmap.shape, f.shape)
     colmap = cfdplt.normalizeCmap(cmap, nlevels)

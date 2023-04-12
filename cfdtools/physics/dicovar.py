@@ -74,21 +74,6 @@ _cxDico = {
     'u_rey': 'U_REY',
 }
 
-# OpenFOAM variables dico (just examples, to modify ...)
-_ofNames = ['OpenFOAM', 'of', 'openfoam', 'ofoam']
-_ofDico = {
-    'u_avg': 'Uavg',
-    'rho_avg': 'rhoAVG',
-    'tauw_avg': '???',
-    'mulam_avg': '???',
-    't_avg': '???',
-    'u_rms': '???',
-    'u_rey': '???',
-}
-
-# Database with all software denominations
-_dataBase = [[_cxNames, _cxDico], [_ofNames, _ofDico]]
-
 _default = 'IC3'
 
 
@@ -116,7 +101,6 @@ class _DicoVar(object):
                 self._dv = _copy.deepcopy(soft[1])
                 self._softName = soft[0][0]
                 softOK = True
-                print('---- HADES::DicoVar ----')
                 print('--> Using {} variables denomination'.format(self._softName))
         if not softOK:
             raise ValueError(

@@ -68,7 +68,7 @@ class phydata:
 
     def check_data(self, varname, prefix=""):
         if self.verbose:
-            print("- request " + varname)
+            api.io.printstd("- request " + varname)
         success = varname in self.alldata
         if not success:
             # try to directly read data
@@ -83,7 +83,7 @@ class phydata:
                 )
             if success:
                 if self.verbose:
-                    print("- compute " + varname)
+                    api.io.printstd("- compute " + varname)
                 self.compute_varname[varname]()
             else:
                 raise NameError(varname + " missing or unable to compute")
@@ -102,7 +102,7 @@ class phydata:
         fname = prefix + "." + varname
         if os.path.exists(fname):
             if self.verbose:
-                print("- read " + varname + " in " + fname)
+                api.io.printstd("- read " + varname + " in " + fname)
             rdata = np.genfromtxt(fname, delimiter=" ")
             if rdata.ndim == 1:  # supposed to be coordinate
                 self.alldata[varname] = rdata[
@@ -116,7 +116,7 @@ class phydata:
                     "time" not in self.alldata
                 ):  # if time missing, get it from current data, no consistency test with other data
                     if self.verbose:
-                        print(" . define 'time'")
+                        api.io.printstd(" . define 'time'")
                     self.alldata["time"] = rdata[:, 1]
             else:
                 raise Error("unexpected data size " + varname)

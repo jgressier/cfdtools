@@ -306,7 +306,7 @@ def ic3probe_plotline(argv=None):
     # check files and read data
     data = probedata.phydata(basename, verbose=parser.args().verbose)
 
-    api.io.print('std', "> read data ")
+    api.io.printstd(f"> read data in {basename}")
     for ivar in expected_data:
         data.check_data(ivar, prefix=basename)
 
