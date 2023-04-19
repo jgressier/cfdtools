@@ -103,9 +103,9 @@ class reader(binreader):
         self._ReadInformativeValues()
         #
         api.io.print('std', "Reading variables...")
-        self.celldata = _data.dataset('cellaverage')
-        self.nodedata = _data.dataset('nodal')
-        self.facedata = _data.dataset('nodal')
+        self.celldata = _data.DataSet('cellaverage')
+        self.nodedata = _data.DataSet('nodal')
+        self.facedata = _data.DataSet('nodal')
         self._ReadRestartVar()
         #
         # Before returning, close the file

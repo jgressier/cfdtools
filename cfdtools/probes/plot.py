@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import cfdtools.api as api
 import cfdtools.plot as cfdplt
-from cfdtools.utils.math import minavgmax
+from cfdtools.utils.maths import minavgmax
 import numpy as np
 import numpy.fft as fftm
 

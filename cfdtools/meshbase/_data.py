@@ -11,7 +11,7 @@ _available_Xrep = ('nodal', 'cellaverage', 'spectralcell')
 _available_Trep = ('instant', 'timeevol', 'fourier', 'pod')
 
 
-class dataset():
+class DataSet():
 
     def __init__(self, Xrep='cellaverage', ndof=1, Trep='instant'):
         self._ndof = ndof
