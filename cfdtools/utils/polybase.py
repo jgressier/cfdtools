@@ -1,3 +1,4 @@
+from ..utils._dev import lazyprop
 import numpy as np
 import numpy.linalg as lin
 import numpy.polynomial.legendre as polyL
@@ -21,24 +22,28 @@ class poly1d():
                 for ibas in self._basis
         ]
 
+    @lazyprop
     def vdm(self):
         """vandermonde matrix for base to Lagrange
         
         """
-        self._vdm = np.array([
+        return np.array([
             self._polyeval(ibas)(self._roots)
                 for ibas in self._basis
         ])
-        self._invvdm = lin.inv(self._vdm)
+
+    @lazyprop
+    def invvdm(self):
+        return lin.inv(self.vdm)
 
     def interp_weights(self, x):
-        return self._invvdm @ np.array([
+        return self.invvdm @ np.array([
             self._polyeval(ibas)(x)
                 for ibas in self._basis
         ])
 
     def diff_weights(self, x):
-        return self._invvdm @ np.array([
+        return self.invvdm @ np.array([
             self._polyeval(ibas)(x)
                 for ibas in self._gradbasis
         ])
@@ -48,8 +53,5 @@ if __name__ == "__main__":
     b = poly1d(3, series='legendre')
     print(b._roots)
     #print(b._basis)
-    b.vdm()
-    #print("vdm", b._vdm)
-    #print("inv.vdm", b._invvdm)
     print("interp", b.interp_weights(-1))
     print("diff", b.diff_weights(-1))
