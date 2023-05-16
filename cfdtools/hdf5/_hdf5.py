@@ -17,18 +17,18 @@ def h5_str(obj):
 class h5file(_files):
     def __init__(self, filename: str):
         super().__init__(filename)
-        self._h5file = h5py.File(self._path)
 
-    def open(self):
+    def open(self, mode='r'):
+        self._h5file = h5py.File(self._path, mode=mode)
         if self.exists():
             self._h5ver = self._h5file[' hdf5version']
 
     def __getitem__(self, item):
-        return
+        return self._h5file[item]
 
     def printinfo(self):
         super().printinfo()
-        io.print('std', h5_str(self._h5ver))
+        io.printstd(h5_str(self._h5ver))
 
 
 # if __name__ == "__main__":

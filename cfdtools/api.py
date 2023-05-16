@@ -164,39 +164,49 @@ class Timer:  # from https://realpython.com/python-timer/
     default_msg = ""
 
     def __init__(self, task="", msg=default_msg, nelem=None, tab=default_tab):
-        self._reset()
+        self.reset()
         self._nelem = nelem
         self._tab = tab
         self._task = task
         self._msg = msg
 
-    def _reset(self):
+    def reset(self):
         self._start_time = None
         self._task = ""
         self._col = 0
+        self._elapsed = 0.
 
+    @property
+    def elapsed(self):
+        return self._elapsed
+        
     def start(self):
         """Start a new timer"""
         if self._start_time is not None:
             raise TimerError(f"Timer is running. Use .stop() to stop it")
         self._start_time = time.perf_counter()
 
+    def pause(self):
+        """Stop the timer, add elapsed and do NOT report"""
+        if self._start_time is None:
+            raise TimerError(f"Timer is not running. Use .start() to start it")
+        self._elapsed += time.perf_counter() - self._start_time
+        self._start_time = None
+
     def stop(self, nelem=None):
         """Stop the timer, and report the elapsed time"""
         if nelem is not None:
             self._nelem = nelem
-        if self._start_time is None:
-            raise TimerError(f"Timer is not running. Use .start() to start it")
-        elapsed_time = time.perf_counter() - self._start_time
+        self.pause()
         normalized_time_ms = (
-            0.0 if self._nelem is None else 1e6 * elapsed_time / self._nelem
+            0.0 if self._nelem is None else 1e6 * self._elapsed / self._nelem
         )
         if self._nelem is None:
-            io.printstd(f"{' '*(self._tab-self._col)}wtime: {elapsed_time:0.4f}s")
+            io.printstd(f"{' '*(self._tab-self._col)}wtime: {self._elapsed:0.4f}s")
         else:
-            io.printstd(f"{' '*(self._tab-self._col)}wtime: {elapsed_time:0.4f}s | {normalized_time_ms:0.4f}µs/elem",)
+            io.printstd(f"{' '*(self._tab-self._col)}wtime: {self._elapsed:0.4f}s | {normalized_time_ms:0.4f}µs/elem",)
         # reset
-        self._reset()
+        self.reset()
 
     def __enter__(self):
         io.print('std', self._task, end='')
