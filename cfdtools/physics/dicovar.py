@@ -32,14 +32,6 @@ When implementing a vtk file manipulation function
 >>> if wall_outVTK.GetPointData().HasArray(dv.get('tauw_avg')) != 1:
         raise ValueError("Error : field TauWallAvg not present")
 
-When implementing a script associated to a given software
-
->>> # Import dicovar module functions
->>> from hades.common.dicovar import setDicoVar, printDicoVar
->>> # Setting CharlesX dicovar
->>> setDicoVar('cx')
->>> printDicoVar()
-
 Notes
 -----
 - The implementation allow to use several names to set one software (ex : 'cx',
