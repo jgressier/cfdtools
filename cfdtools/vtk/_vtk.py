@@ -126,11 +126,9 @@ class vtkList():
             api.io.printstd(f"    data reordering: {Tsort.elapsed:.2f}s")
 
     def dumphdf(self, filename, options={}):
-        #if self._zopt:
-        options.update({'compression': 'gzip'})
         file = hdf5.h5file(filename)
         file.find_safe_newfile()
-        file.open(mode="w")
+        file.open(mode="w", datatype='datalist')
         hmesh = file._h5file.create_group("mesh")
         hmesh.create_dataset("nodes", data=self._mesh.points, **options)
         hcells = file._h5file.create_group("mesh/cells")
@@ -138,4 +136,5 @@ class vtkList():
             hcells.create_dataset(ele_vtktype[itype], data=cellco, **options)
         hdata = file._h5file.create_group("datalist")
         self._data.dumphdf(hdata, options)
+        file.close()
         
