@@ -1,7 +1,7 @@
 import cfdtools.api as api
 import cfdtools.meshbase._connectivity as conn
 # import cfdtools.meshbase._elements as ele
-from cfdtools.utils.math import minavgmax
+from cfdtools.utils.maths import minavgmax
 import itertools
 import numpy as np
 

@@ -1,4 +1,5 @@
 numpy >= 1.15
+scipy >= 1.6
 #aerokit >= 1.1
 h5py >= 3.1
 pyvista >= 0.38

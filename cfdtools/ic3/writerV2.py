@@ -23,7 +23,7 @@ class writer:
             raise ValueError("unknown endian key")
         else:
             self.endian = endian
-        self.vars = {"nodes": {}, "cells": {}}
+        #self.vars = {"nodes": {}, "cells": {}}
         self._mesh = mesh
         self.params = {}
         # Initialize the simulation state
@@ -142,20 +142,20 @@ class writer:
         They will be later written to the file using the
         __WriteRestartVar method.
         """
-        api.io.print(
-            'std',
-            "Setting variables..",
-        )
-        self.vars = {"nodes": {}, "cells": {}}
+        api.io.printstd("Setting variables..")
+        self.vars = {
+            "nodes": self._mesh._nodedata, 
+            "cells": self._mesh._celldata
+            }
         # Start with the variables stored at the vertices
-        for key, item in self._mesh._nodedata.items():
-            api.io.print('std', "  node data: " + key)
-            self.vars["nodes"][key] = item
+        # for key, item in self._mesh._nodedata.items():
+        #     api.io.print('std', "  node data: " + key)
+        #     self.vars["nodes"][key] = item
 
-        # Then the variables stored at the cells:
-        for key, item in self._mesh._celldata.items():
-            api.io.print('std', "  cell data: " + key)
-            self.vars["cells"][key] = item
+        # # Then the variables stored at the cells:
+        # for key, item in self._mesh._celldata.items():
+        #     api.io.print('std', "  cell data: " + key)
+        #     self.vars["cells"][key] = item
 
     def write_data(self, filename):
         """
@@ -197,14 +197,14 @@ class writer:
         check_error = True
         # bad field size
         keylist = []
-        for key, cellitem in self.vars["cells"].items():
-            if cellitem.ndof() != 1:
-                keylist.append(key)
-        if len(keylist) >= 1:
-            check_error = False
-            api.io.print(
-                'error', 'wrong size (ndof) of cell data: ' + keylist.__str__()
-            )
+        # for key, cellitem in self.vars["cells"].items():
+        #     if cellitem.ndof() != 1:
+        #         keylist.append(key)
+        # if len(keylist) >= 1:
+        #     check_error = False
+        #     api.io.print(
+        #         'error', 'wrong size (ndof) of cell data: ' + keylist.__str__()
+        #     )
         return check_error
 
     def __WriteRestartHeader(self):
@@ -500,8 +500,7 @@ class writer:
                 pass
 
         # Then the cell based variables
-        for key, cellitem in self.vars["cells"].items():
-            item = cellitem.data()
+        for key, item in self.vars["cells"].items():
             # Scalar
             if item.size == item.shape[0]:
                 # Header
@@ -515,8 +514,7 @@ class writer:
                 header.write(self.fid, self.endian)
                 # Field
                 BinaryWrite(self.fid, self.endian, "d" * self.params["cv_count"], item)
-        for key, cellitem in self.vars["cells"].items():
-            item = cellitem.data()
+        for key, item in self.vars["cells"].items():
             # Vector
             if len(item.shape) == 2:
                 # Header
@@ -536,8 +534,7 @@ class writer:
                     "d" * self.params["cv_count"] * 3,
                     item.ravel(order='C'),
                 )
-        for key, cellitem in self.vars["cells"].items():
-            item = cellitem.data()
+        for key, item in self.vars["cells"].items():
             # Tensor
             if len(item.shape) == 3:
                 # Header

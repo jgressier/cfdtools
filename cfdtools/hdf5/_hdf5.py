@@ -1,10 +1,18 @@
-from cfdtools.api import io, _files
+from cfdtools import __version__
+from cfdtools.api import io, _files, error_stop
 
 try:
     import h5py
     import_h5py = True
 except ImportError:
     import_h5py = False
+
+
+_available_types = (
+    'external', 
+    'dataset', 'datalist',
+    'probes',
+    'cfdmesh')
 
 
 def h5_str(obj):
@@ -17,18 +25,34 @@ def h5_str(obj):
 class h5file(_files):
     def __init__(self, filename: str):
         super().__init__(filename)
-        self._h5file = h5py.File(self._path)
 
-    def open(self):
-        if self.exists():
-            self._h5ver = self._h5file[' hdf5version']
+    def open(self, mode='r', datatype=None):
+        self._h5file = h5py.File(self._path, mode=mode)
+        if mode=='w':
+            assert datatype in _available_types
+            self._h5file.attrs.update({
+                'cfdtools_version': __version__,
+                'cfd_datatype': datatype
+            })
+        elif mode=='r':
+            if self.exists():
+                # only for cgns file (I guess)
+                self._h5ver = self._h5file.get(' hdf5version', None)
+                self._datatype = self._h5file.attrs.get('cfd_datatype', None)
+            else:
+                error_stop(f"unable to find {self.filename} (mode r)")
+        else:
+            error_stop("unknown mode for opening h5 file")
 
+    def close(self):
+        return self._h5file.close()
+    
     def __getitem__(self, item):
-        return
+        return self._h5file[item]
 
     def printinfo(self):
         super().printinfo()
-        io.print('std', h5_str(self._h5ver))
+        io.printstd(h5_str(self._h5ver))
 
 
 # if __name__ == "__main__":

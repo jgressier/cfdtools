@@ -22,6 +22,11 @@ from cfdtools.ic3._ic3 import (
 
 ###################################################################################################
 
+def printstats(name, d):
+    dnp = np.asarray(d) 
+    api.io.printstd("  %s%s:  %+.5e / %+.5e / %+.5e (min/mean/max)."
+        % (name,' '*(20 - len(name)),
+        dnp.min(), np.mean(dnp), dnp.max()) )
 
 @api.fileformat_reader('IC3', '.ic3')
 class reader(binreader):
@@ -51,7 +56,7 @@ class reader(binreader):
 
     def printinfo(self):
         print(self)
-        print("- mesh properties")
+        api.io.printstd("- mesh properties")
         for key, item in self.mesh.items():
             if isinstance(item, dict):
                 for key2, item2 in item.items():
@@ -64,7 +69,7 @@ class reader(binreader):
                         api._printreadable('  mesh.' + key + '.' + key2, item2)
             else:
                 api._printreadable('  mesh.' + key, item)
-        print("- variable properties")
+        api.io.printstd("- variable properties")
         for key, item in self.variables.items():
             for key2, value in item.items():
                 api._printreadable('variables.' + key + '.' + key2, value)
@@ -98,6 +103,9 @@ class reader(binreader):
         self._ReadInformativeValues()
         #
         api.io.print('std', "Reading variables...")
+        self.celldata = _data.DataSet('cellaverage')
+        self.nodedata = _data.DataSet('nodal')
+        self.facedata = _data.DataSet('nodal')
         self._ReadRestartVar()
         #
         # Before returning, close the file
@@ -108,7 +116,8 @@ class reader(binreader):
     def export_mesh(self):
         # return self.mesh["coordinates"], self.mesh["connectivity"]["e2v"], self.mesh["bocos"], self.variables["nodes"], self.variables["cells"], (self.simulation_state, self.mesh["params"])
         meshdata = _mesh.Mesh(
-            self.mesh['params']['cv_count'], self.mesh['params']['no_count']
+            self.mesh['params']['cv_count'], 
+            self.mesh['params']['no_count']
         )
         meshdata.set_nodescoord_nd(self.mesh['coordinates'])
         face2cell = conn.indexindirection(self.mesh['connectivity']['cvofa']['cvofa'])
@@ -117,9 +126,9 @@ class reader(binreader):
         meshdata.add_faces('mixed', face2node, face2cell)
         for boco in self.mesh['bocos']:
             meshdata.add_boco(boco)
-        meshdata.set_celldata(self.variables['cells'])
-        meshdata.set_nodedata(self.variables['nodes'])
-        meshdata.set_facedata(self.variables['faces'])
+        meshdata.set_celldata(self.celldata)
+        meshdata.set_nodedata(self.nodedata)
+        meshdata.set_facedata(self.facedata)
         meshdata.set_params(self.mesh['params'])
         meshdata.update_params(self.simulation_state)
         if 'partition' in self.mesh.keys():
@@ -172,7 +181,7 @@ class reader(binreader):
         if self.check_integrity:
             # Check the restart is whole by counting the global ids of no, fa and cv
             # For nodes
-            api.io.print('std', "\t Checking nodes integrity ..")
+            api.io.print('std', "  Checking nodes integrity ..")
             sys.stdout.flush()
             h = restartSectionHeader()
             if not h.readVar(self.fid, self.byte_swap, ["UGP_IO_NO_CHECK"]):
@@ -191,7 +200,7 @@ class reader(binreader):
             sys.stdout.flush()
             del nodes_id, h
             # For faces
-            api.io.print('std', "\t Checking faces integrity ..")
+            api.io.print('std', "  Checking faces integrity ..")
             sys.stdout.flush()
             h = restartSectionHeader()
             if not h.readVar(self.fid, self.byte_swap, ["UGP_IO_FA_CHECK"]):
@@ -207,7 +216,7 @@ class reader(binreader):
             sys.stdout.flush()
             del faces_id, h
             # For cells
-            api.io.print('std', "\t Checking cells integrity ..")
+            api.io.print('std', "  Checking cells integrity ..")
             sys.stdout.flush()
             h = restartSectionHeader()
             if not h.readVar(self.fid, self.byte_swap, ["UGP_IO_CV_CHECK"]):
@@ -229,7 +238,7 @@ class reader(binreader):
         #
         # - First, NOOFA
         #
-        api.io.print('std', "\t Parsing face to node connectivity ..")
+        api.io.print('std', "  Parsing face to node connectivity ..")
         sys.stdout.flush()
         h = restartSectionHeader()
         if not h.readVar(self.fid, self.byte_swap, ["UGP_IO_NOOFA_I_AND_V"]):
@@ -374,7 +383,7 @@ class reader(binreader):
         sys.stdout.flush()
 
         # Parse the header of the partition information
-        api.io.print('std', "\t Parsing partitioning information ...")
+        api.io.print('std', "  Parsing partitioning information ...")
         sys.stdout.flush()
         h = restartSectionHeader()
         if not h.readVar(self.fid, self.byte_swap, ["UGP_IO_CV_PART"]):
@@ -395,7 +404,7 @@ class reader(binreader):
         sys.stdout.flush()
 
         # The coordinates of the vertices finally
-        api.io.print('std', "\t Parsing vertices coordinates ..")
+        api.io.print('std', "  Parsing vertices coordinates ..")
         sys.stdout.flush()
         h = restartSectionHeader()
         if not h.readVar(self.fid, self.byte_swap, ["UGP_IO_X_NO"]):
@@ -507,7 +516,7 @@ class reader(binreader):
         self.variables = {"nodes": {}, "cells": {}, "faces": {}}
 
         # First come the scalars
-        api.io.print('std', "\t First the scalars ...")
+        api.io.print('std', "  First the scalars ...")
         reset_offset = True
         while True:
             h = restartSectionHeader()
@@ -541,17 +550,7 @@ class reader(binreader):
                     typesize * self.mesh["params"]["no_count"],
                 )
                 self.variables["nodes"][h.name] = np.asarray(s)
-                api.io.print(
-                    'std',
-                    "\t %s%s:\t %+.5e / %+.5e / %+.5e (min/mean/max)."
-                    % (
-                        h.name,
-                        ' ' * (20 - len(h.name)),
-                        np.asarray(s).min(),
-                        np.mean(np.asarray(s)),
-                        np.asarray(s).max(),
-                    ),
-                )
+                printstats(h.name, s)
             elif h.idata[0] == self.mesh["params"]["fa_count"]:
                 self.variables["faces"][h.name] = np.zeros(
                     (self.mesh["params"]["fa_count"],), dtype=nptype
@@ -563,17 +562,7 @@ class reader(binreader):
                     typesize * self.mesh["params"]["fa_count"],
                 )
                 self.variables["faces"][h.name] = np.asarray(s)
-                api.io.print(
-                    'std',
-                    "\t %s%s:\t %+.5e / %+.5e / %+.5e (min/mean/max)."
-                    % (
-                        h.name,
-                        ' ' * (20 - len(h.name)),
-                        np.asarray(s).min(),
-                        np.mean(np.asarray(s)),
-                        np.asarray(s).max(),
-                    ),
-                )
+                printstats(h.name, s)
             elif h.idata[0] == ncv:
                 api.io.print(
                     "internal",
@@ -582,6 +571,9 @@ class reader(binreader):
                     ),
                 )
                 ndof = self._set_ndof_properties(h.idata[1])
+                if ndof > 1:
+                    self.celldata.Xrep = 'spectralcell'
+                    self.celldata.ndof = ndof
                 pdata = np.zeros((ndof * ncv,), dtype=nptype)
                 s = BinaryRead(
                     self.fid,
@@ -598,28 +590,14 @@ class reader(binreader):
                         "cell_indices"
                     ].items():
                         pdata = np.concatenate((pdata, aux[indices]))
-                self.variables["cells"][h.name] = _data.celldata(ndof=ndof)
-                self.variables["cells"][h.name].set_data(pdata)
-                api.io.print(
-                    'std',
-                    "\t %s%s:\t %+.5e / %+.5e / %+.5e (min/mean/max)."
-                    % (
-                        h.name,
-                        ' ' * (20 - len(h.name)),
-                        np.asarray(s).min(),
-                        np.mean(np.asarray(s)),
-                        np.asarray(s).max(),
-                    ),
-                )
+                self.celldata.add_data(h.name, pdata)
+                printstats(h.name, s)
             else:
-                api.io.print(
-                    'std', "Fatal error. Incoherence in dataset %s. Exiting." % (h.name)
-                )
-                exit()
+                api.error_stop(f"Fatal error. Incoherence in dataset {h.name}. Exiting.")        
         api.io.print('std', "  end of scalars")
 
         # Then the vectors
-        api.io.print('std', "\t Then the vectors ..")
+        api.io.print('std', "  Then the vectors ..")
         reset_offset = True
         while True:
             h = restartSectionHeader()
@@ -643,17 +621,7 @@ class reader(binreader):
                     type2nbytes["float64"] * self.mesh["params"]["no_count"] * 3,
                 )
                 self.variables["nodes"][h.name] = np.asarray(s).reshape((-1, 3))
-                api.io.print(
-                    'std',
-                    "\t %s%s:\t %+.5e / %+.5e / %+.5e (min/mean/max)."
-                    % (
-                        h.name,
-                        ' ' * (20 - len(h.name)),
-                        np.asarray(s).min(),
-                        np.mean(np.asarray(s)),
-                        np.asarray(s).max(),
-                    ),
-                )
+                printstats(h.name, s)
             elif h.idata[0] == self.mesh["params"]["fa_count"]:
                 self.variables["faces"][h.name] = np.zeros(
                     (self.mesh["params"]["fa_count"], 3), dtype=np.float64
@@ -665,19 +633,12 @@ class reader(binreader):
                     type2nbytes["float64"] * self.mesh["params"]["fa_count"] * 3,
                 )
                 self.variables["faces"][h.name] = np.asarray(s).reshape((-1, 3))
-                api.io.print(
-                    'std',
-                    "\t %s%s:\t %+.5e / %+.5e / %+.5e (min/mean/max)."
-                    % (
-                        h.name,
-                        ' ' * (20 - len(h.name)),
-                        np.asarray(s).min(),
-                        np.mean(np.asarray(s)),
-                        np.asarray(s).max(),
-                    ),
-                )
+                printstats(h.name, s)
             elif h.idata[0] == ncv:
                 ndof = self._set_ndof_properties(h.idata[1])
+                if ndof > 1:
+                    self.celldata.Xrep = 'spectralcell'
+                    self.celldata.ndof = ndof
                 pdata = np.zeros((ndof * ncv, 3), dtype=np.float64)
                 s = BinaryRead(
                     self.fid,
@@ -694,19 +655,8 @@ class reader(binreader):
                         "cell_indices"
                     ].items():
                         pdata = np.concatenate((pdata, aux[indices, :]), axis=0)
-                self.variables["cells"][h.name] = _data.celldata(ndof=ndof)
-                self.variables["cells"][h.name].set_data(pdata)
-                api.io.print(
-                    'std',
-                    "\t %s%s:\t %+.5e / %+.5e / %+.5e (min/mean/max)."
-                    % (
-                        h.name,
-                        ' ' * (20 - len(h.name)),
-                        np.asarray(s).min(),
-                        np.mean(np.asarray(s)),
-                        np.asarray(s).max(),
-                    ),
-                )
+                self.celldata.add_data(h.name, pdata)
+                printstats(h.name, s)
             else:
                 api.io.print(
                     'std', "Fatal error. Incoherence in dataset %s. Exiting." % (h.name)
@@ -715,7 +665,7 @@ class reader(binreader):
         api.io.print('std', "  end of vectors")
 
         # Then the tensors
-        api.io.print('std', "\t Then the tensors ..")
+        api.io.print('std', "  Then the tensors ..")
         reset_offset = True
         while True:
             h = restartSectionHeader()
@@ -727,6 +677,9 @@ class reader(binreader):
 
             if h.idata[0] == ncv:
                 ndof = self._set_ndof_properties(h.idata[1])
+                if ndof > 1:
+                    self.celldata.Xrep = 'spectralcell'
+                    self.celldata.ndof = ndof
                 pdata = np.zeros((ndof * ncv, 3, 3), dtype=np.float64)
                 s = BinaryRead(
                     self.fid,
@@ -743,19 +696,8 @@ class reader(binreader):
                         "cell_indices"
                     ].items():
                         pdata = np.concatenate((pdata, aux[indices, :, :]), axis=0)
-                self.variables["cells"][h.name] = _data.celldata(ndof=ndof)
-                self.variables["cells"][h.name].set_data(pdata)
-                api.io.print(
-                    'std',
-                    "\t %s%s:\t %+.5e / %+.5e / %+.5e (min/mean/max)."
-                    % (
-                        h.name,
-                        ' ' * (20 - len(h.name)),
-                        np.asarray(s).min(),
-                        np.mean(np.asarray(s)),
-                        np.asarray(s).max(),
-                    ),
-                )
+                self.celldata.add_data(h.name, pdata)
+                printstats(h.name, s)
             else:
                 api.io.print(
                     'std', "Fatal error. Incoherence in dataset %s. Exiting." % (h.name)

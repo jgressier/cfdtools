@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import cfdtools.api as api
 import cfdtools.plot as cfdplt
-from cfdtools.utils.math import minavgmax
+from cfdtools.utils.maths import minavgmax
 import numpy as np
 import numpy.fft as fftm
 
@@ -87,7 +87,7 @@ def plot_freqmap(data, **kwargs):
     plt.ylabel("frequency", fontsize=10)
     n = data.alldata[var].shape[0]
     f = fftm.fftfreq(n, dtavg)
-    psdmap = np.abs(fftm.fft(data.alldata[var], axis=0))
+    psdmap = np.abs(fftm.fft(data.alldata[var]-np.average(data.alldata[var]), axis=0))
     if kwargs['verbose']:
         api.io.print('std', data.alldata[var].shape, n, psdmap.shape, f.shape)
     colmap = cfdplt.normalizeCmap(cmap, nlevels)

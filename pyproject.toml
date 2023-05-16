@@ -21,6 +21,7 @@ classifiers = [
 requires-python = ">=3.7"
 dependencies = [
     "numpy >= 1.15",
+    "scipy >= 1.6",
     "h5py", "pyvista >= 0.38" ]
 
 [project.urls]

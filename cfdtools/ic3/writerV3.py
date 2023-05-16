@@ -91,9 +91,9 @@ class writer(writer_v2):
                 pass
 
         # Then the cell based variables
-        for key, item in self.vars["cells"].items():
-            ndof = item.ndof()
-            npdata = item.data()
+        if self.vars["cells"]: # if defined
+            ndof = self.vars["cells"].ndof
+        for key, npdata in self.vars["cells"].items():
             ncv = self.params["cv_count"]
             totsize = ndof * ncv
             # Scalar
@@ -113,9 +113,7 @@ class writer(writer_v2):
                 # Field
                 chartype = properties_ugpcode[header.id]['structcode']
                 BinaryWrite(self.fid, self.endian, chartype * totsize, npdata)
-        for key, item in self.vars["cells"].items():
-            ndof = item.ndof()
-            npdata = item.data()
+        for key, npdata in self.vars["cells"].items():
             totsize = ndof * self.params["cv_count"]
             # Vector
             if len(npdata.shape) == 2:
@@ -133,9 +131,7 @@ class writer(writer_v2):
                 BinaryWrite(
                     self.fid, self.endian, "d" * totsize * 3, npdata.ravel(order='C')
                 )
-        for key, item in self.vars["cells"].items():
-            ndof = item.ndof()
-            npdata = item.data()
+        for key, npdata in self.vars["cells"].items():
             totsize = ndof * self.params["cv_count"]
             # Tensor
             if len(npdata.shape) == 3:
