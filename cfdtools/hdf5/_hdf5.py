@@ -3,16 +3,13 @@ from cfdtools.api import io, _files, error_stop
 
 try:
     import h5py
+
     import_h5py = True
 except ImportError:
     import_h5py = False
 
 
-_available_types = (
-    'external', 
-    'dataset', 'datalist',
-    'probes',
-    'cfdmesh')
+_available_types = ('external', 'dataset', 'datalist', 'probes', 'cfdmesh')
 
 
 def h5_str(obj):
@@ -28,13 +25,10 @@ class h5file(_files):
 
     def open(self, mode='r', datatype=None):
         self._h5file = h5py.File(self._path, mode=mode)
-        if mode=='w':
+        if mode == 'w':
             assert datatype in _available_types
-            self._h5file.attrs.update({
-                'cfdtools_version': __version__,
-                'cfd_datatype': datatype
-            })
-        elif mode=='r':
+            self._h5file.attrs.update({'cfdtools_version': __version__, 'cfd_datatype': datatype})
+        elif mode == 'r':
             if self.exists():
                 # only for cgns file (I guess)
                 self._h5ver = self._h5file.get(' hdf5version', None)
@@ -46,7 +40,7 @@ class h5file(_files):
 
     def close(self):
         return self._h5file.close()
-    
+
     def __getitem__(self, item):
         return self._h5file[item]
 

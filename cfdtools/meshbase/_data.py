@@ -1,12 +1,13 @@
 import cfdtools.api as api
 import h5py
-import numpy as np
+
+# import numpy as np
 
 
-class DataSetBase():
+class DataSetBase:
 
     _available_Xrep = ('nodal', 'cellaverage')
-    _available_Trep = ('instant')
+    _available_Trep = 'instant'
 
     def __init__(self, Xrep='cellaverage', ndof=1, Trep='instant'):
         self._ndof = ndof
@@ -39,8 +40,9 @@ class DataSetBase():
     @Trep.setter
     def Trep(self, Trep):
         # self._available_Xrep is essential to self-adapt to class
-        assert Trep in self._available_Trep 
+        assert Trep in self._available_Trep
         self._Trep = Trep
+
 
 class DataSet(DataSetBase):
 
@@ -58,7 +60,7 @@ class DataSet(DataSetBase):
 
     def data(self):
         return self._data
-    
+
     def keys(self):
         return self._data.keys()
 
@@ -68,10 +70,12 @@ class DataSet(DataSetBase):
     def __getitem__(self, name):
         return self._data[name]
 
+
 # class manufactured_DataSet(DataSet):
 
 #     def __init__(self, datafunctions, Xrep='cellaverage', ndof=1, Trep='instant'):
 #         super().__init__(Xrep, ndof, Trep)
+
 
 class DataSetList(DataSetBase):
 
@@ -88,7 +92,7 @@ class DataSetList(DataSetBase):
             datalist['time'] = time
         self._datalist.append(datalist)
 
-    def dumphdf(self, hgroup: h5py.Group,  options={}):
+    def dumphdf(self, hgroup: h5py.Group, options={}):
         n = len(self._datalist)
         for i, datadict in enumerate(self._datalist):
             datagroup = hgroup.create_group(f"i{i:06}")
