@@ -7,7 +7,7 @@ except ImportError:
 import cfdtools.api as api
 import cfdtools.utils.maths as maths
 import cfdtools.meshbase._elements as ele
-from cfdtools.meshbase._data import DataSetList
+from cfdtools.data import DataSetList
 import cfdtools.hdf5 as hdf5
 from pathlib import Path
 import numpy as np

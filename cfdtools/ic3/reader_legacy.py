@@ -6,7 +6,7 @@ import numpy as np
 import sys
 import cfdtools.api as api
 import cfdtools.meshbase._mesh as _mesh
-import cfdtools.meshbase._data as _data
+import cfdtools.data as _data
 import cfdtools.meshbase._connectivity as conn
 
 # import cfdtools.ic3._ic3 as ic3b

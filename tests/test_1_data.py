@@ -1,4 +1,4 @@
-import cfdtools.meshbase._data as data
+import cfdtools.data as data
 import numpy as np
 import pytest
 
