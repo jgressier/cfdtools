@@ -7,6 +7,7 @@ except ImportError:
 import cfdtools.api as api
 import cfdtools.utils.maths as maths
 import cfdtools.meshbase._elements as ele
+import cfdtools.meshbase._mesh as cfd_mesh
 from cfdtools.data import DataSetList
 import cfdtools.hdf5 as hdf5
 from pathlib import Path
@@ -26,7 +27,8 @@ class vtkMesh:
         if mesh:
             self.set_mesh(mesh)
 
-    def set_mesh(self, mesh):
+    def set_mesh(self, mesh: cfd_mesh.Mesh):
+        self._mesh = mesh
         self._coords = self._mesh.nodescoord(ndarray=True)
         self._celldict = {
             vtktype_ele[etype]: elem2node['elem2node']

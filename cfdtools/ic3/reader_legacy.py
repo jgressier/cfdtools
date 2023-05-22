@@ -88,7 +88,7 @@ class reader(binreader):
         api.io.print('std', "READER RESTART IC3")
 
         if not self.exists():  # pragma: no cover
-            api.error("Fatal error. File %s cannot be found." % (self.filename))
+            api.error_stop("Fatal error. File %s cannot be found." % (self.filename))
 
         # Open the file for binary reading
         api.io.print('debug', 'opening ', self.filename)
