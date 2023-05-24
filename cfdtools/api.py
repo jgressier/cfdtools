@@ -97,6 +97,9 @@ class api_output:
     def printdebug(self, *args, **kwargs):
         self.print('debug', *args, **kwargs)
 
+    def warning(self, *args, **kwargs):
+        self.print('warning', *args, **kwargs)
+
 
 io = api_output()
 # print(io.get_modes())

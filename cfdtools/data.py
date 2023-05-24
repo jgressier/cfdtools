@@ -1,4 +1,7 @@
 import cfdtools.api as api
+import numpy as np
+import numpy.fft as fftm
+import matplotlib.pyplot as plt
 import h5py
 
 # import numpy as np
@@ -47,7 +50,7 @@ class DataSetBase:
 class DataSet(DataSetBase):
 
     _available_Xrep = ('nodal', 'cellaverage', 'spectralcell')
-    _available_Trep = ('instant', 'timeevol', 'fourier', 'pod')
+    _available_Trep = ('instant', 'timeevol', 'spectrum', 'spectrogram')
 
     def __init__(self, Xrep='cellaverage', ndof=1, Trep='instant'):
         super().__init__(Xrep, ndof, Trep)
@@ -70,6 +73,54 @@ class DataSet(DataSetBase):
     def __getitem__(self, name):
         return self._data[name]
 
+    def dtstats(self, imin=None, imax=None):
+        assert self.Trep == 'timeevol' and 'time' in self.keys()
+        t = self._data['time'][imin:imax]
+        dt = t[1:] - t[:-1]
+        return np.mean(dt), np.std(dt), t.shape[0]
+
+    def plot(self, x, y, axes=plt, **kwargs):
+        axes.plot(self._data[x], self._data[y], **kwargs)
+
+    def contourf(self, x, y, v, axes=plt, **kwargs):
+        axes.contourf(self._data[x], self._data[y], self._data[v].T, **kwargs)
+
+    def dataSet_spectrum(self, datafilter=None, imin=None, imax=None):
+        dtavg, dtdev, n = self.dtstats(imin, imax) # check 'timeevol'
+        if dtdev / dtavg > 1.e-6:
+            api.io.warning(f"dt standard deviation is significant: {dtdev / dtavg}")
+        f = fftm.fftfreq(n, dtavg)
+        newdataset = DataSet(self.Xrep, self.ndof, Trep='spectrum')
+        newdataset.add_data('freq', f)
+        datalist = datafilter if datafilter else list(self.keys())
+        datalist.remove('time')
+        for name in datalist:
+            newdataset.add_data(name, np.abs(fftm.fft(self[name]-dtavg)))
+        return newdataset
+
+    def dataSet_spectrogram(self, datafilter=None, window=None):
+        lowcrop = 2
+        datalist = datafilter if datafilter else list(self.keys())
+        datalist.remove('time')
+        dtavg, dtdev, ntot = self.dtstats() # check 'timeevol'
+        #print(dtavg, dtdev)
+        if dtdev / dtavg > 1.e-6:
+            api.io.warning(f"dt standard deviation is significant: {100*dtdev / dtavg:.4f}%")
+        newdataset = DataSet(self.Xrep, self.ndof, Trep='spectrogram')
+        nwind = window if window else int(ntot/100)
+        hwin = int(nwind/2)
+        f = fftm.fftfreq(nwind, dtavg)
+        newdataset.add_data('freq', f[lowcrop:hwin+1])
+        nit = int(2*ntot/nwind)-1
+        newdataset.add_data('time', (self['time'][hwin::hwin])[:-1])
+        for name in datalist:
+            v = np.zeros((nit, hwin+1-lowcrop))
+            #print(ntot, nit, nwind, hwin, newdataset['freq'].shape, f.shape)
+            for i in range(nit):
+                v[i,:] = np.log(np.abs(fftm.rfft(self[name][hwin*i:hwin*(i+2)+1]*np.hanning(2*hwin+1))))[lowcrop:]  
+            #print(v.shape, newdataset['freq'].shape, newdataset['time'].shape)
+            newdataset.add_data(name, v)
+        return newdataset
 
 # class manufactured_DataSet(DataSet):
 
