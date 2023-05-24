@@ -43,11 +43,13 @@ class vtkMesh:
         self.__init__()
         self._grid = pv.read(filename)
 
+    @property
     def pyvista_grid(self):
         return self._grid
 
     def plot(self, background='white', show_edges=True, *args, **kwargs):
         self.pyvista_grid().plot(background='white', show_edges=True, *args, **kwargs)
+
 
 class vtkList():
 
@@ -77,7 +79,7 @@ class vtkList():
                     api.io.printstd(f"  . {name}: {d}")
         if self._verbose:
             api.io.printstd(f"  {count}/{self.nfile} grids are not {pos}-coincident")
-        return count > 0
+        return count == 0
 
     def read(self, filterdata=None, reorder=False, tol=1e-10):
         count = 0
@@ -100,7 +102,7 @@ class vtkList():
             Tread.start()
             vtk = pv.read(name)
             Tread.pause()
-            namelist = filterdata if filterdata else pv.cell_data.keys()
+            namelist = filterdata if filterdata else vtk.cell_data.keys()
             Tcomp.start()
             ctr = vtk.cell_centers().points
             d = np.max(maths.distance(ctrRef, ctr))
