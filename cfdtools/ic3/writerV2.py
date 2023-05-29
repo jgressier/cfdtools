@@ -61,7 +61,7 @@ class writer:
 
         # Nodes
         self.coordinates = np.stack(
-            list(self._mesh._nodes[c] for c in ['x', 'y', 'z']), axis=1
+            [self._mesh._nodes[c] for c in 'xyz'], axis=1
         )
 
         # Compute the number of nodes and elements
