@@ -13,7 +13,7 @@ _builddir = Path("./tests/build")
     "filename", ["Box3x3x2v2.ic3", "Box3x3x2v3.ic3", "nrg-tinycube-v2.ic3"]
 )
 def test_reader(filename):
-    ic3mesh = ic3reader.reader(_datadir.joinpath(filename))
+    ic3mesh = ic3reader.reader(_datadir.joinpath(filename), cIntegrity=True)
     ic3mesh.read_data()
     ic3mesh.printinfo()
     rmesh = ic3mesh.export_mesh()

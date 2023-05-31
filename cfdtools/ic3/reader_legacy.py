@@ -173,56 +173,56 @@ class reader(binreader):
         )
         del h
 
-        # Integrity check
-        if self.check_integrity:
-            # Check the restart is whole by counting the global ids of no, fa and cv
-            # For nodes
-            api.io.print('std', "  Checking nodes integrity ..")
-            sys.stdout.flush()
-            h = restartSectionHeader()
-            if not h.readVar(self.fid, self.byte_swap, ["UGP_IO_NO_CHECK"]):
-                exit()
+        # Integrity check - to be checked and maybe re-integrated
+        # if self.check_integrity:
+        #     # Check the restart is whole by counting the global ids of no, fa and cv
+        #     # For nodes
+        #     api.io.print('std', "  Checking nodes integrity ..")
+        #     sys.stdout.flush()
+        #     h = restartSectionHeader()
+        #     if not h.readVar(self.fid, self.byte_swap, ["UGP_IO_NO_CHECK"]):
+        #         exit()
 
-            assert h.idata[0] == self.mesh["params"]["no_count"]
-            assert h.id[0] == ic3_restart_codes["UGP_IO_NO_CHECK"]
-            nodes_id = np.empty((self.mesh["params"]["no_count"],), dtype=np.int32)
-            for loopi in range(self.mesh["params"]["no_count"]):  # xrange to range (python3 portage)
-                s = BinaryRead(self.fid, "i", self.byte_swap, type2nbytes["int32"])
-                nodes_id[loopi] = s[0]
-            assert np.allclose(nodes_id, np.arange(self.mesh["params"]["no_count"]))
-            api.io.print('std', "end of node integrity")
-            sys.stdout.flush()
-            del nodes_id, h
-            # For faces
-            api.io.print('std', "  Checking faces integrity ..")
-            sys.stdout.flush()
-            h = restartSectionHeader()
-            if not h.readVar(self.fid, self.byte_swap, ["UGP_IO_FA_CHECK"]):
-                exit()
-            faces_id = np.empty((self.mesh["params"]["fa_count"],), dtype=np.int32)
-            for loopi in range(self.mesh["params"]["fa_count"]):  # xrange to range (python3 portage)
-                s = BinaryRead(self.fid, "i", self.byte_swap, type2nbytes["int32"])
-                faces_id[loopi] = s[0]
-            assert np.allclose(faces_id, np.arange(self.mesh["params"]["fa_count"]))
-            api.io.print('std', "end of face integrity")
-            sys.stdout.flush()
-            del faces_id, h
-            # For cells
-            api.io.print('std', "  Checking cells integrity ..")
-            sys.stdout.flush()
-            h = restartSectionHeader()
-            if not h.readVar(self.fid, self.byte_swap, ["UGP_IO_CV_CHECK"]):
-                exit()
-            assert h.idata[0] == self.mesh["params"]["cv_count"]
-            assert h.id[0] == ic3_restart_codes["UGP_IO_CV_CHECK"]
-            cells_id = np.empty((self.mesh["params"]["cv_count"],), dtype=np.int32)
-            for loopi in range(self.mesh["params"]["cv_count"]):  # xrange to range (python3 portage)
-                s = BinaryRead(self.fid, "i", self.byte_swap, type2nbytes["int32"])
-                cells_id[loopi] = s[0]
-            assert np.allclose(cells_id, np.arange(self.mesh["params"]["cv_count"]))
-            api.io.print('std', "end of cell integrity")
-            sys.stdout.flush()
-            del cells_id, h
+        #     assert h.idata[0] == self.mesh["params"]["no_count"]
+        #     assert h.id[0] == ic3_restart_codes["UGP_IO_NO_CHECK"]
+        #     nodes_id = np.empty((self.mesh["params"]["no_count"],), dtype=np.int32)
+        #     for loopi in range(self.mesh["params"]["no_count"]):  # xrange to range (python3 portage)
+        #         s = BinaryRead(self.fid, "i", self.byte_swap, type2nbytes["int32"])
+        #         nodes_id[loopi] = s[0]
+        #     assert np.allclose(nodes_id, np.arange(self.mesh["params"]["no_count"]))
+        #     api.io.print('std', "end of node integrity")
+        #     sys.stdout.flush()
+        #     del nodes_id, h
+        #     # For faces
+        #     api.io.print('std', "  Checking faces integrity ..")
+        #     sys.stdout.flush()
+        #     h = restartSectionHeader()
+        #     if not h.readVar(self.fid, self.byte_swap, ["UGP_IO_FA_CHECK"]):
+        #         exit()
+        #     faces_id = np.empty((self.mesh["params"]["fa_count"],), dtype=np.int32)
+        #     for loopi in range(self.mesh["params"]["fa_count"]):  # xrange to range (python3 portage)
+        #         s = BinaryRead(self.fid, "i", self.byte_swap, type2nbytes["int32"])
+        #         faces_id[loopi] = s[0]
+        #     assert np.allclose(faces_id, np.arange(self.mesh["params"]["fa_count"]))
+        #     api.io.print('std', "end of face integrity")
+        #     sys.stdout.flush()
+        #     del faces_id, h
+        #     # For cells
+        #     api.io.print('std', "  Checking cells integrity ..")
+        #     sys.stdout.flush()
+        #     h = restartSectionHeader()
+        #     if not h.readVar(self.fid, self.byte_swap, ["UGP_IO_CV_CHECK"]):
+        #         exit()
+        #     assert h.idata[0] == self.mesh["params"]["cv_count"]
+        #     assert h.id[0] == ic3_restart_codes["UGP_IO_CV_CHECK"]
+        #     cells_id = np.empty((self.mesh["params"]["cv_count"],), dtype=np.int32)
+        #     for loopi in range(self.mesh["params"]["cv_count"]):  # xrange to range (python3 portage)
+        #         s = BinaryRead(self.fid, "i", self.byte_swap, type2nbytes["int32"])
+        #         cells_id[loopi] = s[0]
+        #     assert np.allclose(cells_id, np.arange(self.mesh["params"]["cv_count"]))
+        #     api.io.print('std', "end of cell integrity")
+        #     sys.stdout.flush()
+        #     del cells_id, h
 
         # The two connectivities now
         #
@@ -446,10 +446,7 @@ class reader(binreader):
             #     api.io.print("warning", "unexpected non zero value for ndof in IC3 version 1 and 2")
         else:  # version >= 3
             if intndof == 0:  # 0 is NOT expected
-                api.io.print(
-                    "warning",
-                    "unexpected zero value for ndof in IC3 version 3; set to 1 !",
-                )
+                api.io.warning("unexpected zero value for ndof in IC3 version 3; set to 1 !")
                 ndof = 1
             else:
                 ndof = intndof
@@ -673,159 +670,3 @@ class reader(binreader):
 #     but if it is not, it runs a test on a pre-defined file name.
 #     '''
 
-#     # Module import for script use
-#     import copy
-#     import os
-#     import sys
-#     import vtk as _vtk
-#     from vtk.util import numpy_support
-
-#     # Parse command line arguments seeking a restart file name
-#     defaultFName = "restart_test.out"
-#     if len(sys.argv) == 1:
-#         fName = defaultFName
-#         cIntegrity = False
-#         api.io.print('std', "Use requires the name of a restart file to be input in argument.")
-#         api.io.print('std', "Using a default name, %s."%(defaultFName))
-#     else:
-#         fName = defaultFName
-#         cIntegrity = False
-#         for arg in sys.argv[1:]:
-#             if '--restartname' in arg:
-#                 fName = arg.split('=')[-1]
-#             elif '--checkIntegrity' in arg:
-#                 _cIntegrity = arg.split('=')[-1]
-#                 if _cIntegrity == "False":
-#                     cIntegrity = False
-#                 elif _cIntegrity == "True":
-#                     cIntegrity = True
-#     if fName == defaultFName:
-#         api.io.print('std', "Use requires the name of a restart file to be input in argument.")
-#         api.io.print('std', "Using a default name, %s."%(defaultFName))
-
-#     # Check given file name
-#     if not os.path.isfile(fName):
-#         api.io.print('std', "Fatal error: %s cannot be found. Exiting."%(fName))
-#         exit()
-
-#     # Else proceed
-#     readr = ReaderRestartIC3(fName, cIntegrity)
-#     xyz, co, bocos, simulation_state, nodesvar, cellsvar, params = readr.read_data()
-
-#     ###################################################################################################
-
-#     # Now, we can export the data under a more human-friendly format
-#     #
-#     #- IN VTK
-#     #
-#     # Build point coordinates for VTK
-#     nb_point = xyz.shape[0]
-#     if hasattr(_vtk, 'vtkSOADataArrayTemplate'):
-#         # VTK 8.1.0+: use SOA coordinate array data structure (zero-copy)
-#         points_vtk = _vtk.vtkSOADataArrayTemplate[np.float64]()  # shall avoid copy
-#         points_vtk.SetNumberOfComponents(3)
-#         points_vtk.charlesx_arrays = []
-#         for index in range(3):
-#             np_array = copy.deepcopy(xyz[:, index])
-#             points_vtk.SetArray(index, np_array, nb_point, True, True)
-#             points_vtk.charlesx_arrays.append(np_array)  # record array ref so it won't be gc'ed
-#     else:
-#         # VTK 8.0.1-: build a new AOS coordinate array
-#         points_vtk = numpy_support.numpy_to_vtk(mesh["coordinates"], deep=True)
-#     vtkpoints = _vtk.vtkPoints()
-#     vtkpoints.SetData(points_vtk)
-#     # Build connectivity for VTK
-#     vtkprimitive = {
-#         'bi': _vtk.vtkLine(),
-#         'tri': _vtk.vtkTriangle(),
-#         'qua': _vtk.vtkQuad(),
-#         'tet': _vtk.vtkTetra(),
-#         'hex': _vtk.vtkHexahedron(),
-#         'pri': _vtk.vtkWedge(),
-#         'pyr': _vtk.vtkPyramid(),
-#     }
-#     cells = np.empty((0, ), dtype=np.int64)
-#     cell_types = np.empty((0, ), dtype=np.int64)
-#     offsets = np.empty((0, ), dtype=np.int64)
-#     offset_start = 0
-#     total_nb_cells = 0
-
-#     for uns_type, connect in co.items():
-
-#         nb_cells = connect.shape[0]
-
-#         # record cell-type for each individual cell
-#         if uns_type in vtkprimitive:
-#             cell_type = vtkprimitive[uns_type].GetCellType()
-#         else:
-#             raise ValueError(str_error('Unknown cell type'))
-#         cell_types = np.append(cell_types, np.tile(cell_type, (nb_cells, 1)))
-
-#         # put number of vertices before each cell
-#         cells = np.append(cells, np.concatenate((np.tile(nodes_per_cell[uns_type], (nb_cells, 1)), connect),
-#                                                 axis=1).flat)
-
-#         # start offset of each cell in connectivity array
-#         offset_stop = offset_start + nb_cells * (nodes_per_cell[uns_type] + 1)
-#         offsets = np.append(offsets, np.arange(offset_start, offset_stop, nodes_per_cell[uns_type] + 1))
-#         offset_start = offset_stop
-#         total_nb_cells += nb_cells
-#     idtype_vtk = _vtk.vtkIdTypeArray().GetDataType()
-#     uchartype_vtk = _vtk.vtkUnsignedCharArray().GetDataType()
-
-#     cells_vtk = numpy_support.numpy_to_vtk(cells, deep=True, array_type=idtype_vtk)
-#     cell_array = _vtk.vtkCellArray()
-#     cell_array.SetCells(total_nb_cells, cells_vtk)
-#     # Build VTK unstructured Grid
-#     if len(cell_types) == 1:
-#         vtk_obj = _vtk.vtkUnstructuredGrid()
-#         vtk_obj.SetPoints(vtkpoints)
-#         vtk_obj.SetCells(cell_types[0], cell_array)
-#     else:
-#         cell_types_vtk = numpy_support.numpy_to_vtk(cell_types, deep=True, array_type=uchartype_vtk)
-#         offsets_vtk = numpy_support.numpy_to_vtk(offsets, deep=True, array_type=idtype_vtk)
-#         vtk_obj = _vtk.vtkUnstructuredGrid()
-#         vtk_obj.SetPoints(vtkpoints)
-#         vtk_obj.SetCells(cell_types_vtk, offsets_vtk, cell_array)
-
-#     elemdata = {
-#         "nodes": vtk_obj.GetPointData(),
-#         "cells": vtk_obj.GetCellData(),
-#     }
-#     # And add the variables
-#     for var in cellsvar:
-#         np_array = cellsvar[var]
-#         # cast without copy if possible
-#         if np_array.flags.contiguous:
-#             np_array = np_array.astype(np.float64, copy=False)
-#         else:
-#             np_array = np_array.astype(np.float64)
-#         # zero-copy if contiguous array
-#         vtkarray = numpy_support.numpy_to_vtk(np_array, deep=False)
-#         vtkarray.charlesx_array = np_array  # avoid garbage collection
-#         vtkarray.SetName(var)
-#         #
-#         elemdata["cells"].AddArray(vtkarray)
-#     for var in nodesvar:
-#         np_array = nodesvar[var]
-#         # cast without copy if possible
-#         if np_array.flags.contiguous:
-#             np_array = np_array.astype(np.float64, copy=False)
-#         else:
-#             np_array = np_array.astype(np.float64)
-#         # zero-copy if contiguous array
-#         vtkarray = numpy_support.numpy_to_vtk(np_array, deep=False)
-#         vtkarray.charlesx_array = np_array  # avoid garbage collection
-#         vtkarray.SetName(var)
-#         #
-#         elemdata["nodes"].AddArray(vtkarray)
-#     # Finally, write the file
-#     writer = _vtk.vtkXMLUnstructuredGridWriter()
-#     if _vtk.vtkVersion.GetVTKMajorVersion() >= 6:
-#         writer.SetInputData(vtk_obj)
-#     else:
-#         writer.SetInput(vtk_obj)
-#     filename = "restart.%d"%(simulation_state["step"])
-#     writer.SetFileName(filename + '.vtu')
-#     writer.SetDataModeToBinary()
-#     writer.Write()

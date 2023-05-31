@@ -48,7 +48,7 @@ class vtkMesh:
         return self._grid
 
     def plot(self, background='white', show_edges=True, *args, **kwargs):
-        self.pyvista_grid().plot(background='white', show_edges=True, *args, **kwargs)
+        self.pyvista_grid().plot(background=background, show_edges=show_edges, *args, **kwargs)
 
 
 class vtkList():
@@ -134,6 +134,7 @@ class vtkList():
         file.find_safe_newfile()
         file.open(mode="w", datatype='datalist')
         hmesh = file._h5file.create_group("mesh")
+        # !!! create attribute
         hmesh.create_dataset("nodes", data=self._mesh.points, **options)
         hcells = file._h5file.create_group("mesh/cells")
         for itype, cellco in self._mesh.cells_dict.items():
