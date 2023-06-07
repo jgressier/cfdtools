@@ -22,7 +22,7 @@ requires-python = ">=3.7"
 dependencies = [
     "numpy >= 1.15",
     "scipy >= 1.6",
-    "h5py", "pyvista >= 0.38" ]
+    "h5py >= 3.1", "pyvista >= 0.38" ]
 
 [project.urls]
 Homepage = "https://github.com/jgressier/cfdtools"
