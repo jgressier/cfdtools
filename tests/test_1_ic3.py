@@ -13,7 +13,7 @@ _builddir = Path("./tests/build")
     "filename", ["Box3x3x2v2.ic3", "Box3x3x2v3.ic3", "nrg-tinycube-v2.ic3"]
 )
 def test_reader(filename):
-    ic3mesh = ic3reader.reader(_datadir.joinpath(filename))
+    ic3mesh = ic3reader.reader(_datadir / filename)
     ic3mesh.read_data()
     ic3mesh.printinfo()
     rmesh = ic3mesh.export_mesh()
@@ -32,6 +32,7 @@ def test_writer_v2_litend(filename):
     ic3write = ic3wv2.writer(rmesh, endian='little')
     ic3write.write_data(outfile)
     assert filecmp.cmp(basefile, outfile)
+    outfile.unlink()
 
 
 # @pytest.mark.parametrize("filename", ["sam_sd3.ic3"])

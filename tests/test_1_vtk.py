@@ -9,11 +9,14 @@ _datadir = Path("./tests/data")
 _builddir = Path("./tests/build")
 
 
-def test_cube():
+def test_cube_vtk():
+    filename = "cube.vtu"
+    filepath = _builddir / filename
     cube = sm.Cube(10, 10, 10)
     mesh = cube.export_mesh()
     vtkmesh = vtkMesh(mesh)
-    vtkmesh.write_data(_builddir / "cube.vtu")
+    vtkmesh.write_data(filepath)
+    Path(filepath).unlink()
 
 
 # @pytest.mark.parametrize("filename", ["cavity-degen.hdf"])
