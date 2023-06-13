@@ -129,7 +129,7 @@ def info(argv=None):
     r.read_data()
     mesh = r.export_mesh()
     mesh.printinfo()
-    return True # needed for pytest
+    return True  # needed for pytest
 
 
 def ic3brief(argv=None):
@@ -141,7 +141,7 @@ def ic3brief(argv=None):
     #
     r = ic3.binreader(parser.args().filename)
     r.read_headers()
-    return True # needed for pytest
+    return True  # needed for pytest
 
 
 def write_generic(argv, ext, writer):
@@ -192,7 +192,7 @@ def write_generic(argv, ext, writer):
     output = writer(cfdmesh)
     output.write_data(file.filename)
     api.io.print('std', f"file {file.filename} written")
-    return file.filename # True # needed for pytest (True not needed, filename for eventual rm)
+    return file.filename  # True # needed for pytest (True not needed, filename for eventual rm)
 
 
 def write_ic3v2(argv=None):
@@ -255,7 +255,7 @@ def writecube(argv=None):
     file = api._files(parser.args().filename)
     w = parser._writer(mesh)
     w.write_data(file.filename)
-    return file.filename # True # needed for pytest (True not needed, filename for eventual rm)
+    return file.filename  # True # needed for pytest (True not needed, filename for eventual rm)
 
 
 def ic3probe_plotline(argv=None):

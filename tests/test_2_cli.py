@@ -49,7 +49,7 @@ def test_ic3brief(filename):
 def test_ic3writev2(filename):
     _builddir.mkdir(exist_ok=True)
     file1 = cli.write_ic3v2(outdirlist([filename]))
-    file2 = cli.write_ic3v2(outdirlist([filename])) # write twice to test safe new name
+    file2 = cli.write_ic3v2(outdirlist([filename]))  # write twice to test safe new name
     assert file1 != filename
     assert file2 != filename
     assert file1 != file2
