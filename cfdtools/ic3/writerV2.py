@@ -61,7 +61,7 @@ class writer:
 
         # Nodes
         self.coordinates = np.stack(
-            list(self._mesh._nodes[c] for c in ['x', 'y', 'z']), axis=1
+            [self._mesh._nodes[c] for c in 'xyz'], axis=1
         )
 
         # Compute the number of nodes and elements
@@ -144,7 +144,7 @@ class writer:
         """
         api.io.printstd("Setting variables..")
         self.vars = {
-            "nodes": self._mesh._nodedata, 
+            "nodes": self._mesh._nodedata,
             "cells": self._mesh._celldata
             }
         # Start with the variables stored at the vertices
@@ -161,36 +161,35 @@ class writer:
         """
         Main method of the ic3 restart file writer
         """
-        api.io.print('std', f"> WRITING FILE {filename}")
+        api.io.print('std', f"> WRITING FILE {filename!r}")
         self.filename = filename
         # Open the file for binary reading
-        self.fid = open(self.filename, "wb")
-
-        api.io.print('std', "> check consistency before writing")
-        if not self.check():
-            raise RuntimeError("Inconsistent data to write")
-
-        api.io.print('std', "> Writing header")
-        self.__WriteRestartHeader()
-        #
-        api.io.print('std', "> writing connectivity")
-        self.__WriteRestartConnectivity()
-        #
-        api.io.print('std', "> writing informative values")
-        self.__WriteInformativeValues()
-        #
-        api.io.print('std', "> writing variables")
-        self.__WriteRestartVar()
-        #
-        api.io.print('std', "> end of file")
-        header = restartSectionHeader()
-        header.name = "EOF"
-        header.id = ic3_restart_codes["UGP_IO_EOF"]
-        header.skip = header.hsize
-        header.write(self.fid, self.endian)
-
-        # Before returning, close the file
-        self.fid.close()
+        with open(self.filename, "wb") as self.fid:
+            #
+            api.io.print('std', "> check consistency before writing")
+            if not self.check():
+                raise RuntimeError("Inconsistent data to write")
+            #
+            api.io.print('std', "> Writing header")
+            self.__WriteRestartHeader()
+            #
+            api.io.print('std', "> Writing connectivity")
+            self.__WriteRestartConnectivity()
+            #
+            api.io.print('std', "> Writing informative values")
+            self.__WriteInformativeValues()
+            #
+            api.io.print('std', "> Writing variables")
+            self.__WriteRestartVar()
+            #
+            api.io.print('std', "> End of file")
+            header = restartSectionHeader()
+            header.name = "EOF"
+            header.id = ic3_restart_codes["UGP_IO_EOF"]
+            header.skip = header.hsize
+            header.write(self.fid, self.endian)
+            #
+            # self.fid is closed
         del self.fid
 
     def check(self):

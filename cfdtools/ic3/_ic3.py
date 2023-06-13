@@ -196,8 +196,8 @@ def BinaryRead(bfile, form, byte_swap, size):
             if len(record) != size:
                 api.io.print(
                     'error',
-                    "mismatch record {} and expected sizes {}".format(
-                        len(record), size
+                    "mismatched record ({}) and expected ({}) sizes".format(
+                        len(record), size,
                     ),
                 )
                 break
@@ -410,31 +410,27 @@ class binreader(api._files):
 
         # Open the file for binary reading
         api.io.print('debug', 'opening ', self.filename)
-        self.fid = open(self.filename, "rb")
-
-        api.io.print('std', "reading header (first section)")
-        self._ReadRestartHeader()
-        #
-        reset_offset = True
-        skip = 0
-        while True:
-            h = restartSectionHeader(skip=skip)
-            if not h.readVar(
-                self.fid,
-                self.byte_swap,
-                ic3_restart_codes.keys(),
-                reset_offset=reset_offset,
-            ):
-                break
-            else:
+        with open(self.filename, "rb") as self.fid:
+            api.io.print('std', "reading header (first section)")
+            self._ReadRestartHeader()
+            #
+            reset_offset = True
+            skip = 0
+            while True:
+                h = restartSectionHeader(skip=skip)
+                if not h.readVar(
+                    self.fid,
+                    self.byte_swap,
+                    ic3_restart_codes.keys(),
+                    reset_offset=reset_offset,
+                ):
+                    break
                 reset_offset = False  # continue
                 skip = h.skip()
                 print(h)
                 if h.id[0] == ic3_restart_codes['UGP_IO_EOF']:
                     api.io.print('std', 'UGP EOF reached')
                     break
-        # Before returning, close the file
-        self.fid.close()
         api.io.print('debug', self.filename, ' closed')
         del self.fid
 
