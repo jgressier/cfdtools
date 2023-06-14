@@ -16,7 +16,9 @@ class DataSetBase:
         self._ndof = ndof
         self.Trep = Trep
         self.Xrep = Xrep
+        self.xsize = 0
         self._properties = dict()
+        self._geoprop = dict()
 
     @property
     def ndof(self):
@@ -46,6 +48,22 @@ class DataSetBase:
         assert Trep in self._available_Trep
         self._Trep = Trep
 
+    @property
+    def geoprop(self, key=None):
+        """return geometric properties (dict or value)
+
+        Args:
+            key (_type_, optional): _description_. Defaults to None.
+
+        Returns:
+            _type_: return dict or value of dict if key provided
+        """
+        return self._geoprop[key] if key else self._geoprop
+
+    def set_nodes(self, x, y=None, z=None):
+        self._geoprop['x'] = x
+        if y: self._geoprop['y'] = y
+        if z: self._geoprop['z'] = z
 
 class DataSet(DataSetBase):
 
@@ -142,6 +160,16 @@ class DataSetList(DataSetBase):
         if time:
             datalist['time'] = time
         self._datalist.append(datalist)
+
+    def dataSet(self, datafiler=None):
+        datalist = datafilter if datafilter else list(self.keys())
+        datalist.remove('time')
+        dtavg, dtdev, ntot = self.dtstats() # check 'timeevol'
+        #print(dtavg, dtdev)
+        if dtdev / dtavg > 1.e-6:
+            api.io.warning(f"dt standard deviation is significant: {100*dtdev / dtavg:.4f}%")
+        newdataset = DataSet(self.Xrep, self.ndof, Trep='spectrogram')
+        return newdataset
 
     def dumphdf(self, hgroup: h5py.Group, options={}):
         n = len(self._datalist)
