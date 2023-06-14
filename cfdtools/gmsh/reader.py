@@ -226,10 +226,10 @@ class reader(api._files):
     def __read_sections(self, filename):
         # Read the entire mesh.
         msh = []
-        api.io.print('std', "reading all file...", end='')
-        fid = open(filename)
-        for l in fid:
-            msh.append(l.split())
+        api.io.print('std', f"Reading file {filename!r}...", end='')
+        with open(filename) as fid:
+            for l in fid:
+                msh.append(l.split())
         api.io.print('std', " done")
 
         # Find version of the GMSH used
@@ -278,7 +278,6 @@ class reader(api._files):
             for i in range(1, int(elements[0][0]) + 1):
                 elts.append([int(j) for j in elements[i]])
 
-            fid.close()
             return fam, bctype, x, y, z, elts
 
         # ---------------------------------------
@@ -379,5 +378,4 @@ class reader(api._files):
             # elts = np.array(elts) # numpy depreciation
             # print(elts)
             # api.io.print('std',elts)
-            fid.close()
             return fam, bctype, x, y, z, elts

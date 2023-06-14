@@ -91,27 +91,27 @@ class reader(binreader):
             api.error_stop("Fatal error. File %s cannot be found." % (self.filename))
 
         # Open the file for binary reading
-        api.io.print('debug', 'opening ', self.filename)
-        self.fid = open(self.filename, "rb")
-
-        api.io.print('std', "binary file header")
-        self._ReadRestartHeader()
-        #
-        api.io.print('std', "Reading connectivity...")
-        self._ReadRestartConnectivity()
-        #
-        api.io.print('std', "Reading informative values...")
-        self._ReadInformativeValues()
-        #
-        api.io.print('std', "Reading variables...")
-        self.celldata = _data.DataSet('cellaverage')
-        self.nodedata = _data.DataSet('nodal')
-        self.facedata = _data.DataSet('nodal')
-        self._ReadRestartVar()
-        #
-        # Before returning, close the file
-        self._ncell = self.mesh['params']['cv_count']  # for generic writer and timer
-        self.fid.close()
+        api.io.print('debug', f"Opening file {self.filename!r}")
+        with open(self.filename, "rb") as self.fid:
+            #
+            api.io.print('std', "Reading binary file header")
+            self._ReadRestartHeader()
+            #
+            api.io.print('std', "Reading connectivity...")
+            self._ReadRestartConnectivity()
+            #
+            api.io.print('std', "Reading informative values...")
+            self._ReadInformativeValues()
+            #
+            api.io.print('std', "Reading variables...")
+            self.celldata = _data.DataSet('cellaverage')
+            self.nodedata = _data.DataSet('nodal')
+            self.facedata = _data.DataSet('nodal')
+            self._ReadRestartVar()
+            #
+            self._ncell = self.mesh['params']['cv_count']  # for generic writer and timer
+            #
+            # self.fid is closed
         del self.fid
 
     def export_mesh(self):

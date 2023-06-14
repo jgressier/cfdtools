@@ -7,11 +7,14 @@ from pathlib import Path
 import pytest
 
 
-def test_cube(builddir):
+def test_cube_vtk(builddir):
+    filename = "cube.vtu"
+    filepath = builddir / filename
     cube = sm.Cube(10, 10, 10)
     mesh = cube.export_mesh()
     vtkmesh = vtkMesh(mesh)
-    vtkmesh.write_data(builddir / "cube.vtu")
+    vtkmesh.write_data(filepath)
+    Path(filepath).unlink()
 
 
 def test_vtkread(datadir):

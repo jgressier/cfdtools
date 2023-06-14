@@ -3,7 +3,6 @@ from cfdtools.api import io, _files, error_stop
 
 try:
     import h5py
-
     import_h5py = True
 except ImportError:
     import_h5py = False
@@ -24,7 +23,11 @@ class h5file(_files):
         super().__init__(filename)
 
     def open(self, mode='r', datatype=None):
-        self._h5file = h5py.File(self._path, mode=mode)
+        try:
+            self._h5file = h5py.File(self._path, mode=mode)
+        except:
+            io.print('error', "h5py could not be imported")
+            raise
         if mode == 'w':
             assert datatype in _available_types
             self._h5file.attrs.update({'cfdtools_version': __version__, 'cfd_datatype': datatype})

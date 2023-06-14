@@ -30,11 +30,15 @@ class vtkMesh:
     def set_mesh(self, mesh: cfd_mesh.Mesh):
         self._mesh = mesh
         self._coords = self._mesh.nodescoord(ndarray=True)
-        self._celldict = {
-            vtktype_ele[etype]: elem2node['elem2node']
-            for etype, elem2node in self._mesh._cell2node.items()
-        }
-        self._grid = pv.UnstructuredGrid(self._celldict, self._coords)
+        try:
+            self._celldict = {
+                vtktype_ele[etype]: elem2node['elem2node']
+                for etype, elem2node in self._mesh._cell2node.items()
+            }
+            self._grid = pv.UnstructuredGrid(self._celldict, self._coords)
+        except:
+            api.io.print('error', "pyvista (with CellType) could not be imported")
+            raise
 
     def write_data(self, filename):
         self._grid.save(filename)

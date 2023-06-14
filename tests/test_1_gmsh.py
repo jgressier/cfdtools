@@ -25,7 +25,14 @@ def test_reader(filename):
     assert rmesh.check()
 
 
-@pytest.mark.parametrize("filename", ["box3d-v22.msh", "box3d-v41.msh", "test_3d.msh"])
+@pytest.mark.parametrize(
+    "filename",
+    [
+        "box3d-v22.msh",
+        "box3d-v41.msh",
+        "test_3d.msh",
+    ],
+)
 def test_convert_ic3(filename):
     gmesh = gmsh.reader(_datadir.joinpath(filename))
     gmesh.read_data()
@@ -35,6 +42,7 @@ def test_convert_ic3(filename):
     outfile = api._files(_builddir / Path(filename))
     outfile.change_suffix('.ic3')
     ic3write.write_data(outfile.filename)
+    Path(outfile.filename).unlink()
 
 
 # def test_reader3dv22():
