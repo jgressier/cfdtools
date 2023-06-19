@@ -62,6 +62,7 @@ class api_output:
         'std': '',
         'debug': 'debug:',
     }
+    _timed = False
     _available = list(_prefix.keys())
     _default = ['internal', 'error', 'warning', 'std']
 
@@ -88,8 +89,20 @@ class api_output:
         self.set_modes(self._default)
 
     def print(self, mode, *args, **kwargs):
+        if self._timed:
+            # if timed, pass the line to be continued...
+            print()
+            # ...and tell the timer stop printer
+            self._timed = False
         if mode in self._api_output:
-            print(self._prefix[mode], *args, **kwargs)
+            prefix = self._prefix[mode]
+            if len(prefix) == 0:
+                # avoid leading space if prefix is empty
+                print(*args, **kwargs)
+            else:
+                spcpfx = (len(prefix) + 1) * ' '
+                # add space-replaced prefix for additional lines
+                print(prefix, *([s.replace('\n', '\n' + spcpfx) for s in args]), **kwargs)
 
     def printstd(self, *args, **kwargs):
         self.print('std', *args, **kwargs)
@@ -179,17 +192,17 @@ class Timer:  # from https://realpython.com/python-timer/
     @property
     def elapsed(self):
         return self._elapsed
-        
+
     def start(self):
         """Start a new timer"""
         if self._start_time is not None:
-            raise TimerError(f"Timer is running. Use .stop() to stop it")
+            raise TimerError("Timer is running. Use .stop() to stop it")
         self._start_time = time.perf_counter()
 
     def pause(self):
         """Stop the timer, add elapsed and do NOT report"""
         if self._start_time is None:
-            raise TimerError(f"Timer is not running. Use .start() to start it")
+            raise TimerError("Timer is not running. Use .start() to start it")
         self._elapsed += time.perf_counter() - self._start_time
         self._start_time = None
 
@@ -201,16 +214,29 @@ class Timer:  # from https://realpython.com/python-timer/
         normalized_time_ms = (
             0.0 if self._nelem is None else 1e6 * self._elapsed / self._nelem
         )
-        if self._nelem is None:
-            io.printstd(f"{' '*(self._tab-self._col)}wtime: {self._elapsed:0.4f}s")
+        if io._timed:
+            # There was no print, line can be continued
+            io._timed = False
         else:
-            io.printstd(f"{' '*(self._tab-self._col)}wtime: {self._elapsed:0.4f}s | {normalized_time_ms:0.4f}µs/elem",)
+            # There was a print, line is restarted
+            self._col = 0
+        spc = (self._tab - self._col) * ' '
+        io.printstd(spc + f"wtime: {self._elapsed:0.4f}s", end='')
+        if self._nelem is None:
+            io.printstd("")
+        else:
+            io.printstd(f" | {normalized_time_ms:0.4f}µs/elem",)
         # reset
         self.reset()
 
     def __enter__(self):
         io.print('std', self._task, end='')
-        self._col = len(self._task) + 1
+        self._col = len(self._task)
+        if self._col >= self._tab:
+            self._col = 0
+            io.print('std', '')
+        else:
+            io._timed = True
         self.start()
 
     def __exit__(self, *exitoptions):
@@ -219,10 +245,11 @@ class Timer:  # from https://realpython.com/python-timer/
 
 def memoize(f):
     cache = {}
+
     @wraps(f)
     def wrapper(*args):
-        if not args in cache:
+        if args not in cache:
             cache[args] = f(*args)
-        #Warning: You may wish to do a deepcopy here if returning objects
+        # Warning: You may wish to do a deepcopy here if returning objects
         return cache[args]
     return wrapper
