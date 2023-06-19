@@ -3,7 +3,7 @@ import numpy as np
 import numpy.linalg as lin
 import numpy.polynomial.legendre as polyL
 import numpy.polynomial.polynomial as poly
-from scipy.special import roots_legendre, eval_legendre
+from scipy.special import roots_legendre
 
 polybasis_dict = {
     'legendre' : polyL.Legendre,

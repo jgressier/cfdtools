@@ -5,7 +5,6 @@ from cfdtools.hdf5 import h5file, h5_str
 from cfdtools.meshbase._mesh import Mesh, submeshmark
 import cfdtools.meshbase._connectivity as conn
 import cfdtools.meshbase._elements as ele
-import numpy as np
 
 cgtype = {}
 ele_cgns2local = {2: 'node1', 3: 'bar2', 5: 'tri3', 7: 'quad4', 17: 'hexa8'}

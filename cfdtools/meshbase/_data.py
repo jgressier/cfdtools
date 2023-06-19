@@ -1,7 +1,4 @@
-import cfdtools.api as api
 import h5py
-
-# import numpy as np
 
 
 class DataSetBase:
@@ -93,7 +90,6 @@ class DataSetList(DataSetBase):
         self._datalist.append(datalist)
 
     def dumphdf(self, hgroup: h5py.Group, options={}):
-        n = len(self._datalist)
         for i, datadict in enumerate(self._datalist):
             datagroup = hgroup.create_group(f"i{i:06}")
             for vname, var in datadict.items():
