@@ -224,6 +224,153 @@ class reader(api._files):
             bc["periodic_transform"] = np.zeros((16,), dtype=np.float64)
             self._famm.append(fff)
 
+    def __read_sections_V2(self, msh):
+
+        # ------------------------------------------
+        # Reading msh file for version 2.0 and below
+        # ------------------------------------------
+
+        api.io.print('std', "Running version 2.0 reader")
+        # Find the families.
+        api.io.print('std', "  parse Physical Names")
+        if ["$PhysicalNames"] in msh:
+            ibeg = msh.index(["$PhysicalNames"])
+            iend = msh.index(["$EndPhysicalNames"])
+            families = msh[ibeg + 1 : iend]
+            fam = {}
+            bctype = {}
+            for i in range(1, int(families[0][0]) + 1):
+                fam[families[i][1]] = families[i][2][1:-1]
+                bctype[families[i][2][1:-1]] = families[i][0]
+            api.io.print('std', f"    found Physical names {fam}")
+            api.io.print('std', f"    found Entities {bctype}")
+        else:
+            fam = None
+            bctype = None
+
+        # Find the coordinates.
+
+        api.io.print('std', "  parse Nodes")
+        ibeg = msh.index(["$Nodes"])
+        iend = msh.index(["$EndNodes"])
+        coordinates = msh[ibeg + 1 : iend]
+        ncoord = int(coordinates[0][0])
+        x = [ float(coordinates[i][1]) for i in range(1, ncoord + 1) ]
+        y = [ float(coordinates[i][2]) for i in range(1, ncoord + 1) ]
+        z = [ float(coordinates[i][3]) for i in range(1, ncoord + 1) ]
+        # Find the elements.
+        ibeg = msh.index(["$Elements"])
+        iend = msh.index(["$EndElements"])
+        elements = msh[ibeg + 1 : iend]
+        elts = []
+        for i in range(1, int(elements[0][0]) + 1):
+            elts.append([int(j) for j in elements[i]])
+
+        return fam, bctype, x, y, z, elts
+
+    def __read_sections_V4(self, msh):
+
+        # ------------------------------------------
+        # Reading msh file for version 4.0 and above
+        # ------------------------------------------
+
+        api.io.print('std', "Running 4.x reader")
+        # Find the families.
+        api.io.print('std', "  parse Physical Names")
+        if ["$PhysicalNames"] in msh:
+            ibeg = msh.index(["$PhysicalNames"])
+            iend = msh.index(["$EndPhysicalNames"])
+            families = msh[ibeg + 1 : iend]
+            fam = {}
+            bctype = {}
+            for i in range(1, int(families[0][0]) + 1):
+                # fam[]
+                fam[families[i][1]] = families[i][2][1:-1]
+                bctype[families[i][2][1:-1]] = families[i][0]
+            api.io.print('std', f"    found Physical names {fam}")
+            api.io.print('std', f"    found Entities {bctype}")
+        else:
+            fam = None
+            bctype = None
+        # api.io.print('std',(fam, bctype))
+
+        # To find the entitie number used for concantination of the mesh.
+        # The returned values corresponds to the physical group
+        def find_ent(j):
+            ibeg = msh.index(["$Entities"])
+            iend = msh.index(["$EndEntities"])
+            entities = msh[ibeg + 1 : iend]
+            addd = 0  # temporary variable to seek the line and return
+            low = int(entities[0][0]) + int(entities[0][1])
+            up = int(entities[0][2]) + low
+            for i in range(low, up + 1):
+                if j == int(entities[i][0]) and len(entities[i]) >= 8:
+                    addd = int(entities[i][8])
+                    break
+            return addd
+
+        # Find the coordinates.
+
+        api.io.print('std', "  parse Nodes")
+        ibeg = msh.index(["$Nodes"])
+        iend = msh.index(["$EndNodes"])
+        coordinates = msh[ibeg + 1 : iend]
+        counter = 1
+        maxnodes = int(coordinates[0][3])
+        nodes = 1
+        count = 1
+        x = [None] * (maxnodes)
+        y = [None] * (maxnodes)
+        z = [None] * (maxnodes)
+        while nodes < maxnodes:
+            cnt = int(coordinates[counter][3])
+            for i in range(counter + 1, counter + cnt + 1):
+                pos = int(coordinates[i][0]) - 1
+                x[pos] = float(coordinates[i + cnt][0])
+                y[pos] = float(coordinates[i + cnt][1])
+                z[pos] = float(coordinates[i + cnt][2])
+            nodes += cnt
+            counter = counter + 2 * cnt + 1
+        # Find the elements.
+        api.io.print('std', "  parse Elements")
+        ibeg = msh.index(["$Elements"])
+        iend = msh.index(["$EndElements"])
+        # header is: numEntityBlocks, numElements, minIndex, maxIndex
+        elements = msh[ibeg + 1 : iend]
+        elts = []
+        counter = 1
+        count = 1
+        # self._eltts = []
+        totcomp = int(elements[0][0])
+        # entityblock: dimEntity EntityIndex ElemType numElements
+        # elements: ElementIndex NodesIndex
+        # totelm = int(elements[0][1])
+        for i in range(0, totcomp):
+            a = int(elements[count][2])  # dimension
+            b = int(2)  # No. of tags
+            d = int(elements[count][1])  # Entity group
+            c = find_ent(d)  # Physical group
+            nxtrange = int(elements[count][3])
+            for j in range(count + 1, count + nxtrange + 1):
+                elt1 = [int(k) for k in elements[j]]
+                # elt2=[a, b, c, d]
+                # eltadd = elt2+elt1
+                # elt1.insert(0,y)
+                elt1.insert(1, a)
+                elt1.insert(2, b)
+                elt1.insert(3, c)
+                elt1.insert(4, d)
+                elts.append(elt1)
+
+            count = count + nxtrange + 1
+        # max_j = np.max([len(l) for l in elts])
+        # np_elts = np.zeros((len(elts), max_j), dtype=np.int8)
+        # elts = np.array(elts) # numpy depreciation
+        # print(elts)
+        # api.io.print('std',elts)
+
+        return fam, bctype, x, y, z, elts
+
     def __read_sections(self, filename):
         # Read the entire mesh.
         msh = []
@@ -241,142 +388,9 @@ class reader(api._files):
         assert int(version[0][1]) == 0, "only ASCII version is supported"
         assert int(version[0][2]) == 8, "size of float must be 8 (64bits)"
 
-        # -------------------------------------
-        # Reading the msh file for version 2.0
-        # -------------------------------------
-
         if self.version <= 2:
-            api.io.print('std', "Running version 2.0 reader")
-            # Find the families.
-            if ["$PhysicalNames"] in msh:
-                ibeg = msh.index(["$PhysicalNames"])
-                iend = msh.index(["$EndPhysicalNames"])
-                families = msh[ibeg + 1 : iend]
-                fam = {}
-                bctype = {}
-                for i in range(1, int(families[0][0]) + 1):
-                    fam[families[i][1]] = families[i][2][1:-1]
-                    bctype[families[i][2][1:-1]] = families[i][0]
-
-            else:
-                fam = None
-                bctype = None
-            # Find the coordinates.
-            ibeg = msh.index(["$Nodes"])
-            iend = msh.index(["$EndNodes"])
-            coordinates = msh[ibeg + 1 : iend]
-            x, y, z = [], [], []
-            for i in range(1, int(coordinates[0][0]) + 1):
-                x.append(float(coordinates[i][1]))
-                y.append(float(coordinates[i][2]))
-                z.append(float(coordinates[i][3]))
-            # api.io.print('std',x)
-            # Find the elements.
-            ibeg = msh.index(["$Elements"])
-            iend = msh.index(["$EndElements"])
-            elements = msh[ibeg + 1 : iend]
-            elts = []
-            for i in range(1, int(elements[0][0]) + 1):
-                elts.append([int(j) for j in elements[i]])
-
-            return fam, bctype, x, y, z, elts
-
-        # ---------------------------------------
-        # msh reading for version 4.0 and above
-        # ---------------------------------------
-
+            return self.__read_sections_V2(msh)
         elif self.version >= 4:
-            api.io.print('std', "Running 4.x reader")
-            # Find the families.
-            api.io.print('std', "  parse Physical Names")
-            if ["$PhysicalNames"] in msh:
-                ibeg = msh.index(["$PhysicalNames"])
-                iend = msh.index(["$EndPhysicalNames"])
-                families = msh[ibeg + 1 : iend]
-                fam = {}
-                bctype = {}
-                for i in range(1, int(families[0][0]) + 1):
-                    # fam[]
-                    fam[families[i][1]] = families[i][2][1:-1]
-                    bctype[families[i][2][1:-1]] = families[i][0]
-                api.io.print('std', f"    found Physical names {fam}")
-                api.io.print('std', f"    found Entities {bctype}")
-            else:
-                fam = None
-                bctype = None
-            # api.io.print('std',(fam, bctype))
-            # To find the entitie number used for concantination of the
-            # mesh. The returned values corresponds to the physical group
-            def find_ent(j):
-                ibeg = msh.index(["$Entities"])
-                iend = msh.index(["$EndEntities"])
-                entities = msh[ibeg + 1 : iend]
-                addd = 0  # temporary variable to seek the line and return
-                low = int(entities[0][0]) + int(entities[0][1])
-                up = int(entities[0][2]) + low
-                for i in range(low, up + 1):
-                    if j == int(entities[i][0]) and len(entities[i]) >= 8:
-                        addd = int(entities[i][8])
-                        break
-                return addd
-
-                # Find the coordinates.
-
-            api.io.print('std', "  parse Nodes")
-            ibeg = msh.index(["$Nodes"])
-            iend = msh.index(["$EndNodes"])
-            coordinates = msh[ibeg + 1 : iend]
-            counter = 1
-            maxnodes = int(coordinates[0][3])
-            nodes = 1
-            count = 1
-            x = [None] * (maxnodes)
-            y = [None] * (maxnodes)
-            z = [None] * (maxnodes)
-            while nodes < maxnodes:
-                cnt = int(coordinates[counter][3])
-                for i in range(counter + 1, counter + cnt + 1):
-                    pos = int(coordinates[i][0]) - 1
-                    x[pos] = float(coordinates[i + cnt][0])
-                    y[pos] = float(coordinates[i + cnt][1])
-                    z[pos] = float(coordinates[i + cnt][2])
-                nodes += cnt
-                counter = counter + 2 * cnt + 1
-            # Find the elements.
-            api.io.print('std', "  parse Elements")
-            ibeg = msh.index(["$Elements"])
-            iend = msh.index(["$EndElements"])
-            # header is: numEntityBlocks, numElements, minIndex, maxIndex
-            elements = msh[ibeg + 1 : iend]
-            elts = []
-            counter = 1
-            count = 1
-            # self._eltts = []
-            totcomp = int(elements[0][0])
-            # entityblock: dimEntity EntityIndex ElemType numElements
-            # elements: ElementIndex NodesIndex
-            totelm = int(elements[0][1])
-            for i in range(0, totcomp):
-                a = int(elements[count][2])  # dimension
-                b = int(2)  # No. of tags
-                d = int(elements[count][1])  # Entity group
-                c = find_ent(d)  # Physical group
-                nxtrange = int(elements[count][3])
-                for j in range(count + 1, count + nxtrange + 1):
-                    elt1 = [int(k) for k in elements[j]]
-                    # elt2=[a, b, c, d]
-                    # eltadd = elt2+elt1
-                    # elt1.insert(0,y)
-                    elt1.insert(1, a)
-                    elt1.insert(2, b)
-                    elt1.insert(3, c)
-                    elt1.insert(4, d)
-                    elts.append(elt1)
-
-                count = count + nxtrange + 1
-            # max_j = np.max([len(l) for l in elts])
-            # np_elts = np.zeros((len(elts), max_j), dtype=np.int8)
-            # elts = np.array(elts) # numpy depreciation
-            # print(elts)
-            # api.io.print('std',elts)
-            return fam, bctype, x, y, z, elts
+            return self.__read_sections_V4(msh)
+        else:
+            api.error_stop(f"unexpected mesh version: {self.version} (expected <= 2 or >= 4)")

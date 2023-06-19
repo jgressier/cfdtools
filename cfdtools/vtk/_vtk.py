@@ -13,14 +13,19 @@ import numpy as np
 import scipy.spatial as spspa
 
 
-vtktype_ele = {
-    'bar2': CellType.LINE,
-    'quad4': CellType.QUAD,
-    'hexa8': CellType.HEXAHEDRON,
-}
-ele_vtktype = {
-    i: etype for etype, i in vtktype_ele.items()
-}
+try:
+    vtktype_ele = {
+        'bar2': CellType.LINE,
+        'quad4': CellType.QUAD,
+        'hexa8': CellType.HEXAHEDRON,
+    }
+    ele_vtktype = {
+        i: etype for etype, i in vtktype_ele.items()
+    }
+except NameError:
+    api.io.print('error', "pyvista (with CellType) could not be imported")
+    raise
+
 
 @api.fileformat_writer("VTK", '.vtu')
 class vtkMesh:
@@ -39,7 +44,7 @@ class vtkMesh:
                 for etype, elem2node in self._mesh._cell2node.items()
             }
             self._grid = pv.UnstructuredGrid(self._celldict, self._coords)
-        except:
+        except NameError:
             api.io.print('error', "pyvista (with CellType) could not be imported")
             raise
 
