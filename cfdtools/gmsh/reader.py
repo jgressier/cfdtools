@@ -4,7 +4,7 @@
 import collections
 import cfdtools.meshbase._mesh as _mesh
 import cfdtools.meshbase._connectivity as _conn
-import cfdtools.meshbase._elements as _ele
+import cfdtools.meshbase._elements as _elem
 from cfdtools.gmsh._gmsh import gmshtype_elem  # , nodes_per_cell
 
 # import os
@@ -38,7 +38,7 @@ class reader(api._files):
         api.io.print("std", "Analyze...", end='')
 
         # Check for 3D
-        self._maxdim = np.amax([_ele.elem_dim[gmshtype_elem[e[1]]] for e in elts])
+        self._maxdim = np.amax([_elem.elem_dim[gmshtype_elem[e[1]]] for e in elts])
 
         # Define list of element
         if self._maxdim == 3:
@@ -164,7 +164,7 @@ class reader(api._files):
         cellconn = _conn.elem_connectivity()
         # extract cell connectivity only
         for etype, econn in self._cellconnectivity.items():
-            if _ele.elem_dim[etype] == self._maxdim:
+            if _elem.elem_dim[etype] == self._maxdim:
                 cellconn.add_elems(etype, econn)
         meshdata.set_cell2node(cellconn)
         for name, bc_dict in self._boundaries.items():

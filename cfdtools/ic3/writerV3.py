@@ -1,15 +1,21 @@
 # Import modules
-import numpy as np
+# import numpy as np
 import cfdtools.api as api
-import cfdtools.meshbase._mesh as _mesh
-from cfdtools.ic3._ic3 import *
-from cfdtools.ic3.writerV2 import writer as writer_v2
+
+from cfdtools.ic3._ic3 import (
+    ic3_restart_codes,
+    properties_ugpcode,
+    type2nbytes,
+    BinaryWrite,
+    restartSectionHeader,
+)
+from cfdtools.ic3 import writerV2
 
 ###################################################################################################
 
 
 @api.fileformat_writer('IC3', '.ic3')
-class writer(writer_v2):
+class writer(writerV2.writer):
     '''Implementation of the writer to write ic3 restart files'''
 
     __version__ = "3"

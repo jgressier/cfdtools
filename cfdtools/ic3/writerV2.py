@@ -2,8 +2,14 @@
 import numpy as np
 import cfdtools.api as api
 
-# import cfdtools.meshbase._mesh as _mesh
-from cfdtools.ic3._ic3 import ic3_restart_codes, struct_endian, BinaryWrite, restartSectionHeader, type2nbytes, type2zonekind
+from cfdtools.ic3._ic3 import (
+    ic3_restart_codes,
+    type2nbytes,
+    type2zonekind,
+    struct_endian,
+    BinaryWrite,
+    restartSectionHeader,
+)
 
 ###################################################################################################
 

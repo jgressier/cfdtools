@@ -1,5 +1,5 @@
 import cfdtools.api as api
-import cfdtools.meshbase._elements as ele
+import cfdtools.meshbase._elements as _elem
 from collections import defaultdict, OrderedDict
 from itertools import chain
 import numpy as np
@@ -259,7 +259,7 @@ class elem_connectivity:
         nodeperface = zconn._index[1:] - zconn._index[:-1]
         uniq, counts = np.unique(nodeperface, return_counts=True)
         for facesize, nface in zip(uniq, counts):
-            typef = ele.face_from_nnode[facesize]
+            typef = _elem.face_from_nnode[facesize]
             index = np.argwhere(nodeperface == facesize)
             zind = zconn._index[index]
             nodes = np.hstack(tuple(zconn._value[zind + i] for i in range(facesize)))
@@ -317,19 +317,19 @@ class elem_connectivity:
                 elemsarray = elemsdict['elem2node']
                 # V0
                 # for ielem in range(elemsarray.shape[0]):
-                #     for ftype, listfaces in ele.elem2faces[elemtype].items():
+                #     for ftype, listfaces in _elem.elem2faces[elemtype].items():
                 #         # for face in listfaces:
                 #         #     faces_neighbour[ftype].append( (tuple(elemsarray[ielem, face]), index[ielem]) )
                 #         faces_neighbour[ftype].extend(
                 #             [ (tuple(elemsarray[ielem, face]), index[ielem]) for face in listfaces ] )
                 # V1 (-3%)
-                # for ftype, listfaces in ele.elem2faces[elemtype].items():
+                # for ftype, listfaces in _elem.elem2faces[elemtype].items():
                 #     for face in listfaces:
                 #         faces_neighbour[ftype].extend(
                 #             [ (tuple(elemsarray[ielem, face]), index[ielem]) for ielem in range(elemsarray.shape[0]) ] )
                 # V2 (-30%)
                 # NODE ORDER of face IS REVERSED
-                for ftype, face_of_elem in ele.elem2faces[elemtype].items():
+                for ftype, face_of_elem in _elem.elem2faces[elemtype].items():
                     for eface in face_of_elem:
                         reindex_f = elemsarray[:, list(reversed(eface))].tolist()
                         faces_neighbour[ftype].extend(
@@ -418,7 +418,7 @@ class elem_connectivity:
         for etype, econ in self.items():
             nelem = econ['elem2node'].shape[0]
             elemcon = np.tile(econ['elem2node'], (ncell, 2))
-            fnnode = ele.nnode_elem[etype]
+            fnnode = _elem.nnode_elem[etype]
             elemcon[:, fnnode : 2 * fnnode] += inodeshift
             for i in range(ncell):
                 elemcon[i * nelem : (i + 1) * nelem, :] += i * inodeshift
@@ -426,5 +426,5 @@ class elem_connectivity:
             index = np.tile(econ['index'].list(), (ncell))
             for i in range(ncell):
                 index[i * nelem : (i + 1) * nelem] += i * inodeshift
-            newcon.add_elems(ele.extruded_face[etype], elemcon, indexlist(ilist=index.tolist()))
+            newcon.add_elems(_elem.extruded_face[etype], elemcon, indexlist(ilist=index.tolist()))
         return newcon

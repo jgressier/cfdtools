@@ -7,9 +7,8 @@ import sys
 import cfdtools.api as api
 import cfdtools.meshbase._mesh as _mesh
 import cfdtools.meshbase._data as _data
-import cfdtools.meshbase._connectivity as conn
+import cfdtools.meshbase._connectivity as _conn
 
-# import cfdtools.ic3._ic3 as ic3b
 from cfdtools.ic3._ic3 import (
     binreader,
     type2nbytes,
@@ -118,8 +117,8 @@ class reader(binreader):
         # return self.mesh["coordinates"], self.mesh["connectivity"]["e2v"], self.mesh["bocos"], self.variables["nodes"], self.variables["cells"], (self.simulation_state, self.mesh["params"])
         meshdata = _mesh.Mesh(self.mesh['params']['cv_count'], self.mesh['params']['no_count'])
         meshdata.set_nodescoord_nd(self.mesh['coordinates'])
-        face2cell = conn.indexindirection(self.mesh['connectivity']['cvofa']['cvofa'])
-        face2node = conn.elem_connectivity()
+        face2cell = _conn.indexindirection(self.mesh['connectivity']['cvofa']['cvofa'])
+        face2node = _conn.elem_connectivity()
         face2node.importfrom_compressedindex(self.mesh['connectivity']['noofa'])
         meshdata.add_faces('mixed', face2node, face2cell)
         for boco in self.mesh['bocos']:
@@ -267,7 +266,7 @@ class reader(binreader):
             )
             face2node_value[sta:sto] = np.asarray(s).astype(np.int64)
         face2node_index = face2node_index
-        zface2node = conn.compressed_listofindex(face2node_index, face2node_value)
+        zface2node = _conn.compressed_listofindex(face2node_index, face2node_value)
         zface2node.check()
         self.mesh["connectivity"]["noofa"] = zface2node
         api.io.print('std', "end of face/vertex connectivity")
@@ -336,7 +335,7 @@ class reader(binreader):
             boco = _mesh.submeshmark(h.name)
             boco.type = zonekind2type[h.idata[0]]
             boco.geodim = 'intface' if boco.type == 'internal' else 'bdface'
-            boco.index = conn.indexlist(irange=[h.idata[1], h.idata[2]])
+            boco.index = _conn.indexlist(irange=[h.idata[1], h.idata[2]])
             boco.properties["periodic_transform"] = h.rdata
             #
             famin, famax = boco.index.range()

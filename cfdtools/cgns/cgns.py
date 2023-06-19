@@ -3,8 +3,8 @@ from pathlib import Path
 from cfdtools.api import io, error_stop, fileformat_reader, memoize
 from cfdtools.hdf5 import h5file, h5_str
 from cfdtools.meshbase._mesh import Mesh, submeshmark
-import cfdtools.meshbase._connectivity as conn
-import cfdtools.meshbase._elements as ele
+import cfdtools.meshbase._connectivity as _conn
+import cfdtools.meshbase._elements as _elem
 
 cgtype = {}
 ele_cgns2local = {2: 'node1', 3: 'bar2', 5: 'tri3', 7: 'quad4', 17: 'hexa8'}
@@ -58,14 +58,14 @@ class cgnszone:
         return x, y, z
 
     def elemcon(self, geodim):
-        cellconn = conn.elem_connectivity()
+        cellconn = _conn.elem_connectivity()
         for _, elements in self._elems.items():
             cgnstype = elements[" data"][0]
             etype = ele_cgns2local[cgnstype]
-            nnode = ele.nnode_elem[etype]
+            nnode = _elem.nnode_elem[etype]
             # extract cell connectivity only
-            if ele.elem_dim[etype] == geodim:
-                index = conn.indexlist(irange=elements["ElementRange/ data"][:] - 1)
+            if _elem.elem_dim[etype] == geodim:
+                index = _conn.indexlist(irange=elements["ElementRange/ data"][:] - 1)
                 econ = elements["ElementConnectivity/ data"][:].reshape((-1, nnode))
                 econ -= 1 # shift node index (starts 0)
                 cellconn.add_elems(etype, econ, index)
@@ -111,7 +111,7 @@ class cgnszone:
             boco.geodim = 'cell'
         else:
             error_stop(f'unknown gridlocation {gridloc}')
-        boco.index = conn.indexlist(ilist=nodelist)  # must start at 0
+        boco.index = _conn.indexlist(ilist=nodelist)  # must start at 0
         return boco
 
 

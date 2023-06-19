@@ -1,6 +1,6 @@
 import cfdtools.api as api
-import cfdtools.meshbase._connectivity as conn
-# import cfdtools.meshbase._elements as ele
+import cfdtools.meshbase._connectivity as _conn
+# import cfdtools.meshbase._elements as _elem
 from cfdtools.utils.maths import minavgmax
 import itertools
 import numpy as np
@@ -51,7 +51,7 @@ class submeshmark:
         return self._index
 
     @index.setter
-    def index(self, index: conn.indexlist):
+    def index(self, index: _conn.indexlist):
         assert self.geodim in self._available_geodim
         self._index = index
 
@@ -137,7 +137,7 @@ class Mesh:
         coords = tuple(self._nodes[c] for c in ['x', 'y', 'z'])
         return np.column_stack(coords) if ndarray else coords
 
-    def set_cell2node(self, cell2node: conn.elem_connectivity):
+    def set_cell2node(self, cell2node: _conn.elem_connectivity):
         """set cell to node connectivity
 
         Args:
@@ -150,15 +150,15 @@ class Mesh:
     def add_faces(
         self,
         facetype: str,
-        face2node: conn.elem_connectivity,
-        face2cell: conn.indexindirection = None,
+        face2node: _conn.elem_connectivity,
+        face2cell: _conn.indexindirection = None,
     ):
         """set faces connectivity with face type et optional face/cell connectivity
 
         Args:
             facetype (str): _description_
-            face2node (conn.elem_connectivity): _description_
-            face2cell (conn.indexindirection, optional): _description_. Defaults to None.
+            face2node (_conn.elem_connectivity): _description_
+            face2cell (_conn.indexindirection, optional): _description_. Defaults to None.
         """
         if facetype in self.__available_facetypes:
             self._faces[facetype] = {'face2node': face2node, 'face2cell': face2cell}
@@ -178,11 +178,11 @@ class Mesh:
                 self._faces.pop(facetype)
 
     def export_mixedfaces(self):
-        mixedfaces_con = conn.elem_connectivity()
+        mixedfaces_con = _conn.elem_connectivity()
         mixedfaces_con.importfrom_merge(
             (self._faces['boundary']['face2node'], self._faces['internal']['face2node'])
         )
-        face2cell = conn.indexindirection()
+        face2cell = _conn.indexindirection()
         face2cell.conn = np.concatenate(
             (
                 self._faces['boundary']['face2cell'].conn,
@@ -221,7 +221,7 @@ class Mesh:
                     )
                 ]
                 boco.geodim = 'bdface'
-                boco.index = conn.indexlist(ilist=listface_index)
+                boco.index = _conn.indexlist(ilist=listface_index)
                 # print(boco.name, len(nodeset), len(boco.index.list()))
 
     def list_boco_index(self):
@@ -243,7 +243,7 @@ class Mesh:
                 boco.geodim = 'bdface'
                 boco.type = 'boundary'
                 boco.properties['periodic_transform'] = None
-                boco.index = conn.indexlist(ilist=list_missing)
+                boco.index = _conn.indexlist(ilist=list_missing)
                 self.add_boco(boco)
         else:
             list_missing = []
@@ -288,21 +288,21 @@ class Mesh:
             nbcnode = boco.index.size
             for i in range(nrange):
                 index[i * nbcnode : (i + 1) * nbcnode] += i * ntotnode
-            newboco.index = conn.indexlist(ilist=index.tolist())
+            newboco.index = _conn.indexlist(ilist=index.tolist())
             newmesh.add_boco(newboco)
         # create initial 2D domain as boco
         newboco = submeshmark(name=domain + '0')
         newboco.geodim = 'bdnode'
         newboco.type = 'boundary'
         index = self._cell2node.nodelist()
-        newboco.index = conn.indexlist(ilist=index)
+        newboco.index = _conn.indexlist(ilist=index)
         newmesh.add_boco(newboco)
         # create extruded 2D domain as boco
         newboco = submeshmark(name=domain + '1')
         newboco.geodim = 'bdnode'
         newboco.type = 'boundary'
         index = (np.array(index) + (nrange - 1) * ntotnode).tolist()
-        newboco.index = conn.indexlist(ilist=index)
+        newboco.index = _conn.indexlist(ilist=index)
         newmesh.add_boco(newboco)
         return newmesh
 
@@ -361,11 +361,11 @@ class Mesh:
         assert min(newindex) >= 0, "inconsistency: there must not be -1 index"
         # reindex boco
         for _, boco in self._bocos.items():
-            boco.index = conn.indexlist(ilist=newindex[boco.index.list()].tolist())
+            boco.index = _conn.indexlist(ilist=newindex[boco.index.list()].tolist())
             boco.index.compress()  # try to (and must) make it a range
         # reindex boundary faces
         for _, fdict in self._faces['boundary']['face2node'].items():
-            fdict['index'] = conn.indexlist(ilist=newindex[fdict['index'].list()].tolist())
+            fdict['index'] = _conn.indexlist(ilist=newindex[fdict['index'].list()].tolist())
             # fdict['index'].compress() # not expected
         if 'face2cell' in self._faces['boundary']:
             self._faces['boundary']['face2cell'].conn = self._faces['boundary'][
@@ -404,13 +404,13 @@ class Mesh:
     def _check_cell2node(self):
         if self._cell2node is not None:
             assert isinstance(
-                self._cell2node, conn.elem_connectivity
+                self._cell2node, _conn.elem_connectivity
             ), "cell2node connecitivity is not the expected class"
             assert (
                 self.ncell == self._cell2node.nelem
             ), f"inconsistent size of cells {self.ncell} and {self._cell2node.nelem}"
-        # for etype, conn in self._cell2node.items():
-        #    assert etype in ele.elem2faces.keys()
+        # for etype, _conn in self._cell2node.items():
+        #    assert etype in _elem.elem2faces.keys()
         return True
 
     def make_face_connectivity(self):

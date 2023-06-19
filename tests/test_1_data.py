@@ -1,15 +1,15 @@
-import cfdtools.meshbase._data as data
+import cfdtools.meshbase._data as _data
 import numpy as np
 import pytest
 
 def test_DataSetBase():
-    uv = data.DataSetBase()
+    uv = _data.DataSetBase()
     assert uv.Xrep == 'cellaverage'
     assert uv.Trep == 'instant'
     assert uv.ndof == 1
 
 def test_DataSet_default():
-    uv = data.DataSet()
+    uv = _data.DataSet()
     assert uv.Xrep == 'cellaverage'
     assert uv.Trep == 'instant'
     assert uv.ndof == 1
@@ -22,7 +22,7 @@ def test_DataSet_default():
     assert sum == pytest.approx(25.)
 
 def test_DataSetList_default():
-    uv = data.DataSetList(10)
+    uv = _data.DataSetList(10)
     assert uv.Xrep == 'cellaverage'
     assert uv.Trep == 'timeevol'
     assert uv.ndof == 1
