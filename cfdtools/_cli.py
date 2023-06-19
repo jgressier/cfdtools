@@ -50,34 +50,27 @@ class cli_argparser:
     def addarg_prefix(self):
         self.add_argument('prefix', help="prefix of files")
 
-    def addarg_data(self):
+    def addarg_removedata(self):
         self.add_argument(
-            '--remove-node-data',
-            nargs='+',
-            help="list of data to remove",
+            '--remove-node-data', nargs='+', help="list of node data to remove",
         )
         self.add_argument(
-            '--remove-face-data',
-            nargs='+',
-            help="list of data to remove",
+            '--remove-face-data', nargs='+', help="list of face data to remove",
         )
         self.add_argument(
-            '--remove-cell-data',
-            nargs='+',
-            help="list of data to remove",
+            '--remove-cell-data', nargs='+', help="list of cell data to remove",
         )
+        self.add_argument(
+            '--', dest='',
+            help="needed to separate data to remove from following filename\n\n",)
+        
 
     def addarg_transform(self):
         self.add_argument(
-            '--extrude',
-            type=int,
-            help="total number of planes",
+            '--extrude', type=int, help="total number of planes",
         )
         self.add_argument(
-            '--scale',
-            nargs=3,
-            type=float,
-            help="x, y, z scaling coefficients00",
+            '--scale', nargs=3, type=float, help="x, y, z scaling coefficients",
         )
 
     def parse_cli_args(self, argv):
@@ -145,7 +138,7 @@ def ic3brief(argv=None):
 def write_generic(argv, ext, writer):
     parser = cli_argparser()
     parser.addarg_filenameformat()
-    parser.addarg_data()
+    parser.addarg_removedata()
     parser.addarg_transform()
     parser.parse_cli_args(argv)
     parser.parse_filenameformat()
