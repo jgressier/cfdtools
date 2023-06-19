@@ -51,43 +51,46 @@ gmshtype_elem = {
 # #================================================================================================
 
 # From GMSH doc -
-# 1  : 2-node line.
-# 2  : 3-node triangle.
-# 3  : 4-node quadrangle.
-# 4  : 4-node tetrahedron.
-# 5  : 8-node hexahedron.
-# 6  : 6-node prism.
-# 7  : 5-node pyramid.
-# 8  : 3-node second order line (2 nodes associated with the vertices and 1 with the edge).
-# 9  : 6-node second order triangle (3 nodes associated with the vertices and 3 with the edges).
-# 10 : 9-node second order quadrangle (4 nodes associated with the vertices, 4 with the edges and 1 with the face).
-# 11 : 10-node second order tetrahedron (4 nodes associated with the vertices and 6 with the edges).
-# 12 : 27-node second order hexahedron (8 nodes associated with the vertices, 12 with the edges, 6 with the faces and 1 with the volume).
-# 13 : 18-node second order prism (6 nodes associated with the vertices, 9 with the edges and 3 with the quadrangular faces).
-# 14 : 14-node second order pyramid (5 nodes associated with the vertices, 8 with the edges and 1 with the quadrangular face).
-# 15 : 1-node point.
-# 16 : 8-node second order quadrangle (4 nodes associated with the vertices and 4 with the edges).
-# 17 : 20-node second order hexahedron (8 nodes associated with the vertices and 12 with the edges).
-# 18 : 15-node second order prism (6 nodes associated with the vertices and 9 with the edges).
-# 19 : 13-node second order pyramid (5 nodes associated with the vertices and 8 with the edges).
-# 20 : 9-node third order incomplete triangle (3 nodes associated with the vertices, 6 with the edges)
-# 21 : 10-node third order triangle (3 nodes associated with the vertices, 6 with the edges, 1 with the face)
-# 22 : 12-node fourth order incomplete triangle (3 nodes associated with the vertices, 9 with the edges)
-# 23 : 15-node fourth order triangle (3 nodes associated with the vertices, 9 with the edges, 3 with the face)
-# 24 : 15-node fifth order incomplete triangle (3 nodes associated with the vertices, 12 with the edges)
-# 25 : 21-node fifth order complete triangle (3 nodes associated with the vertices, 12 with the edges, 6 with the face)
-# 26 : 4-node third order edge (2 nodes associated with the vertices, 2 internal to the edge)
-# 27 : 5-node fourth order edge (2 nodes associated with the vertices, 3 internal to the edge)
-# 28 : 6-node fifth order edge (2 nodes associated with the vertices, 4 internal to the edge)
-# 29 : 20-node third order tetrahedron (4 nodes associated with the vertices, 12 with the edges, 4 with the faces)
-# 30 : 35-node fourth order tetrahedron (4 nodes associated with the vertices, 18 with the edges, 12 with the faces, 1 in the volume)
-# 31 : 56-node fifth order tetrahedron (4 nodes associated with the vertices, 24 with the edges, 24 with the faces, 4 in the volume)
-# 92 : 64-node third order hexahedron (8 nodes associated with the vertices, 24 with the edges, 24 with the faces, 8 in the volume)
-# 93 : 125-node fourth order hexahedron (8 nodes associated with the vertices, 36 with the edges, 54 with the faces, 27 in the volume)
+#                                               (node associations)
+#  1 :   2-node           line.
+#  2 :   3-node           triangle.
+#  3 :   4-node           quadrangle.
+#  4 :   4-node           tetrahedron.
+#  5 :   8-node           hexahedron.
+#  6 :   6-node           prism.
+#  7 :   5-node           pyramid.
+#  8 :   3-node 2nd order line                  (2 w/vertices,  1 w/edge).
+#  9 :   6-node 2nd order triangle              (3 w/vertices,  3 w/edges).
+# 10 :   9-node 2nd order quadrangle            (4 w/vertices,  4 w/edges,  1 w/face).
+# 11 :  10-node 2nd order tetrahedron           (4 w/vertices,  6 w/edges).
+# 12 :  27-node 2nd order hexahedron            (8 w/vertices, 12 w/edges,  6 w/faces,  1 w/volume).
+# 13 :  18-node 2nd order prism                 (6 w/vertices,  9 w/edges,  3 w/quad faces).
+# 14 :  14-node 2nd order pyramid               (5 w/vertices,  8 w/edges,  1 w/quad face).
+# 15 :   1-node           point.
+# 16 :   8-node 2nd order quadrangle            (4 w/vertices,  4 w/edges).
+# 17 :  20-node 2nd order hexahedron            (8 w/vertices, 12 w/edges).
+# 18 :  15-node 2nd order prism                 (6 w/vertices,  9 w/edges).
+# 19 :  13-node 2nd order pyramid               (5 w/vertices,  8 w/edges).
+# 20 :   9-node 3rd order incomplete triangle   (3 w/vertices,  6 w/edges)
+# 21 :  10-node 3rd order triangle              (3 w/vertices,  6 w/edges,  1 w/face)
+# 22 :  12-node 4th order incomplete triangle   (3 w/vertices,  9 w/edges)
+# 23 :  15-node 4th order triangle              (3 w/vertices,  9 w/edges,  3 w/face)
+# 24 :  15-node 5th order incomplete triangle   (3 w/vertices, 12 w/edges)
+# 25 :  21-node 5th order complete triangle     (3 w/vertices, 12 w/edges,  6 w/face)
+# 26 :   4-node 3rd order edge                  (2 w/vertices,  2 w/edge)
+# 27 :   5-node 4th order edge                  (2 w/vertices,  3 w/edge)
+# 28 :   6-node 5th order edge                  (2 w/vertices,  4 w/edge)
+# 29 :  20-node 3rd order tetrahedron           (4 w/vertices, 12 w/edges,  4 w/faces)
+# 30 :  35-node 4th order tetrahedron           (4 w/vertices, 18 w/edges, 12 w/faces,  1 w/volume)
+# 31 :  56-node 5th order tetrahedron           (4 w/vertices, 24 w/edges, 24 w/faces,  4 w/volume)
+# 92 :  64-node 3rd order hexahedron            (8 w/vertices, 24 w/edges, 24 w/faces,  8 w/volume)
+# 93 : 125-node 4th order hexahedron            (8 w/vertices, 36 w/edges, 54 w/faces, 27 w/volume)
+
 
 # Line:                   Line3:           Line4:
 
 # 0----------1 --> u      0-----2----1     0----2----3----1
+
 
 # Triangle:               Triangle6:          Triangle9/10:          Triangle12/15:
 
@@ -102,6 +105,7 @@ gmshtype_elem = {
 # |        `\             |        `\          |         \            |             \
 # 0----------1 --> u      0-----3----1         0---3---4---1          0---3---4---5---1
 
+
 # Quadrangle:            Quadrangle8:            Quadrangle9:
 
 #       v
@@ -114,6 +118,7 @@ gmshtype_elem = {
 # |           |          |           |           |           |
 # |           |          |           |           |           |
 # 0-----------1          0-----4-----1           0-----4-----1
+
 
 # Tetrahedron:                          Tetrahedron10:
 
@@ -135,6 +140,8 @@ gmshtype_elem = {
 #              `3                                    `3
 #                 `\.
 #                    ` w
+
+
 # Hexahedron:             Hexahedron20:          Hexahedron27:
 
 #        v
@@ -149,6 +156,7 @@ gmshtype_elem = {
 #   \ |     \  \ |         10 |        12|        10 |  21    12|
 #    \|      w  \|           \|         \|          \|         \|
 #     4----------5            4----16----5           4----16----5
+
 
 # Prism:                      Prism15:               Prism18:
 
@@ -170,6 +178,7 @@ gmshtype_elem = {
 #     |  ,/     `\  |         |  ,6     `7  |        |  ,6     `7  |
 #     |,/         `\|         |,/         `\|        |,/         `\|
 #     1-------------2         1------9------2        1------9------2
+
 
 # Pyramid:                     Pyramid13:                   Pyramid14:
 

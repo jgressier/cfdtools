@@ -13,8 +13,19 @@ import numpy as np
 import scipy.spatial as spspa
 
 
-vtktype_ele = {'bar2': CellType.LINE, 'quad4': CellType.QUAD, 'hexa8': CellType.HEXAHEDRON}
-ele_vtktype = { i: etype for etype, i in vtktype_ele.items() }
+try:
+    vtktype_ele = {
+        'bar2': CellType.LINE,
+        'quad4': CellType.QUAD,
+        'hexa8': CellType.HEXAHEDRON,
+    }
+    ele_vtktype = {
+        i: etype for etype, i in vtktype_ele.items()
+    }
+except NameError:
+    api.io.print('error', "pyvista (with CellType) could not be imported")
+    raise
+
 
 @api.fileformat_writer("VTK", '.vtu')
 class vtkMesh:
@@ -33,7 +44,7 @@ class vtkMesh:
                 for etype, elem2node in self._mesh._cell2node.items()
             }
             self._grid = pv.UnstructuredGrid(self._celldict, self._coords)
-        except:
+        except NameError:
             api.io.print('error', "pyvista (with CellType) could not be imported")
             raise
 
@@ -50,6 +61,7 @@ class vtkMesh:
     def plot(self, background='white', show_edges=True, *args, **kwargs):
         self.pyvista_grid().plot(background='white', show_edges=True, *args, **kwargs)
 
+
 class vtkList():
 
     def __init__(self, filelist, verbose=False) -> None:
@@ -59,13 +71,17 @@ class vtkList():
     @property
     def nfile(self):
         return len(self._list)
-    
+
     def allexist(self):
         return all(Path(file).exists() for file in self._list)
 
     def check_order(self, pos='cellcenter', tol=1e-10):
-        mappos = { 'cellcenter' : lambda m: m.cell_centers().points,
-                   'node' : lambda m: m.points }        
+        mappos = {
+            'cellcenter':
+                lambda m: m.cell_centers().points,
+            'node':
+                lambda m: m.points,
+        }
         count = 0
         assert self.nfile > 0
         ref = mappos[pos](pv.read(self._list[0]))
@@ -108,13 +124,13 @@ class vtkList():
             Tcomp.pause()
             if d > tol:
                 count += 1
-                #if self._verbose:
-                #    api.io.printstd(f"  . {name}: {d}")
+                # if self._verbose:
+                #     api.io.printstd(f"  . {name}: {d}")
                 Tsort.start()
                 dfinal, index = tree.query(ctr, p=2)
                 # reverse indexing to sort new arrays
                 rindex = index.copy()
-                rindex[index] = np.arange(index.size) 
+                rindex[index] = np.arange(index.size)
                 assert np.max(dfinal) <= tol
                 # automatically deals with differnt shapes
                 datalist = {
@@ -140,4 +156,3 @@ class vtkList():
         hdata = file._h5file.create_group("datalist")
         self._data.dumphdf(hdata, options)
         file.close()
-        

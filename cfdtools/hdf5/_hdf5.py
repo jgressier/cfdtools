@@ -25,7 +25,7 @@ class h5file(_files):
     def open(self, mode='r', datatype=None):
         try:
             self._h5file = h5py.File(self._path, mode=mode)
-        except:
+        except NameError:
             io.print('error', "h5py could not be imported")
             raise
         if mode == 'w':
