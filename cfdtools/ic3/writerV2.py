@@ -465,98 +465,114 @@ class writer:
         Scalars, vectors and tensors all together.
         """
         # Start with the node based variables
-        for key, item in self.vars["nodes"].items():
+        #
+        nno = self.params["no_count"]
+        #
+        for nvname, nvdata in self.vars["nodes"].items():
             # Scalar
-            if item.size == item.shape[0]:
+            if nvdata.size == nvdata.shape[0]:
                 # Header
+                api.io.print('std', f"  write node scalar data {nvname}")
                 header = restartSectionHeader()
-                header.name = key
+                header.name = nvname
                 header.id = ic3_restart_codes["UGP_IO_NO_D1"]
                 header.skip = (
-                    header.hsize + type2nbytes["float64"] * self.params["no_count"]
+                    header.hsize + type2nbytes["float64"] * nno
                 )
-                header.idata[0] = self.params["no_count"]
+                header.idata[0] = nno
                 header.write(self.fid, self.endian)
                 # Field
-                BinaryWrite(self.fid, self.endian, "d" * self.params["no_count"], item)
-        for key, item in self.vars["nodes"].items():
+                BinaryWrite(
+                    self.fid, self.endian, "d" * nno,
+                    nvdata,
+                )
+        #
+        for nvname, nvdata in self.vars["nodes"].items():
             # Vector
-            if len(item.shape) == 2:
+            if len(nvdata.shape) == 2:
+                api.io.print('std', f"  write node vector data {nvname}")
                 # Header
                 header = restartSectionHeader()
-                header.name = key
+                header.name = nvname
                 header.id = ic3_restart_codes["UGP_IO_NO_D3"]
                 header.skip = (
-                    header.hsize + type2nbytes["float64"] * self.params["no_count"] * 3
+                    header.hsize + type2nbytes["float64"] * nno * 3
                 )
-                header.idata[0] = self.params["no_count"]
+                header.idata[0] = nno
                 header.idata[1] = 3
                 header.write(self.fid, self.endian)
                 # Field
                 BinaryWrite(
-                    self.fid,
-                    self.endian,
-                    "d" * self.params["no_count"] * 3,
-                    item.ravel(order='C'),
+                    self.fid, self.endian, "d" * nno * 3,
+                    nvdata.ravel(order='C'),
                 )
-        for key, item in self.vars["nodes"].items():
+        #
+        for nvname, nvdata in self.vars["nodes"].items():
             # Tensor
-            if len(item.shape) == 3:
+            if len(nvdata.shape) == 3:
                 pass
 
         # Then the cell based variables
-        for key, item in self.vars["cells"].items():
+        #
+        if self.vars["cells"]:  # if defined
+            ncv = self.params["cv_count"]
+        #
+        for cvname, cvdata in self.vars["cells"].items():
             # Scalar
-            if item.size == item.shape[0]:
+            if cvdata.size == cvdata.shape[0]:
                 # Header
+                api.io.print('std', f"  write cell scalar data {cvname}")
                 header = restartSectionHeader()
-                header.name = key
+                header.name = cvname
                 header.id = ic3_restart_codes["UGP_IO_CV_D1"]
                 header.skip = (
-                    header.hsize + type2nbytes["float64"] * self.params["cv_count"]
+                    header.hsize + type2nbytes["float64"] * ncv
                 )
-                header.idata[0] = self.params["cv_count"]
+                header.idata[0] = ncv
                 header.write(self.fid, self.endian)
                 # Field
-                BinaryWrite(self.fid, self.endian, "d" * self.params["cv_count"], item)
-        for key, item in self.vars["cells"].items():
+                BinaryWrite(
+                    self.fid, self.endian, "d" * ncv,
+                    cvdata,
+                )
+        #
+        for cvname, cvdata in self.vars["cells"].items():
             # Vector
-            if len(item.shape) == 2:
+            if len(cvdata.shape) == 2:
                 # Header
+                api.io.print('std', f"  write cell vector data {cvname}")
                 header = restartSectionHeader()
-                header.name = key
+                header.name = cvname
                 header.id = ic3_restart_codes["UGP_IO_CV_D3"]
                 header.skip = (
-                    header.hsize + type2nbytes["float64"] * self.params["cv_count"] * 3
+                    header.hsize + type2nbytes["float64"] * ncv * 3
                 )
-                header.idata[0] = self.params["cv_count"]
+                header.idata[0] = ncv
                 header.idata[1] = 3
                 header.write(self.fid, self.endian)
                 # Field
                 BinaryWrite(
-                    self.fid,
-                    self.endian,
-                    "d" * self.params["cv_count"] * 3,
-                    item.ravel(order='C'),
+                    self.fid, self.endian, "d" * ncv * 3,
+                    cvdata.ravel(order='C'),
                 )
-        for key, item in self.vars["cells"].items():
+        #
+        for cvname, cvdata in self.vars["cells"].items():
             # Tensor
-            if len(item.shape) == 3:
+            if len(cvdata.shape) == 3:
                 # Header
+                api.io.print('std', f"  write cell tensor data {cvname}")
                 header = restartSectionHeader()
-                header.name = key
+                header.name = cvname
                 header.id = ic3_restart_codes["UGP_IO_CV_D33"]
                 header.skip = (
-                    header.hsize + type2nbytes["float64"] * self.params["cv_count"] * 9
+                    header.hsize + type2nbytes["float64"] * ncv * 9
                 )
-                header.idata[0] = self.params["cv_count"]
+                header.idata[0] = ncv
                 header.idata[1] = 3
                 header.idata[2] = 3
                 header.write(self.fid, self.endian)
                 # Field
                 BinaryWrite(
-                    self.fid,
-                    self.endian,
-                    "d" * self.params["cv_count"] * 9,
-                    item.ravel(order='C'),
+                    self.fid, self.endian, "d" * ncv * 9,
+                    cvdata.ravel(order='C'),
                 )

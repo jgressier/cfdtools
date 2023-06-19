@@ -11,10 +11,18 @@ elem_properties = [  # itype, name, nnode, geodim, extruded
     (0, 'hexa8', 8, 3, 'none'),
 ]
 
-elem_dim = {e: d for _, e, _, d, _ in elem_properties}
-nnode_elem = {e: n for _, e, n, _, _ in elem_properties}
-face_from_nnode = {n: e for _, e, n, d, _ in elem_properties if d <= 2}
-extruded_face = {e: ex for _, e, n, d, ex in elem_properties if d <= 2}
+elem_dim = {
+    e: d for _, e, _, d, _ in elem_properties
+}
+nnode_elem = {
+    e: n for _, e, n, _, _ in elem_properties
+}
+face_from_nnode = {
+    n: e for _, e, n, d, _ in elem_properties if d <= 2
+}
+extruded_face = {
+    e: x for _, e, n, d, x in elem_properties if d <= 2
+}
 
 # define list of faces from an element type
 #   faces are defined with inward normal

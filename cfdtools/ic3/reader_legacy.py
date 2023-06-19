@@ -114,7 +114,14 @@ class reader(binreader):
         del self.fid
 
     def export_mesh(self):
-        # return self.mesh["coordinates"], self.mesh["connectivity"]["e2v"], self.mesh["bocos"], self.variables["nodes"], self.variables["cells"], (self.simulation_state, self.mesh["params"])
+        # return (
+        #     self.mesh["coordinates"],
+        #     self.mesh["connectivity"]["e2v"],
+        #     self.mesh["bocos"],
+        #     self.variables["nodes"],
+        #     self.variables["cells"],
+        #     (self.simulation_state, self.mesh["params"]),
+        # )
         meshdata = _mesh.Mesh(self.mesh['params']['cv_count'], self.mesh['params']['no_count'])
         meshdata.set_nodescoord_nd(self.mesh['coordinates'])
         face2cell = _conn.indexindirection(self.mesh['connectivity']['cvofa']['cvofa'])
@@ -171,6 +178,9 @@ class reader(binreader):
             "mesh with {} cells, {} faces and {} nodes".format(h.idata[2], h.idata[1], h.idata[0]),
         )
         del h
+        ncv = self.mesh["params"]["cv_count"]
+        nfa = self.mesh["params"]["fa_count"]
+        nno = self.mesh["params"]["no_count"]
 
         # Integrity check
         if self.check_integrity:
@@ -182,13 +192,13 @@ class reader(binreader):
             if not h.readVar(self.fid, self.byte_swap, ["UGP_IO_NO_CHECK"]):
                 exit()
 
-            assert h.idata[0] == self.mesh["params"]["no_count"]
+            assert h.idata[0] == nno
             assert h.id[0] == ic3_restart_codes["UGP_IO_NO_CHECK"]
-            nodes_id = np.empty((self.mesh["params"]["no_count"],), dtype=np.int32)
-            for loopi in range(self.mesh["params"]["no_count"]):  # xrange to range (python3 portage)
+            nodes_id = np.empty((nno,), dtype=np.int32)
+            for loopi in range(nno):  # xrange to range (python3 portage)
                 s = BinaryRead(self.fid, "i", self.byte_swap, type2nbytes["int32"])
                 nodes_id[loopi] = s[0]
-            assert np.allclose(nodes_id, np.arange(self.mesh["params"]["no_count"]))
+            assert np.allclose(nodes_id, np.arange(nno))
             api.io.print('std', "end of node integrity")
             sys.stdout.flush()
             del nodes_id, h
@@ -198,11 +208,11 @@ class reader(binreader):
             h = restartSectionHeader()
             if not h.readVar(self.fid, self.byte_swap, ["UGP_IO_FA_CHECK"]):
                 exit()
-            faces_id = np.empty((self.mesh["params"]["fa_count"],), dtype=np.int32)
-            for loopi in range(self.mesh["params"]["fa_count"]):  # xrange to range (python3 portage)
+            faces_id = np.empty((nfa,), dtype=np.int32)
+            for loopi in range(nfa):  # xrange to range (python3 portage)
                 s = BinaryRead(self.fid, "i", self.byte_swap, type2nbytes["int32"])
                 faces_id[loopi] = s[0]
-            assert np.allclose(faces_id, np.arange(self.mesh["params"]["fa_count"]))
+            assert np.allclose(faces_id, np.arange(nfa))
             api.io.print('std', "end of face integrity")
             sys.stdout.flush()
             del faces_id, h
@@ -212,13 +222,13 @@ class reader(binreader):
             h = restartSectionHeader()
             if not h.readVar(self.fid, self.byte_swap, ["UGP_IO_CV_CHECK"]):
                 exit()
-            assert h.idata[0] == self.mesh["params"]["cv_count"]
+            assert h.idata[0] == ncv
             assert h.id[0] == ic3_restart_codes["UGP_IO_CV_CHECK"]
-            cells_id = np.empty((self.mesh["params"]["cv_count"],), dtype=np.int32)
-            for loopi in range(self.mesh["params"]["cv_count"]):  # xrange to range (python3 portage)
+            cells_id = np.empty((ncv,), dtype=np.int32)
+            for loopi in range(ncv):  # xrange to range (python3 portage)
                 s = BinaryRead(self.fid, "i", self.byte_swap, type2nbytes["int32"])
                 cells_id[loopi] = s[0]
-            assert np.allclose(cells_id, np.arange(self.mesh["params"]["cv_count"]))
+            assert np.allclose(cells_id, np.arange(ncv))
             api.io.print('std', "end of cell integrity")
             sys.stdout.flush()
             del cells_id, h
@@ -233,11 +243,11 @@ class reader(binreader):
         if not h.readVar(self.fid, self.byte_swap, ["UGP_IO_NOOFA_I_AND_V"]):
             exit()
         #
-        assert h.idata[0] == self.mesh["params"]["fa_count"]
+        assert h.idata[0] == nfa
         assert h.idata[1] == self.mesh["params"]["noofa_count"]
         # Get the node count per face
-        nno_per_face = np.empty((self.mesh["params"]["fa_count"],), dtype=np.int32)
-        for loopi in range(self.mesh["params"]["fa_count"]):  # xrange to range (python3 portage)
+        nno_per_face = np.empty((nfa,), dtype=np.int32)
+        for loopi in range(nfa):  # xrange to range (python3 portage)
             s = BinaryRead(self.fid, "i", self.byte_swap, type2nbytes["int32"])
             nno_per_face[loopi] = s[0]
         uniq, counts = np.unique(nno_per_face, return_counts=True)
@@ -256,7 +266,7 @@ class reader(binreader):
         assert face2node_index[0] == 0
         assert face2node_index[-2] == face2node_value.size - nno_per_face[-1]
         # Now loop on the restart file to fill the connectivities
-        for loopi in range(self.mesh["params"]["fa_count"]):  # xrange to range (python3 portage)
+        for loopi in range(nfa):  # xrange to range (python3 portage)
             sta, sto = face2node_index[loopi], face2node_index[loopi + 1]
             s = BinaryRead(
                 self.fid,
@@ -281,14 +291,14 @@ class reader(binreader):
         if not h.readVar(self.fid, self.byte_swap, ["UGP_IO_CVOFA"]):
             exit()
 
-        assert h.idata[0] == self.mesh["params"]["fa_count"]
+        assert h.idata[0] == nfa
         assert h.idata[1] == 2
         # Initialize the proper connectivity arrays in self.mesh
         self.mesh["connectivity"]["cvofa"]["cvofa"] = np.zeros(
-            (self.mesh["params"]["fa_count"], 2), dtype=np.int64
+            (nfa, 2), dtype=np.int64
         )
         # Now loop on the restart file to fill the connectivities
-        for loopi in range(self.mesh["params"]["fa_count"]):  # xrange to range (python3 portage)
+        for loopi in range(nfa):  # xrange to range (python3 portage)
             s = BinaryRead(
                 self.fid,
                 "ii",
@@ -301,8 +311,8 @@ class reader(binreader):
         # print("RA",self.mesh["connectivity"]["cvofa"]["cvofa"])
         del h
         # Checks and a few associations
-        assert self.mesh["connectivity"]["cvofa"]["cvofa"].max() < self.mesh["params"]["cv_count"]
-        assert self.mesh["connectivity"]["cvofa"]["cvofa"].max() == self.mesh["params"]["cv_count"] - 1
+        assert self.mesh["connectivity"]["cvofa"]["cvofa"].max() < ncv
+        assert self.mesh["connectivity"]["cvofa"]["cvofa"].max() == ncv - 1
         uniq, counts = np.unique(self.mesh["connectivity"]["cvofa"]["cvofa"][:, 1], return_counts=True)
         # Number of assigned boundary faces
         try:
@@ -349,7 +359,7 @@ class reader(binreader):
             self.mesh['bocos'].append(boco)
             if h.idata[0] == 6:
                 break
-        api.io.print('standard', "end of boco parsing")
+        api.io.print('std', "end of boco parsing")
         sys.stdout.flush()
 
         # Parse the header of the partition information
@@ -361,8 +371,8 @@ class reader(binreader):
 
         self.mesh["partition"] = {}
         self.mesh["partition"]['npart'] = h.idata[1]
-        self.mesh["partition"]['icvpart'] = np.zeros((self.mesh["params"]["cv_count"],), dtype=np.int32)
-        for loopi in range(self.mesh["params"]["cv_count"]):  # xrange to range (python3 portage)
+        self.mesh["partition"]['icvpart'] = np.zeros((ncv,), dtype=np.int32)
+        for loopi in range(ncv):  # xrange to range (python3 portage)
             s = BinaryRead(self.fid, "i", self.byte_swap, type2nbytes["int32"])
             self.mesh["partition"]['icvpart'][loopi] = s[0]
         # print(h)
@@ -376,10 +386,10 @@ class reader(binreader):
         if not h.readVar(self.fid, self.byte_swap, ["UGP_IO_X_NO"]):
             exit()
 
-        assert h.idata[0] == self.mesh["params"]["no_count"]
+        assert h.idata[0] == nno
         assert h.idata[1] == 3
-        self.mesh["coordinates"] = np.zeros((self.mesh["params"]["no_count"], 3), dtype=np.float64)
-        for loopi in range(self.mesh["params"]["no_count"]):  # xrange to range (python3 portage)
+        self.mesh["coordinates"] = np.zeros((nno, 3), dtype=np.float64)
+        for loopi in range(nno):  # xrange to range (python3 portage)
             s = BinaryRead(
                 self.fid,
                 "ddd",
@@ -471,6 +481,9 @@ class reader(binreader):
 
         # Initialize the variable dictionary
         ncv = self.mesh["params"]["cv_count"]
+        nfa = self.mesh["params"]["fa_count"]
+        nno = self.mesh["params"]["no_count"]
+
         self.variables = {"nodes": {}, "cells": {}, "faces": {}}
 
         # First come the scalars
@@ -497,23 +510,23 @@ class reader(binreader):
             typesize = properties_ugpcode[h.id[0]]['size']
             nptype = properties_ugpcode[h.id[0]]['numpytype']
             #
-            if h.idata[0] == self.mesh["params"]["no_count"]:
-                self.variables["nodes"][h.name] = np.zeros((self.mesh["params"]["no_count"],), dtype=nptype)
+            if h.idata[0] == nno:
+                self.variables["nodes"][h.name] = np.zeros((nno,), dtype=nptype)
                 s = BinaryRead(
                     self.fid,
-                    typechar * self.mesh["params"]["no_count"],
+                    typechar * nno,
                     self.byte_swap,
-                    typesize * self.mesh["params"]["no_count"],
+                    typesize * nno,
                 )
                 self.variables["nodes"][h.name] = np.asarray(s)
                 printstats(h.name, s)
-            elif h.idata[0] == self.mesh["params"]["fa_count"]:
-                self.variables["faces"][h.name] = np.zeros((self.mesh["params"]["fa_count"],), dtype=nptype)
+            elif h.idata[0] == nfa:
+                self.variables["faces"][h.name] = np.zeros((nfa,), dtype=nptype)
                 s = BinaryRead(
                     self.fid,
-                    typechar * self.mesh["params"]["fa_count"],
+                    typechar * nfa,
                     self.byte_swap,
-                    typesize * self.mesh["params"]["fa_count"],
+                    typesize * nfa,
                 )
                 self.variables["faces"][h.name] = np.asarray(s)
                 printstats(h.name, s)
@@ -560,27 +573,27 @@ class reader(binreader):
                 break
             reset_offset = False
 
-            if h.idata[0] == self.mesh["params"]["no_count"]:
+            if h.idata[0] == nno:
                 self.variables["nodes"][h.name] = np.zeros(
-                    (self.mesh["params"]["no_count"], 3), dtype=np.float64
+                    (nno, 3), dtype=np.float64
                 )
                 s = BinaryRead(
                     self.fid,
-                    "ddd" * self.mesh["params"]["no_count"],
+                    "ddd" * nno,
                     self.byte_swap,
-                    type2nbytes["float64"] * self.mesh["params"]["no_count"] * 3,
+                    type2nbytes["float64"] * nno * 3,
                 )
                 self.variables["nodes"][h.name] = np.asarray(s).reshape((-1, 3))
                 printstats(h.name, s)
-            elif h.idata[0] == self.mesh["params"]["fa_count"]:
+            elif h.idata[0] == nfa:
                 self.variables["faces"][h.name] = np.zeros(
-                    (self.mesh["params"]["fa_count"], 3), dtype=np.float64
+                    (nfa, 3), dtype=np.float64
                 )
                 s = BinaryRead(
                     self.fid,
-                    "ddd" * self.mesh["params"]["fa_count"],
+                    "ddd" * nfa,
                     self.byte_swap,
-                    type2nbytes["float64"] * self.mesh["params"]["fa_count"] * 3,
+                    type2nbytes["float64"] * nfa * 3,
                 )
                 self.variables["faces"][h.name] = np.asarray(s).reshape((-1, 3))
                 printstats(h.name, s)
