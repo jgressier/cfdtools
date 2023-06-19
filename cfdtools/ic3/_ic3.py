@@ -33,58 +33,22 @@ ic3_restart_codes = {
     "UGP_IO_EOF": 51,
 }
 
+stc, sz, npt = 'structcode', 'size', 'numpytype'
+
 properties_ugpcode = {
-    ic3_restart_codes["UGP_IO_FA_D1"]: {
-        'structcode': "d",
-        'size': 8,
-        'numpytype': np.float64,
-    },
-    ic3_restart_codes["UGP_IO_FA_D3"]: {
-        'structcode': "d",
-        'size': 8,
-        'numpytype': np.float64,
-    },
-    ic3_restart_codes["UGP_IO_NO_D1"]: {
-        'structcode': "d",
-        'size': 8,
-        'numpytype': np.float64,
-    },
-    ic3_restart_codes["UGP_IO_NO_D3"]: {
-        'structcode': "d",
-        'size': 8,
-        'numpytype': np.float64,
-    },
-    ic3_restart_codes["UGP_IO_CV_D1"]: {
-        'structcode': "d",
-        'size': 8,
-        'numpytype': np.float64,
-    },
-    ic3_restart_codes["UGP_IO_CV_D3"]: {
-        'structcode': "d",
-        'size': 8,
-        'numpytype': np.float64,
-    },
-    ic3_restart_codes["UGP_IO_CV_D33"]: {
-        'structcode': "d",
-        'size': 8,
-        'numpytype': np.float64,
-    },
-    ic3_restart_codes["UGP_IO_FA_II1"]: {
-        'structcode': "q",
-        'size': 8,
-        'numpytype': np.int64,
-    },
-    ic3_restart_codes["UGP_IO_NO_II1"]: {
-        'structcode': "q",
-        'size': 8,
-        'numpytype': np.int64,
-    },
-    ic3_restart_codes["UGP_IO_CV_II1"]: {
-        'structcode': "q",
-        'size': 8,
-        'numpytype': np.int64,
-    },
+    ic3_restart_codes["UGP_IO_FA_D1"]: {stc: "d", sz: 8, npt: np.float64},
+    ic3_restart_codes["UGP_IO_FA_D3"]: {stc: "d", sz: 8, npt: np.float64},
+    ic3_restart_codes["UGP_IO_NO_D1"]: {stc: "d", sz: 8, npt: np.float64},
+    ic3_restart_codes["UGP_IO_NO_D3"]: {stc: "d", sz: 8, npt: np.float64},
+    ic3_restart_codes["UGP_IO_CV_D1"]: {stc: "d", sz: 8, npt: np.float64},
+    ic3_restart_codes["UGP_IO_CV_D3"]: {stc: "d", sz: 8, npt: np.float64},
+    ic3_restart_codes["UGP_IO_CV_D33"]: {stc: "d", sz: 8, npt: np.float64},
+    ic3_restart_codes["UGP_IO_FA_II1"]: {stc: "q", sz: 8, npt: np.int64},
+    ic3_restart_codes["UGP_IO_NO_II1"]: {stc: "q", sz: 8, npt: np.int64},
+    ic3_restart_codes["UGP_IO_CV_II1"]: {stc: "q", sz: 8, npt: np.int64},
 }
+
+del stc, sz, npt
 
 # Dictionary to convert type of data [string] to a number of bytes for clean binary parsing
 type2nbytes = {
