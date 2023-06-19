@@ -1,4 +1,5 @@
 from functools import wraps
+from collections import namedtuple
 from pathlib import Path
 import numpy as np
 import time
@@ -245,11 +246,25 @@ class Timer:  # from https://realpython.com/python-timer/
 
 def memoize(f):
     cache = {}
+    hits = 0
+    misses = 0
+    maxsize = None
+
+    _CacheInfo = namedtuple("CacheInfo", ["hits", "misses", "maxsize", "currsize"])
+
+    def cache_info():
+        return _CacheInfo(hits, misses, maxsize, len(cache))
 
     @wraps(f)
     def wrapper(*args):
-        if args not in cache:
+        nonlocal hits, misses
+        if args in cache:
+            hits += 1
+        else:
+            misses += 1
             cache[args] = f(*args)
         # Warning: You may wish to do a deepcopy here if returning objects
         return cache[args]
+
+    wrapper.cache_info = cache_info
     return wrapper

@@ -1,6 +1,13 @@
 # cgns.py
 from pathlib import Path
-from functools import cache
+from cfdtools.api import memoize as cache  # python <= 2.7
+try:
+    from functools import lru_cache  #  3.5 <= python <= 3.8
+    cache = lru_cache(maxsize=None)
+    del lru_cache
+    from functools import cache  # python >= 3.9
+except ImportError:
+    pass
 from cfdtools.api import io, error_stop, fileformat_reader  # , memoize
 from cfdtools.hdf5 import h5file, h5_str
 from cfdtools.meshbase._mesh import Mesh, submeshmark
