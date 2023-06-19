@@ -6,9 +6,10 @@ import numpy.polynomial.polynomial as poly
 from scipy.special import roots_legendre
 
 polybasis_dict = {
-    'legendre' : polyL.Legendre,
-    'polynomial' : poly.Polynomial
+    'legendre': polyL.Legendre,
+    'polynomial': poly.Polynomial
 }
+
 
 class poly1d():
     def __init__(self, order: int, series='legendre') -> None:
@@ -24,9 +25,7 @@ class poly1d():
 
     @lazyprop
     def vdm(self):
-        """vandermonde matrix for base to Lagrange
-        
-        """
+        """vandermonde matrix for base to Lagrange"""
         return np.array([
             self._polyeval(ibas)(self._roots)
                 for ibas in self._basis
@@ -52,6 +51,6 @@ class poly1d():
 if __name__ == "__main__":
     b = poly1d(3, series='legendre')
     print(b._roots)
-    #print(b._basis)
+    # print(b._basis)
     print("interp", b.interp_weights(-1))
     print("diff", b.diff_weights(-1))

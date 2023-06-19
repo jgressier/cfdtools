@@ -19,12 +19,12 @@ import numpy as np
 class reader(api._files):
     """Implementation of the reader to read Gmsh meshes."""
 
-    @property 
+    @property
     def ncell(self):
         return self._ncell
-    
+
     def read_data(self):
-        api.io.print('std', f'> GMSH reader: starts reading {self.filename}')
+        api.io.print('std', f"> GMSH reader: starts reading {self.filename}")
         # Check file exists
         if not self.exists():
             api.error_stop("File %s cannot be found." % (self.filename))
@@ -72,6 +72,7 @@ class reader(api._files):
                     ntag = elt[2]  # expected to be 2
                     connectivity[elt_type].append(elt[3 + ntag :])
                     bnd_connect += 1
+
         # Boundary Connectivity
         api.io.print("std", "  extract boundaries connectivity")
         connect_bc = {}
@@ -157,7 +158,7 @@ class reader(api._files):
         self._boundaries = boundaries
 
     def export_mesh(self):
-        api.io.print('std', f'> export gmsh mesh to cfdtools mesh data')
+        api.io.print('std', "> export gmsh mesh to cfdtools mesh data")
         meshdata = _mesh.Mesh(nnode=len(self._coords[0]))
         meshdata.set_nodescoord_xyz(*self._coords)
         # meshdata.set_face2node(self.mesh['connectivity']['noofa'])

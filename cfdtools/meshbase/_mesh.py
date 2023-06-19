@@ -237,7 +237,10 @@ class Mesh:
             for _, boco in self._bocos.items():
                 assert boco.geodim in ('face', 'bdface'), "boco marks must be faces index"
             list_marked = self.list_boco_index()
-            list_missing = list(set(self._faces['boundary']['face2node'].all_index())-set(list_marked))
+            list_missing = list(
+                    set(self._faces['boundary']['face2node'].all_index())
+                  - set(list_marked)
+            )
             if list_missing:
                 boco = submeshmark(name)
                 boco.geodim = 'bdface'
@@ -250,13 +253,12 @@ class Mesh:
             api.io.print('warning', "can only reindex faces according to boco if separated in 'boundary' list")
         return list_missing
 
-
-    def seekmark(self, name: str) -> submeshmark:
+    def seekmark(self, name: str) -> submeshmark:  # What is this method ??
         """look for diffent marks set to find mark name"""
         # only _bocos for now
         return self._bocos[name]
 
-    def exportmark_asmesh(self, name):
+    def exportmark_asmesh(self, name):  # What is this method ??
         meshmark = self.seekmark(name)
         newmesh = Mesh()
         return newmesh
@@ -271,7 +273,7 @@ class Mesh:
         # SHOULD CHECK DIRECTION AND MESH ORIENTATION
         # extrude nodes
         ntotnode = self.nnode
-        newcoords = np.tile(self.nodescoord(ndarray=True), (nrange,1))
+        newcoords = np.tile(self.nodescoord(ndarray=True), (nrange, 1))
         for i, s in enumerate(extrude_range):
             newcoords[i * ntotnode : (i + 1) * ntotnode, :] += s * np.array(direction)
         newmesh.set_nodescoord_nd(newcoords)
@@ -342,18 +344,22 @@ class Mesh:
         # checks
         c_unique = np.all(np.unique(oldindex) == sorted(oldindex))
         if not c_unique:
-            api.io.print('error', "  some faces are marked by several boundary marks")
+            api.io.print('error',
+                "  some faces are marked by several boundary marks")
         c_min0 = min(oldindex) == 0
         if not c_min0:
-            api.io.print('error', "  first face index (0) is not marked as a boundary\n"+
-                           "  some boundary faces may be missing")
+            api.io.print('error',
+                "  first face index (0) is not marked as a boundary\n" +
+                "  some boundary faces may be missing")
         c_max = max(oldindex) <= len(oldindex) - 1
         if not c_max:
-            api.io.print('error', "  max face reference is greater than the number of found faces\n"+
-                         "  boundary faces must be indexed first before reindexing")
-        c_lengths = len(oldindex)==nbdface
+            api.io.print('error',
+                "  max face reference is greater than the number of found faces\n" +
+                "  boundary faces must be indexed first before reindexing")
+        c_lengths = len(oldindex) == nbdface
         if not c_lengths:
-            api.io.print('error', f"  some boundary faces are not marked: {nbdface-len(oldindex)}")
+            api.io.print('error',
+                f"  some boundary faces are not marked: {nbdface-len(oldindex)}")
         if not (c_unique and c_min0 and c_max):
             api.error_stop("inconsistent face marks when reordering")
         newindex = np.full_like(oldindex, -1)
@@ -409,7 +415,7 @@ class Mesh:
             assert (
                 self.ncell == self._cell2node.nelem
             ), f"inconsistent size of cells {self.ncell} and {self._cell2node.nelem}"
-        # for etype, _conn in self._cell2node.items():
+        # for etype, econn in self._cell2node.items():
         #    assert etype in _elem.elem2faces.keys()
         return True
 
