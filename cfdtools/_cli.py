@@ -19,8 +19,11 @@ import numpy as np
 # print(api._fileformat_map)
 
 
-def cli_header(name):
-    api.io.print('std', "CFDTOOLS - " + name)
+def cli_header(func):
+    def decorator(*args, **kwargs):
+        api.io.print('std', f"CFDTOOLS - {func.__name__}")
+        return func(*args, **kwargs)
+    return decorator
 
 
 class cli_argparser:
@@ -102,13 +105,13 @@ class cli_argparser:
         self._writer = api._fileformat_map[self._fileformat].get('writer', None)
 
 
+@cli_header
 def info(argv=None):
     """call specific printinfo function from reader
 
     Args:
         argv (_type_, optional): _description_. Defaults to None.
     """
-    cli_header("cfdinfo")
     # api.io.set_modes(api.io._available)
     parser = cli_argparser()
     parser.addarg_filenameformat()
@@ -123,8 +126,8 @@ def info(argv=None):
     return True  # needed for pytest
 
 
+@cli_header
 def ic3brief(argv=None):
-    cli_header("ic3brief")
     parser = cli_argparser()
     parser.addarg_filenameformat()
     parser.parse_cli_args(argv)
@@ -144,22 +147,22 @@ def write_generic(argv, ext, writer):
     parser.parse_filenameformat()
     #
     file = api._files(parser.args().filename)
-    api.io.print(f'> read mesh file {file.filename}')
+    api.io.print(f"> read mesh file {file.filename}")
     timer = api.Timer()
     timer.start()
     r = parser._reader(file.filename)
     r.read_data()
     ncell = r.ncell
     timer.stop(nelem=ncell)
-    api.io.print('std', f"> export mesh ")
+    api.io.print('std', "> export mesh ")
     cfdmesh = r.export_mesh()
     #
     if parser.args().remove_cell_data:
         for var in parser.args().remove_cell_data:
             if cfdmesh.pop_celldata(var) is None:
-                api.io.print('std', f'  cannot find cell data {var}')
+                api.io.print('std', f"  cannot find cell data {var}")
             else:
-                api.io.print('std', f'  pop cell data {var}')
+                api.io.print('std', f"  pop cell data {var}")
     #
     if parser.args().outpath is None:
         file.remove_dir()
@@ -171,7 +174,7 @@ def write_generic(argv, ext, writer):
     if parser.args().extrude:
         timer.start()
         nz = parser.args().extrude
-        api.io.print(f'> extrusion along nz={nz} cells, {nz*ncell} total cells')
+        api.io.print(f"> extrusion along nz={nz} cells, {nz*ncell} total cells")
         cfdmesh = cfdmesh.export_extruded(
             extrude=np.linspace(0.0, 1.0, nz+1, endpoint=True)
         )
@@ -186,23 +189,23 @@ def write_generic(argv, ext, writer):
     return file.filename  # True # needed for pytest (True not needed, filename for eventual rm)
 
 
+@cli_header
 def write_ic3v2(argv=None):
-    cli_header("cfdwrite_ic3v2")
     return write_generic(argv, '.ic3', ic3.writerV2.writer)
 
 
+@cli_header
 def write_ic3v3(argv=None):
-    cli_header("cfdwrite_ic3v3")
     return write_generic(argv, '.ic3', ic3.writerV3.writer)
 
 
+@cli_header
 def write_vtk(argv=None):
-    cli_header("cfdwrite_vtk")
     return write_generic(argv, '.vtu', vtk.vtkMesh)
 
 
+@cli_header
 def writecube(argv=None):
-    cli_header("cfdwritecube")
     """call specific printinfo function from reader
 
     Args:
@@ -249,8 +252,8 @@ def writecube(argv=None):
     return file.filename  # True # needed for pytest (True not needed, filename for eventual rm)
 
 
+@cli_header
 def ic3probe_plotline(argv=None):
-    cli_header("ic3probe_plotline")
     parser = cli_argparser(description="Process line probes from IC3")
     parser.addarg_prefix()
     # parser.add_argument("filenames", nargs="*", help="list of files")
