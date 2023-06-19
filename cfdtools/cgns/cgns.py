@@ -1,6 +1,7 @@
 # cgns.py
 from pathlib import Path
-from cfdtools.api import io, error_stop, fileformat_reader, memoize
+from functools import cache
+from cfdtools.api import io, error_stop, fileformat_reader  # , memoize
 from cfdtools.hdf5 import h5file, h5_str
 from cfdtools.meshbase._mesh import Mesh, submeshmark
 import cfdtools.meshbase._connectivity as _conn
@@ -26,6 +27,7 @@ def cg_gridlocation(bc):
     else:
         bcloc = "Vertex"
     return bcloc
+
 
 class cgnszone:
     def __init__(self, zone, geodim=None) -> None:
@@ -67,14 +69,15 @@ class cgnszone:
             if _elem.elem_dim[etype] == geodim:
                 index = _conn.indexlist(irange=elements["ElementRange/ data"][:] - 1)
                 econ = elements["ElementConnectivity/ data"][:].reshape((-1, nnode))
-                econ -= 1 # shift node index (starts 0)
+                econ -= 1  # shift node index (starts 0)
                 cellconn.add_elems(etype, econ, index)
         return cellconn
 
-    def export_cellcon(self): 
+    def export_cellcon(self):
         return self.elemcon(self._geodim)
 
-    @memoize
+    # @memoize
+    @cache
     def export_facecon(self):
         return self.elemcon(self._geodim-1)
 
@@ -82,17 +85,17 @@ class cgnszone:
         if "FamilyName" in BC.keys():
             name = h5_str(BC["FamilyName/ data"])
         else:
-            name = Path(BC.name).name # extract final name of 
+            name = Path(BC.name).name  # extract final name of
         boco = submeshmark(name)
         boco.geodim = 'node'  # don't know if node, intnode or bdnode
         boco.type = 'boundary'
         boco.properties['BCtype'] = h5_str(BC[" data"])
         boco.properties['periodic_transform'] = None
         if "PointList" in BC.keys():
-            indexlist = (BC["PointList/ data"][:] - 1).ravel().tolist() 
+            indexlist = (BC["PointList/ data"][:] - 1).ravel().tolist()
             gridloc = cg_gridlocation(BC)
-        elif "ElementList" in BC.keys(): # not in CGNS norm
-            indexlist = (BC["ElementList/ data"][:] - 1).ravel().tolist() 
+        elif "ElementList" in BC.keys():  # not in CGNS norm
+            indexlist = (BC["ElementList/ data"][:] - 1).ravel().tolist()
             gridloc = "FaceCenter"
             if len(indexlist) == self.ncell:
                 gridloc = "CellCenter"
@@ -107,7 +110,7 @@ class cgnszone:
             if len(nodelist) == self.nnode:
                 boco.type = 'internal'
         elif gridloc == "CellCenter":
-            nodelist = indexlist # cells indeed
+            nodelist = indexlist  # cells indeed
             boco.geodim = 'cell'
         else:
             error_stop(f'unknown gridlocation {gridloc}')
@@ -141,10 +144,10 @@ class cgnsMesh:
         self._filename = filename
         self._ncell = None
 
-    @property 
+    @property
     def ncell(self):
         return self._ncell
-    
+
     def read_data(self, zone=None):
         self._file = cgnsfile(self._filename)
         # get BASE list
@@ -164,7 +167,6 @@ class cgnsMesh:
         self._zonename = name
         self._zone = cgnszone(self._zones[name], self._geodim)
         self._ncell = self._zone.ncell
-
 
     def printinfo(self):
         # super().printinfo()
