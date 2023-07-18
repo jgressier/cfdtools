@@ -17,7 +17,7 @@ def fileformat_reader(name, extension):
 
     def decorator(thisclass):
         properties = {'reader': thisclass, 'ext': extension}
-        if name in _fileformat_map.keys():
+        if name in _fileformat_map:
             _fileformat_map[name].update(properties)
         else:
             _fileformat_map[name] = properties
@@ -31,7 +31,7 @@ def fileformat_writer(name, extension):
 
     def decorator(thisclass):
         properties = {'writer': thisclass, 'ext': extension}
-        if name in _fileformat_map.keys():
+        if name in _fileformat_map:
             _fileformat_map[name].update(properties)
         else:
             _fileformat_map[name] = properties
@@ -188,13 +188,13 @@ class Timer:  # from https://realpython.com/python-timer/
         if self._start_time is None:
             raise TimerError(f"Timer is not running. Use .start() to start it")
         elapsed_time = time.perf_counter() - self._start_time
-        normalized_time_ms = (
-            0.0 if self._nelem is None else 1e6 * elapsed_time / self._nelem
-        )
+        normalized_time_ms = 0.0 if self._nelem is None else 1e6 * elapsed_time / self._nelem
         if self._nelem is None:
             io.printstd(f"{' '*(self._tab-self._col)}wtime: {elapsed_time:0.4f}s")
         else:
-            io.printstd(f"{' '*(self._tab-self._col)}wtime: {elapsed_time:0.4f}s | {normalized_time_ms:0.4f}µs/elem",)
+            io.printstd(
+                f"{' '*(self._tab-self._col)}wtime: {elapsed_time:0.4f}s | {normalized_time_ms:0.4f}µs/elem",
+            )
         # reset
         self._reset()
 
@@ -209,10 +209,12 @@ class Timer:  # from https://realpython.com/python-timer/
 
 def memoize(f):
     cache = {}
+
     @wraps(f)
     def wrapper(*args):
         if not args in cache:
             cache[args] = f(*args)
-        #Warning: You may wish to do a deepcopy here if returning objects
+        # Warning: You may wish to do a deepcopy here if returning objects
         return cache[args]
+
     return wrapper

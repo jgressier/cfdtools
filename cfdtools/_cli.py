@@ -14,7 +14,7 @@ import cfdtools.probes.data as probedata
 import numpy as np
 
 # To add a command line tool, just add the function pyproject.toml in section
-# [tool.poetry.scripts]
+# [project.scripts]
 # cfdinfo = 'cfdtools._cli:info'
 
 # print(api._fileformat_map)
@@ -39,14 +39,10 @@ class cli_argparser:
 
     def addarg_filenameformat(self):
         self.add_argument('filename', help="file")
-        self.add_argument('--fmt', help="input format", choices=self._available_readers)
-        self.add_argument('--outpath', help="output folder")
-        self.add_argument(
-            "--check", action="store_true", dest="check", help="process some checks"
-        )
-        self.add_argument(
-            "--info", action="store_true", dest="info", help="print information"
-        )
+        self.add_argument('--fmt', help="input file format", choices=self._available_readers)
+        self.add_argument('--outpath', help="output folder path")
+        self.add_argument("--check", action="store_true", dest="check", help="process some checks")
+        self.add_argument("--info", action="store_true", dest="info", help="print information")
 
     def addarg_prefix(self):
         self.add_argument('prefix', help="prefix of files")
@@ -94,11 +90,7 @@ class cli_argparser:
         """parse args to get filename, automatic or specified format"""
         if self.args().fmt is None:
             ext = Path(self._args.filename).suffix
-            thisfmt = list(
-                filter(
-                    lambda n: api._fileformat_map[n]['ext'] == ext, api._fileformat_map
-                )
-            )
+            thisfmt = list(filter(lambda n: api._fileformat_map[n]['ext'] == ext, api._fileformat_map))
         else:
             thisfmt = [self.args().fmt]
         if len(thisfmt) == 0:
@@ -124,10 +116,11 @@ def info(argv=None):
     parser.parse_filenameformat()
     #
     inputfile = Path(parser.args('filename'))
-    r = parser._reader(str(inputfile))
+    r = parser._reader(str(inputfile), cIntegrity=parser.args('check'))
     r.read_data()
     mesh = r.export_mesh()
     mesh.printinfo()
+
     return True  # needed for pytest
 
 
@@ -180,10 +173,8 @@ def write_generic(argv, ext, writer):
         timer.start()
         nz = parser.args().extrude
         api.io.print(f'> extrusion along nz={nz} cells, {nz*ncell} total cells')
-        cfdmesh = cfdmesh.export_extruded(
-            extrude=np.linspace(0.0, 1.0, nz+1, endpoint=True)
-        )
-        timer.stop(nelem=nz*ncell)
+        cfdmesh = cfdmesh.export_extruded(extrude=np.linspace(0.0, 1.0, nz + 1, endpoint=True))
+        timer.stop(nelem=nz * ncell)
     if parser.args().scale:
         cfdmesh.scale(parser.args().scale)
     if parser.args().info:
@@ -262,15 +253,9 @@ def ic3probe_plotline(argv=None):
     parser = cli_argparser(description="Process line probes from IC3")
     parser.addarg_prefix()
     # parser.add_argument("filenames", nargs="*", help="list of files")
-    parser.add_argument(
-        "-v", action="store_true", dest="verbose", help="verbose output"
-    )
-    parser.add_argument(
-        "--data", action="store", dest="datalist", default="P", help="quantity to plot"
-    )
-    parser.add_argument(
-        "--axis", action="store", dest="axis", default="X", help="axis to follow"
-    )
+    parser.add_argument("-v", action="store_true", dest="verbose", help="verbose output")
+    parser.add_argument("--data", action="store", dest="datalist", default="P", help="quantity to plot")
+    parser.add_argument("--axis", action="store", dest="axis", default="X", help="axis to follow")
     parser.add_argument(
         "--map",
         action="store",
@@ -279,12 +264,8 @@ def ic3probe_plotline(argv=None):
         choices=["time", "freq"],
         help="type of map",
     )
-    parser.add_argument(
-        "--check", action="store_true", dest="check", help="process some checks"
-    )
-    parser.add_argument(
-        "--cmap", action="store", dest="cmap", default="turbo", help="colormap"
-    )
+    parser.add_argument("--check", action="store_true", dest="check", help="process some checks")
+    parser.add_argument("--cmap", action="store", dest="cmap", default="turbo", help="colormap")
     parser.add_argument(
         "--cmaplevels",
         action="store",
