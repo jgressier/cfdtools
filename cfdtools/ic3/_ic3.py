@@ -181,7 +181,7 @@ def BinaryRead(bfile, form, byte_swap, size):
     '''
 
     # Choose the right prefix to the format string based on endianness
-    if byte_swap is True:  # little-endian
+    if byte_swap:  # little-endian
         form = '<' + form
     else:  # big-endian
         form = '>' + form
@@ -205,8 +205,7 @@ def BinaryRead(bfile, form, byte_swap, size):
     except IOError:
         api.io.print(
             'error',
-            "Fatal error. Could not read %d bytes from %s. Exiting."
-            % (size, bfile.name),
+            "Fatal error. Could not read %d bytes from %s. Exiting." % (size, bfile.name),
         )
         exit()
 
@@ -226,7 +225,6 @@ def BinaryWrite(bfile, endian, form, varargs):
 
     # Create a packer
     s = struct.Struct(form)
-    # print(len(form), form,len(varargs),':')
     # Actually pack the string now
     packed_ba = s.pack(*varargs)
 
@@ -234,9 +232,7 @@ def BinaryWrite(bfile, endian, form, varargs):
     try:
         bfile.write(packed_ba)
     except IOError:
-        api.io.print(
-            'error', "Fatal error. Could not write to %s. Exiting." % (bfile.name)
-        )
+        api.io.print('error', "Fatal error. Could not write to %s. Exiting." % (bfile.name))
         exit()
 
 
@@ -253,8 +249,8 @@ class restartSectionHeader:
         an information array, and an auxiliary array needed in specific
         cases like periodicity.
         """
-
-        self.name = " " * ic3_restart_codes["UGP_IO_HEADER_NAME_LEN"]
+        header_name_length = ic3_restart_codes["UGP_IO_HEADER_NAME_LEN"]
+        self.name = " " * header_name_length
         self.id = np.zeros((1,), dtype=np.int32)
         self._skip = np.array([skip], dtype=np.int64)
         self.idata = np.zeros((8,), dtype=np.int64)
@@ -263,8 +259,7 @@ class restartSectionHeader:
         # Initialize the format string
         self.binstr = ""
         # Fill it with prior knowledge of its content
-        for i in range(ic3_restart_codes["UGP_IO_HEADER_NAME_LEN"]):
-            self.binstr += "c"  # name
+        self.binstr += "c" * header_name_length  # name
         self.binstr += "i"  # id
         self.binstr += "q"  # skip
         self.binstr += "qqqqqqqq"  # idata (long long)
@@ -272,7 +267,7 @@ class restartSectionHeader:
 
         # Keep in mind the total byte size of the header
         self.hsize = (
-            ic3_restart_codes["UGP_IO_HEADER_NAME_LEN"] * type2nbytes["char"]
+            header_name_length * type2nbytes["char"]
             + type2nbytes["int32"]
             + type2nbytes["int64"]
             + self.idata.size * type2nbytes["int64"]
@@ -283,18 +278,16 @@ class restartSectionHeader:
         return self._skip[0]  # numpy array size 1 to handle int type
 
     def readVar(self, bfile, byte_swap, nametypes, reset_offset=True):
-        '''
+        """
         Once initialization is done, this method actually reads
         the header data from the packed binary formatted string.
-        '''
+        """
         id_list = []
         for nametype in nametypes:
             id_list.append(ic3_restart_codes[nametype])
-        if reset_offset is True:
+        if reset_offset:
             bfile.seek(8, os.SEEK_SET)
-        while (self.id[0] not in id_list) and (
-            self.id[0] != ic3_restart_codes["UGP_IO_EOF"]
-        ):
+        while (self.id[0] not in id_list) and (self.id[0] != ic3_restart_codes["UGP_IO_EOF"]):
             self.name = ""
             self.id = np.zeros((1,), dtype=np.int32)
             self.idata = np.zeros((8,), dtype=np.int64)
@@ -322,13 +315,13 @@ class restartSectionHeader:
             nlen = ic3_restart_codes["UGP_IO_HEADER_NAME_LEN"]
             self.id[0] = s[nlen]
             self._skip[0] = s[nlen + self.id.size]  # store size in skip for next read
-            for i in range(self.idata.size):
-                self.idata[i] = s[nlen + self.id.size + self._skip.size + i]
-            for i in range(self.rdata.size):
-                self.rdata[i] = s[
-                    nlen + self.id.size + self._skip.size + self.idata.size + i
-                ]
-            # print(self)
+            ibeg = nlen + self.id.size + self._skip.size
+            iend = ibeg + self.idata.size
+            self.idata = s[ibeg:iend]
+            ibeg = iend
+            iend = ibeg + self.rdata.size
+            self.rdata = s[ibeg:iend]
+
         return self.id[0] in id_list
 
     def write(self, bfile, endian):
@@ -344,15 +337,12 @@ class restartSectionHeader:
                 varargs.append(bytes(self.name[i], 'utf-8'))
             else:
                 varargs.append(b'\0')
-        # for i in varargs:
-        #     print(">",i, type(i))
         varargs.append(self.id)
         varargs.append(self.skip)
         for kk in range(8):
             varargs.append(self.idata[kk])
         for kk in range(16):
             varargs.append(self.rdata[kk])
-        # print(varargs)
         # Now write everything at once
         BinaryWrite(bfile, endian, self.binstr, varargs)
 
@@ -362,24 +352,12 @@ class restartSectionHeader:
 
         mystring += "Id   : %i %s\n" % (
             self.id,
-            list(
-                dict(
-                    filter(
-                        lambda items: items[1] == self.id[0], ic3_restart_codes.items()
-                    )
-                ).keys()
-            ),
+            list(dict(filter(lambda items: items[1] == self.id[0], ic3_restart_codes.items())).keys()),
         )
         mystring += "hsize: %i\n" % self.hsize
         mystring += "skip : %i\n" % self.skip()
-        mystring += "idata: ("
-        for i in range(8):
-            mystring += " %i," % (self.idata[i])
-        mystring += ")\n"
-        mystring += "rdata: ("
-        for i in range(16):
-            mystring += " %f," % (self.rdata[i])
-        mystring += ")"
+        mystring += "idata: (" + ", ".join(str(i) for i in self.idata) + ")\n"
+        mystring += "rdata: (" + ", ".join(str(r) for r in self.rdata) + ")"
         return mystring
 
 
@@ -441,10 +419,9 @@ class binreader(api._files):
         Method reading the header of a restart file.
         It is composed of two integers, the "magic number" used as a flag for endianness
         and the IC3 version number.
-        input   : handle on an open restart file, [type file identifier]
-        output  : the endianness of the open restart file [type boolean]
+        input:  handle on an open restart file, [type file identifier]
+        output: the endianness of the open restart file [type boolean]
         '''
-
         # By default suppose big-endian format
         self.byte_swap = False
 
@@ -465,6 +442,5 @@ class binreader(api._files):
         self.ic3_version = s[1]
         api.io.print(
             'std',
-            f"  version: {self.ic3_version} "
-            + ("little-endian" if self.byte_swap else "big-endian"),
+            f"  version: {self.ic3_version} " + ("little-endian" if self.byte_swap else "big-endian"),
         )
