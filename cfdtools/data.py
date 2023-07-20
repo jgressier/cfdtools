@@ -1,8 +1,8 @@
-import cfdtools.api as api
 import numpy as np
 import numpy.fft as fftm
 import matplotlib.pyplot as plt
-import h5py
+import cfdtools.api as api
+import cfdtools.hdf5 as hdf5
 
 # import numpy as np
 
@@ -161,7 +161,7 @@ class DataSetList(DataSetBase):
             datalist['time'] = time
         self._datalist.append(datalist)
 
-    def dataSet(self, datafiler=None):
+    def dataSet(self, datafilter=None):
         datalist = datafilter if datafilter else list(self.keys())
         datalist.remove('time')
         dtavg, dtdev, ntot = self.dtstats() # check 'timeevol'
@@ -171,7 +171,7 @@ class DataSetList(DataSetBase):
         newdataset = DataSet(self.Xrep, self.ndof, Trep='spectrogram')
         return newdataset
 
-    def dumphdf(self, hgroup: h5py.Group, options={}):
+    def dumphdfgroup(self, hgroup: hdf5.Group, **options):
         n = len(self._datalist)
         for i, datadict in enumerate(self._datalist):
             datagroup = hgroup.create_group(f"i{i:06}")

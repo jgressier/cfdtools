@@ -8,6 +8,8 @@ except ImportError:
     import_h5py = False
 
 
+from h5py import Group # to be available in _hdf5
+
 _available_types = ('external', 'dataset', 'datalist', 'probes', 'cfdmesh')
 
 
