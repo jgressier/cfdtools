@@ -17,7 +17,7 @@ def fileformat_reader(name, extension):
 
     def decorator(thisclass):
         properties = {'reader': thisclass, 'ext': extension}
-        if name in _fileformat_map.keys():
+        if name in _fileformat_map:
             _fileformat_map[name].update(properties)
         else:
             _fileformat_map[name] = properties
@@ -31,7 +31,7 @@ def fileformat_writer(name, extension):
 
     def decorator(thisclass):
         properties = {'writer': thisclass, 'ext': extension}
-        if name in _fileformat_map.keys():
+        if name in _fileformat_map:
             _fileformat_map[name].update(properties)
         else:
             _fileformat_map[name] = properties
@@ -222,10 +222,12 @@ class Timer:  # from https://realpython.com/python-timer/
 
 def memoize(f):
     cache = {}
+
     @wraps(f)
     def wrapper(*args):
         if not args in cache:
             cache[args] = f(*args)
-        #Warning: You may wish to do a deepcopy here if returning objects
+        # Warning: You may wish to do a deepcopy here if returning objects
         return cache[args]
+
     return wrapper
