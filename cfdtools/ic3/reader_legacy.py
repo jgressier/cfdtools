@@ -195,43 +195,44 @@ class reader(binreader):
             api.io.printstd("  Checking nodes integrity ..")
             sys.stdout.flush()
             h = restartSectionHeader()
-            if not h.readVar(self.fid, self.byte_swap, ["UGP_IO_NO_CHECK"]):
-                exit()
-            assert h.idata[0] == no_count
-            assert h.id[0] == ic3_restart_codes["UGP_IO_NO_CHECK"]
-            s = BinaryRead(self.fid, "%di" % no_count, self.byte_swap, type2nbytes["int32"] * no_count)
-            nodes_id = np.asarray(s)
-            assert np.allclose(nodes_id, np.arange(no_count))
-            api.io.print('std', "end of node integrity")
-            sys.stdout.flush()
-            del nodes_id
-            # For faces
-            api.io.print('std', "  Checking faces integrity ..")
-            sys.stdout.flush()
-            h = restartSectionHeader()
-            if not h.readVar(self.fid, self.byte_swap, ["UGP_IO_FA_CHECK"]):
-                exit()
-            s = BinaryRead(self.fid, "%di" % fa_count, self.byte_swap, type2nbytes["int32"] * fa_count)
-            faces_id = np.asarray(s)
-            assert np.allclose(faces_id, np.arange(fa_count))
-            api.io.print('std', "end of face integrity")
-            sys.stdout.flush()
-            del faces_id
-            # For cells
-            api.io.print('std', "  Checking cells integrity ..")
-            sys.stdout.flush()
-            h = restartSectionHeader()
-            if not h.readVar(self.fid, self.byte_swap, ["UGP_IO_CV_CHECK"]):
-                exit()
-            assert h.idata[0] == cv_count
-            assert h.id[0] == ic3_restart_codes["UGP_IO_CV_CHECK"]
-            cells_id = np.empty((cv_count,), dtype=np.int32)
-            s = BinaryRead(self.fid, "%di" % cv_count, self.byte_swap, type2nbytes["int32"] * cv_count)
-            cells_id = np.asarray(s)
-            assert np.allclose(cells_id, np.arange(cv_count))
-            api.io.print('std', "end of cell integrity")
-            sys.stdout.flush()
-            del cells_id
+            if h.readVar(self.fid, self.byte_swap, ["UGP_IO_NO_CHECK"]):
+                assert h.idata[0] == no_count
+                assert h.id[0] == ic3_restart_codes["UGP_IO_NO_CHECK"]
+                s = BinaryRead(self.fid, "%di" % no_count, self.byte_swap, type2nbytes["int32"] * no_count)
+                nodes_id = np.asarray(s)
+                assert np.allclose(nodes_id, np.arange(no_count))
+                api.io.print('std', "end of node integrity")
+                sys.stdout.flush()
+                del nodes_id
+                # For faces
+                api.io.print('std', "  Checking faces integrity ..")
+                sys.stdout.flush()
+                h = restartSectionHeader()
+                if not h.readVar(self.fid, self.byte_swap, ["UGP_IO_FA_CHECK"]):
+                    exit()
+                s = BinaryRead(self.fid, "%di" % fa_count, self.byte_swap, type2nbytes["int32"] * fa_count)
+                faces_id = np.asarray(s)
+                assert np.allclose(faces_id, np.arange(fa_count))
+                api.io.print('std', "end of face integrity")
+                sys.stdout.flush()
+                del faces_id
+                # For cells
+                api.io.print('std', "  Checking cells integrity ..")
+                sys.stdout.flush()
+                h = restartSectionHeader()
+                if not h.readVar(self.fid, self.byte_swap, ["UGP_IO_CV_CHECK"]):
+                    exit()
+                assert h.idata[0] == cv_count
+                assert h.id[0] == ic3_restart_codes["UGP_IO_CV_CHECK"]
+                cells_id = np.empty((cv_count,), dtype=np.int32)
+                s = BinaryRead(self.fid, "%di" % cv_count, self.byte_swap, type2nbytes["int32"] * cv_count)
+                cells_id = np.asarray(s)
+                assert np.allclose(cells_id, np.arange(cv_count))
+                api.io.print('std', "end of cell integrity")
+                sys.stdout.flush()
+                del cells_id
+            else:
+                api.io.warning("check integrity: no check, UGP_IO_NO_CHECK missing")
 
         # The two connectivities now
         #
