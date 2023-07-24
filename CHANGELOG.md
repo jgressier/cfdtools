@@ -16,11 +16,11 @@ pip show cfdtools
 
 ## Versions
 
-### [0.5.0](https://pypi.org/project/cfdtools/) (2023-04-05)
+### [0.5.0](https://pypi.org/project/cfdtools/) (2023-xx-xx)
 
 #### new
 
-- legendre polynomial extrapolation (development)
+- Legendre polynomial extrapolation (development)
 - DataSet and DataSetList classes
 - read list of vtk files to DataSetList
 - dump DataSetList as hdf5 file

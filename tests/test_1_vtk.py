@@ -1,5 +1,6 @@
 import cfdtools.meshbase.simple as sm
 from cfdtools.vtk import vtkMesh, vtkList
+from cfdtools.hdf5 import h5File
 
 # import cfdtools.vtk as vtk
 # import cfdtools.api as api
@@ -47,4 +48,8 @@ def test_vtkList_dump(datadir, builddir):
     namelist = list(datadir.glob("cubemixed00*.vtu"))
     vtklist = vtkList(namelist, verbose=True)
     vtklist.read()
-    vtklist.dumphdf(builddir / "vtklist.hdf")
+    h5filename = builddir / "vtklist.hdf"
+    vtklist.dumphdf(h5filename)
+    h5file = h5File(h5filename)
+    h5file.open()
+    assert h5file.datatype == 'datalist'

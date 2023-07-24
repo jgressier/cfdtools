@@ -21,6 +21,18 @@ def test_DataSet_default():
     sum = np.sum([val for _, val in uv.items()])
     assert sum == pytest.approx(25.)
 
+def test_DataSet_3Dline():
+    line = data.DataSet(Xrep='nodal')
+    assert line.Xrep == 'nodal'
+    assert line.Trep == 'instant'
+    assert line.ndof == 1
+    x = np.linspace(100., 200., 501)
+    line.set_nodes(x)
+    line.add_data('U', 10+np.sin(2*np.pi*x))
+    assert line.geoprop['x'].min() == pytest.approx(100.)
+    assert line.geoprop['x'].max() == pytest.approx(200.)
+    assert np.average(line.data['U']) == pytest.approx(10.)
+
 class TestDataSet_timeevol():
 
     def uv_dataset(self, n)-> data.DataSet:

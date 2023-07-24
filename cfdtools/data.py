@@ -65,6 +65,7 @@ class DataSetBase:
         if y: self._geoprop['y'] = y
         if z: self._geoprop['z'] = z
 
+
 class DataSet(DataSetBase):
 
     _available_Xrep = ('nodal', 'cellaverage', 'spectralcell')
@@ -79,8 +80,9 @@ class DataSet(DataSetBase):
             self._properties['time'] = time
         self._data[name] = data
 
-    def data(self):
-        return self._data
+    @property
+    def data(self, key=None):
+        return self._data[key] if key else self._data
 
     def keys(self):
         return self._data.keys()
@@ -171,7 +173,12 @@ class DataSetList(DataSetBase):
         newdataset = DataSet(self.Xrep, self.ndof, Trep='spectrogram')
         return newdataset
 
-    def dumphdfgroup(self, hgroup: hdf5.Group, **options):
+    def _dumphdfgroup(self, hgroup: hdf5.Group, **options):
+        """dump all data to an hdf group, should be used as an internal function of cfdtools, not the user
+
+        Args:
+            hgroup (hdf5.Group): _description_
+        """
         n = len(self._datalist)
         for i, datadict in enumerate(self._datalist):
             datagroup = hgroup.create_group(f"i{i:06}")

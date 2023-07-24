@@ -41,8 +41,7 @@ class vtkMesh:
             }
             self._grid = pv.UnstructuredGrid(self._celldict, coords)
         except:
-            api.io.print('error', "pyvista (with CellType) could not be imported")
-            raise
+            api.error_stop("pyvista (with CellType) could not be imported")
 
     def set_pvmesh(self, pvmesh: cfdmesh.Mesh):
         self._grid = pvmesh
@@ -149,7 +148,7 @@ class vtkList():
             api.io.printstd(f"    data reordering: {Tsort.elapsed:.2f}s")
 
     def dumphdf(self, filename, **options):
-        file = hdf5.h5file(filename)
+        file = hdf5.h5File(filename)
         file.find_safe_newfile()
         file.open(mode="w", datatype='datalist')
         hmesh = file._h5file.create_group("mesh")
@@ -157,6 +156,6 @@ class vtkList():
         vtkmesh.dumhdfgroup(hmesh, **options)
         #
         hdata = file._h5file.create_group("datalist")
-        self._data.dumphdfgroup(hdata, **options)
+        self._data._dumphdfgroup(hdata, **options)
         file.close()
         
