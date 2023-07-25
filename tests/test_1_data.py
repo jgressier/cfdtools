@@ -21,6 +21,19 @@ def test_DataSet_default():
     sum = np.sum([val for _, val in uv.items()])
     assert sum == pytest.approx(25.)
 
+def test_DataSet_ndof():
+    uv = data.DataSet(Xrep='spectralcell', ndof=4)
+    assert uv.Xrep == 'spectralcell'
+    assert uv.Trep == 'instant'
+    assert uv.ndof == 4
+    uv.add_data('U', 10.) # not consistent data, not tested
+    uv.add_data('V', 15.)
+    for var in ('U', 'V'):
+        assert var in uv.keys()
+    assert uv['U'] == 10.
+    sum = np.sum([val for _, val in uv.items()])
+    assert sum == pytest.approx(25.)
+
 def test_DataSet_3Dline():
     line = data.DataSet(Xrep='nodal')
     assert line.Xrep == 'nodal'

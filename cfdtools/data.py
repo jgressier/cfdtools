@@ -13,9 +13,9 @@ class DataSetBase:
     _available_Trep = 'instant'
 
     def __init__(self, Xrep='cellaverage', ndof=1, Trep='instant'):
-        self._ndof = ndof
         self.Trep = Trep
         self.Xrep = Xrep
+        self.ndof = ndof # must be placed after Xrep set up
         self.xsize = 0
         self._properties = dict()
         self._geoprop = dict()
