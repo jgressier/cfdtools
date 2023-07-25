@@ -16,7 +16,7 @@ pip show cfdtools
 
 ## Versions
 
-### [0.5.0](https://pypi.org/project/cfdtools/) (2023-xx-xx)
+### [0.5.0](https://pypi.org/project/cfdtools/) (2023-07-25)
 
 #### new
 
