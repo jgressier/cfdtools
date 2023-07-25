@@ -232,8 +232,7 @@ def BinaryWrite(bfile, endian, form, varargs):
     try:
         bfile.write(packed_ba)
     except IOError:
-        api.io.print('error', "Fatal error. Could not write to %s. Exiting." % (bfile.name))
-        exit()
+        api.error_stop("Fatal error. Could not write to %s. Exiting." % (bfile.name))
 
 
 class restartSectionHeader:

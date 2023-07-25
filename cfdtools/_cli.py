@@ -38,9 +38,9 @@ class cli_argparser:
     def add_argument(self, option, **kwargs):
         return self._parser.add_argument(option, **kwargs)
 
-    def addarg_filenameformat(self):
+    def addarg_filenameformat(self, format=None):
         self.add_argument('filename', help="file")
-        self.add_argument('--fmt', help="input file format", choices=self._available_readers)
+        self.add_argument('--fmt', help="input file format", choices=self._available_readers, default=format)
         self.add_argument('--outpath', help="output folder path")
         self.add_argument("--check", action="store_true", dest="check", help="process some checks")
         self.add_argument("--info", action="store_true", dest="info", help="print information")
@@ -75,7 +75,7 @@ class cli_argparser:
             '--scale',
             nargs=3,
             type=float,
-            help="x, y, z scaling coefficients00",
+            help="x, y, z scaling coefficients",
         )
 
     def parse_cli_args(self, argv):
@@ -121,19 +121,31 @@ def info(argv=None):
     r.read_data()
     mesh = r.export_mesh()
     mesh.printinfo()
-
     return True  # needed for pytest
 
 
 def ic3brief(argv=None):
     cli_header("ic3brief")
     parser = cli_argparser()
-    parser.addarg_filenameformat()
+    parser.addarg_filenameformat(format='IC3')
     parser.parse_cli_args(argv)
     parser.parse_filenameformat()
     #
     r = ic3.binreader(parser.args().filename)
     r.read_headers()
+    return True  # needed for pytest
+
+
+def vtkbrief(argv=None):
+    cli_header("vtkbrief")
+    parser = cli_argparser()
+    parser.addarg_filenameformat(format="VTK")
+    parser.parse_cli_args(argv)
+    parser.parse_filenameformat()
+    #
+    r = vtk.vtkMesh()
+    r.read(parser.args().filename)
+    r.brief()
     return True  # needed for pytest
 
 

@@ -1,7 +1,7 @@
 # cgns.py
 from pathlib import Path
 from cfdtools.api import io, error_stop, fileformat_reader, memoize
-from cfdtools.hdf5 import h5file, h5_str
+from cfdtools.hdf5 import h5File, h5_str
 from cfdtools.meshbase._mesh import Mesh, submeshmark
 import cfdtools.meshbase._connectivity as conn
 import cfdtools.meshbase._elements as ele
@@ -116,7 +116,7 @@ class cgnszone:
         return boco
 
 
-class cgnsfile(h5file):
+class cgnsfile(h5File):
     def __init__(self, filename: str):
         super().__init__(filename)
         self.open()
