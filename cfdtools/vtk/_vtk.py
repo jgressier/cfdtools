@@ -57,6 +57,22 @@ class vtkMesh:
     def pyvista_grid(self):
         return self._grid
 
+    def brief(self):
+        if self._grid:
+            m = self._grid
+            api.io.printstd(f"pyvista object: {m}")
+            api.io.printstd("> mesh")
+            api.io.printstd(f"  bounds : {m.bounds}")
+            api.io.printstd(f"  ncells : {m.n_cells}")
+            api.io.printstd(f"  npoints: {m.n_points}")
+            api.io.printstd("> data")
+            api.io.printstd(f"  cell  data names: {m.cell_data.keys()}")
+            api.io.printstd(f"  point data names: {m.point_data.keys()}")
+            api.io.printstd(f"  field data names: {m.field_data.keys()}")
+            #api.io.printstd("> properties")
+        else:
+            api.io.warning("  no pyvista mesh available")
+
     def plot(self, background='white', show_edges=True, *args, **kwargs):
         self.pyvista_grid().plot(background=background, show_edges=show_edges, *args, **kwargs)
 

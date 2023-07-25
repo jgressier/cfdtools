@@ -24,6 +24,11 @@ pip show cfdtools
 - DataSet and DataSetList classes
 - read list of vtk files to DataSetList
 - dump DataSetList as hdf5 file
+- new `vtkbrief` command line tool
+
+#### fix
+
+- `ic3brief` no longer needs `--fmt IC3` for any file extension
 
 ### [0.4.2](https://pypi.org/project/cfdtools/) (2023-04-05)
 
