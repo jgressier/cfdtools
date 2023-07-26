@@ -2,16 +2,11 @@ import cfdtools.utils.polybase as poly
 import numpy as np
 import pytest
 
-def test_initlegendre():
+@pytest.mark.parametrize('series', ['legendre', 'polynomial'])
+def test_init(series):
     order = 3
-    b = poly.poly1d(order, series='legendre')
-    assert b._name == 'legendre'
-    assert len(b._basis) == order
-
-def test_initpolynomial():
-    order = 3
-    b = poly.poly1d(3, series='polynomial')
-    assert b._name == 'polynomial'
+    b = poly.poly1d(order, series=series)
+    assert b._name == series
     assert len(b._basis) == order
 
 @pytest.mark.parametrize('series', ['legendre', 'polynomial'])
@@ -24,13 +19,13 @@ def test_consistency(series):
 
 def test_compare_interp():
     order = 5
-    b1 = poly.poly1d(3, series='legendre')
-    b2 = poly.poly1d(3, series='polynomial')
+    b1 = poly.poly1d(order, series='legendre')
+    b2 = poly.poly1d(order, series='polynomial')
     assert np.allclose(b1.interp_weights(-1), b2.interp_weights(-1))
 
 def test_compare_diff():
     order = 5
-    b1 = poly.poly1d(3, series='legendre')
-    b2 = poly.poly1d(3, series='polynomial')
+    b1 = poly.poly1d(order, series='legendre')
+    b2 = poly.poly1d(order, series='polynomial')
     # interpolation coefficients must be the same, non dependant of poly basis
     assert np.allclose(b1.diff_weights(-1), b2.diff_weights(-1))
