@@ -37,7 +37,7 @@ def cli_header(prefix=None, altfname=None):
             fname = func.__name__ if altfname is None else altfname
             if prefix is not None:
                 fname = prefix + fname
-            func.__globals__['__fname__'] = fname
+            func.__globals__['__fname__'] = fname  # need noqa: F821 for flake8 if using __fname__
             api.io.printstd(f"CFDTOOLS - {fname}")
             return func(*args, **kwargs)
         return decorator
@@ -135,7 +135,7 @@ def info(argv=None):
         argv (_type_, optional): _description_. Defaults to None.
     """
     # api.io.set_modes(api.io._available)
-    parser = cli_argparser(prog=__fname__)
+    parser = cli_argparser(prog=__fname__)  # noqa: F821
     parser.addarg_filenameformat()
     parser.parse_cli_args(argv)
     parser.parse_filenameformat()
@@ -150,7 +150,7 @@ def info(argv=None):
 
 @cli_header()
 def ic3brief(argv=None):
-    parser = cli_argparser(prog=__fname__)
+    parser = cli_argparser(prog=__fname__)  # noqa: F821
     parser.addarg_filenameformat(format='IC3')
     parser.parse_cli_args(argv)
     parser.parse_filenameformat()
@@ -226,17 +226,17 @@ def write_generic(argv, ext, writer, fname=None):
 
 @cli_header("cfd")
 def write_ic3v2(argv=None):
-    return write_generic(argv, '.ic3', ic3.writerV2.writer, fname=__fname__)
+    return write_generic(argv, '.ic3', ic3.writerV2.writer, fname=__fname__)  # noqa: F821
 
 
 @cli_header("cfd")
 def write_ic3v3(argv=None):
-    return write_generic(argv, '.ic3', ic3.writerV3.writer, fname=__fname__)
+    return write_generic(argv, '.ic3', ic3.writerV3.writer, fname=__fname__)  # noqa: F821
 
 
 @cli_header("cfd")
 def write_vtk(argv=None):
-    return write_generic(argv, '.vtu', vtk.vtkMesh, fname=__fname__)
+    return write_generic(argv, '.vtu', vtk.vtkMesh, fname=__fname__)  # noqa: F821
 
 
 @cli_header("cfd")
@@ -247,7 +247,7 @@ def writecube(argv=None):
         argv (_type_, optional): _description_. Defaults to None.
     """
     # api.io.set_modes(api.io._available)
-    parser = cli_argparser(prog=__fname__)
+    parser = cli_argparser(prog=__fname__)  # noqa: F821
     parser.addarg_filenameformat()
     parser.add_argument(
         "--nx", action="store", dest="nx", default=10, type=int,
