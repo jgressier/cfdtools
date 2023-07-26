@@ -15,8 +15,8 @@ install: ## install minimum required packages and flowdyn to local
 	pip install $(SRC)
 
 install_dev: install ## install package for development and testing
-	pip install -r $(SRC)/requirements-dev.txt
-	pip install -r $(SRC)/docs/requirements.txt
+	#<missing># pip install -r $(SRC)/requirements-dev.txt
+	#<missing># pip install -r $(SRC)/docs/requirements.txt
 
 poetry.lock: pyproject.toml
 	poetry update
@@ -59,3 +59,4 @@ clean_notebooks: ## remove ouputs in Jupyter notebooks files
 	find lessons -name \*.ipynb -exec python3 scripts/remove_output.py {} +
 
 clean_all: clean_notebooks clean ## run clean and clean_notebooks
+

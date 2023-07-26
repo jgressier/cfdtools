@@ -1,9 +1,9 @@
 # coding: utf8
 
 # Import modules
-import collections
-import cfdtools.meshbase._mesh as _mesh
-import cfdtools.meshbase._connectivity as _conn
+# import collections
+# import cfdtools.meshbase._mesh as _mesh
+# import cfdtools.meshbase._connectivity as _conn
 
 # import os
 

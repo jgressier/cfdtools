@@ -42,11 +42,11 @@ class indexlist:
         else:
             api.error_stop("unable to get range from list connectivity")
 
-    def set_range(self, range):
+    def set_range(self, irange):
         """define range of index with first and last included"""
         self._delete()
         self._type = 'range'
-        self._range = [*range]
+        self._range = [*irange]
 
     def list(self):
         if self._type == 'range':
@@ -297,7 +297,6 @@ class elem_connectivity:
 
     # @profile
     def create_faces_from_elems(self):
-
         # @profile
         def __build_face_and_neighbour():
             """build a dict of face type to a list of tuples of each (oriented) face and its neighbor

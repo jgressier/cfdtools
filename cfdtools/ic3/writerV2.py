@@ -23,7 +23,7 @@ class writer:
             raise ValueError("unknown endian key")
         else:
             self.endian = endian
-        self.vars = {"nodes": {}, "cells": {}}
+        #self.vars = {"nodes": {}, "cells": {}}
         self._mesh = mesh
         self.params = {}
         # Initialize the simulation state
@@ -61,7 +61,7 @@ class writer:
 
         # Nodes
         self.coordinates = np.stack(
-            list(self._mesh._nodes[c] for c in ['x', 'y', 'z']), axis=1
+            [self._mesh._nodes[c] for c in 'xyz'], axis=1
         )
 
         # Compute the number of nodes and elements
@@ -142,69 +142,68 @@ class writer:
         They will be later written to the file using the
         __WriteRestartVar method.
         """
-        api.io.print(
-            'std',
-            "Setting variables..",
-        )
-        self.vars = {"nodes": {}, "cells": {}}
+        api.io.printstd("Setting variables..")
+        self.vars = {
+            "nodes": self._mesh._nodedata,
+            "cells": self._mesh._celldata
+            }
         # Start with the variables stored at the vertices
-        for key, item in self._mesh._nodedata.items():
-            api.io.print('std', "  node data: " + key)
-            self.vars["nodes"][key] = item
+        # for key, item in self._mesh._nodedata.items():
+        #     api.io.print('std', "  node data: " + key)
+        #     self.vars["nodes"][key] = item
 
-        # Then the variables stored at the cells:
-        for key, item in self._mesh._celldata.items():
-            api.io.print('std', "  cell data: " + key)
-            self.vars["cells"][key] = item
+        # # Then the variables stored at the cells:
+        # for key, item in self._mesh._celldata.items():
+        #     api.io.print('std', "  cell data: " + key)
+        #     self.vars["cells"][key] = item
 
     def write_data(self, filename):
         """
         Main method of the ic3 restart file writer
         """
-        api.io.print('std', f"> WRITING FILE {filename}")
+        api.io.print('std', f"> WRITING FILE {filename!r}")
         self.filename = filename
         # Open the file for binary reading
-        self.fid = open(self.filename, "wb")
-
-        api.io.print('std', "> check consistency before writing")
-        if not self.check():
-            raise RuntimeError("Inconsistent data to write")
-
-        api.io.print('std', "> Writing header")
-        self.__WriteRestartHeader()
-        #
-        api.io.print('std', "> writing connectivity")
-        self.__WriteRestartConnectivity()
-        #
-        api.io.print('std', "> writing informative values")
-        self.__WriteInformativeValues()
-        #
-        api.io.print('std', "> writing variables")
-        self.__WriteRestartVar()
-        #
-        api.io.print('std', "> end of file")
-        header = restartSectionHeader()
-        header.name = "EOF"
-        header.id = ic3_restart_codes["UGP_IO_EOF"]
-        header.skip = header.hsize
-        header.write(self.fid, self.endian)
-
-        # Before returning, close the file
-        self.fid.close()
+        with open(self.filename, "wb") as self.fid:
+            #
+            api.io.print('std', "> check consistency before writing")
+            if not self.check():
+                raise RuntimeError("Inconsistent data to write")
+            #
+            api.io.print('std', "> Writing header")
+            self.__WriteRestartHeader()
+            #
+            api.io.print('std', "> Writing connectivity")
+            self.__WriteRestartConnectivity()
+            #
+            api.io.print('std', "> Writing informative values")
+            self.__WriteInformativeValues()
+            #
+            api.io.print('std', "> Writing variables")
+            self.__WriteRestartVar()
+            #
+            api.io.print('std', "> End of file")
+            header = restartSectionHeader()
+            header.name = "EOF"
+            header.id = ic3_restart_codes["UGP_IO_EOF"]
+            header.skip = header.hsize
+            header.write(self.fid, self.endian)
+            #
+            # self.fid is closed
         del self.fid
 
     def check(self):
         check_error = True
         # bad field size
         keylist = []
-        for key, cellitem in self.vars["cells"].items():
-            if cellitem.ndof() != 1:
-                keylist.append(key)
-        if len(keylist) >= 1:
-            check_error = False
-            api.io.print(
-                'error', 'wrong size (ndof) of cell data: ' + keylist.__str__()
-            )
+        # for key, cellitem in self.vars["cells"].items():
+        #     if cellitem.ndof() != 1:
+        #         keylist.append(key)
+        # if len(keylist) >= 1:
+        #     check_error = False
+        #     api.io.print(
+        #         'error', 'wrong size (ndof) of cell data: ' + keylist.__str__()
+        #     )
         return check_error
 
     def __WriteRestartHeader(self):
@@ -500,8 +499,7 @@ class writer:
                 pass
 
         # Then the cell based variables
-        for key, cellitem in self.vars["cells"].items():
-            item = cellitem.data()
+        for key, item in self.vars["cells"].items():
             # Scalar
             if item.size == item.shape[0]:
                 # Header
@@ -515,8 +513,7 @@ class writer:
                 header.write(self.fid, self.endian)
                 # Field
                 BinaryWrite(self.fid, self.endian, "d" * self.params["cv_count"], item)
-        for key, cellitem in self.vars["cells"].items():
-            item = cellitem.data()
+        for key, item in self.vars["cells"].items():
             # Vector
             if len(item.shape) == 2:
                 # Header
@@ -536,8 +533,7 @@ class writer:
                     "d" * self.params["cv_count"] * 3,
                     item.ravel(order='C'),
                 )
-        for key, cellitem in self.vars["cells"].items():
-            item = cellitem.data()
+        for key, item in self.vars["cells"].items():
             # Tensor
             if len(item.shape) == 3:
                 # Header
