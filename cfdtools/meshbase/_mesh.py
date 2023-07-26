@@ -7,7 +7,6 @@ import numpy as np
 
 
 class submeshmark:
-
     # authorized geomdim type and actual dimension
     _available_geodim = (
         'node',
@@ -164,7 +163,8 @@ class Mesh:
             self._faces[facetype] = {'face2node': face2node, 'face2cell': face2cell}
         else:
             api.io.error_stop(
-                f"bad face type: {facetype} since {self.__available_facetypes} expected"
+                f"bad face type: {facetype}"
+                f" since {self.__available_facetypes} expected"
             )
         self.nface = np.sum(
             [fcon['face2node'].nelem for _, fcon in self._faces.items()]
@@ -225,8 +225,10 @@ class Mesh:
                 # print(boco.name, len(nodeset), len(boco.index.list()))
 
     def list_boco_index(self):
-        return list(itertools.chain(
-            *[boco.index.list() for _, boco in self._bocos.items()])
+        return list(
+            itertools.chain(
+                *[boco.index.list() for _, boco in self._bocos.items()]
+            )
         )
 
     def make_unmarked_BC(self, name="unmarked_faces"):
@@ -250,7 +252,9 @@ class Mesh:
                 self.add_boco(boco)
         else:
             list_missing = []
-            api.io.print('warning', "can only reindex faces according to boco if separated in 'boundary' list")
+            api.io.print(
+                'warning', "can only reindex faces according to boco if separated in 'boundary' list"
+            )
         return list_missing
 
     def seekmark(self, name: str) -> submeshmark:  # What is this method ??
@@ -263,9 +267,11 @@ class Mesh:
         newmesh = Mesh()
         return newmesh
 
-    def export_extruded(
-        self, direction=np.array([0.0, 0.0, 1.0]), extrude=[0.0, 1.0], domain="fluid"
-    ):
+    def export_extruded(self, direction=None, extrude=None, domain="fluid"):
+        if direction is None:
+            direction = np.array([0.0, 0.0, 1.0])
+        if extrude is None:
+            extrude = [0.0, 1.0]
         extrude_range = np.array(extrude)
         nrange = extrude_range.size
         assert nrange > 1, "extrusion only possible for at least 2 planes"
@@ -350,12 +356,14 @@ class Mesh:
         if not c_min0:
             api.io.print('error',
                 "  first face index (0) is not marked as a boundary\n"
-                "  some boundary faces may be missing")
+                "  some boundary faces may be missing",
+            )
         c_max = max(oldindex) <= len(oldindex) - 1
         if not c_max:
             api.io.print('error',
                 "  max face reference is greater than the number of found faces\n"
-                "  boundary faces must be indexed first before reindexing")
+                "  boundary faces must be indexed first before reindexing",
+            )
         c_lengths = len(oldindex) == nbdface
         if not c_lengths:
             api.io.print('error',
@@ -374,17 +382,16 @@ class Mesh:
             fdict['index'] = _conn.indexlist(ilist=newindex[fdict['index'].list()].tolist())
             # fdict['index'].compress() # not expected
         if 'face2cell' in self._faces['boundary']:
-            self._faces['boundary']['face2cell'].conn = self._faces['boundary'][
-                'face2cell'
-            ].conn[oldindex, :]
+            self._faces['boundary']['face2cell'].conn = (
+                self._faces['boundary']['face2cell'].conn[oldindex, :]
+            )
 
     def printinfo(self, detailed=False):
         api.io.printstd(f"nnode: {self.nnode}")
         for c in ('x', 'y', 'z'):
             api.io.printstd(
-                "  {} min:avg:max = {:.3f}:{:.3f}:{:.3f}".format(
-                    c, *minavgmax(self._nodes[c])
-                ),
+                f"  {c} min:avg:max ="
+                " {:.3f}:{:.3f}:{:.3f}".format(*minavgmax(self._nodes[c])),
             )
 
         api.io.printstd(f"ncell: {self.ncell}")

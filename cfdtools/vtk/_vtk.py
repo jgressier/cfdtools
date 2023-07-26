@@ -6,7 +6,9 @@ except ImportError:
     importpyvista = False
 import cfdtools.api as api
 import cfdtools.utils.maths as maths
-from cfdtools.meshbase._data import DataSetList
+import cfdtools.meshbase._elements as ele
+import cfdtools.meshbase._mesh as cfdmesh
+from cfdtools.data import DataSetList
 import cfdtools.hdf5 as hdf5
 from pathlib import Path
 import numpy as np
@@ -31,22 +33,29 @@ except NameError:
 class vtkMesh:
     '''Implementation of the writer to write binary Vtk files using pyvista'''
 
-    def __init__(self, mesh=None):
+    def __init__(self, mesh=None, pvmesh=None):
         self._mesh = mesh
+        if mesh and pvmesh:
+            api.error_stop("vtkMesh cannot be initialized by both structures")
         if mesh:
             self.set_mesh(mesh)
+        if pvmesh:
+            self.set_pvmesh(pvmesh)
 
-    def set_mesh(self, mesh):
-        self._coords = self._mesh.nodescoord(ndarray=True)
+    def set_mesh(self, mesh: cfdmesh.Mesh):
+        self._mesh = mesh
+        coords = self._mesh.nodescoord(ndarray=True)
         try:
             self._celldict = {
                 vtktype_ele[etype]: elem2node['elem2node']
                 for etype, elem2node in self._mesh._cell2node.items()
             }
-            self._grid = pv.UnstructuredGrid(self._celldict, self._coords)
+            self._grid = pv.UnstructuredGrid(self._celldict, coords)
         except NameError:
-            api.io.print('error', "pyvista (with CellType) could not be imported")
-            raise
+            api.error_stop("pyvista (with CellType) could not be imported")
+
+    def set_pvmesh(self, pvmesh: cfdmesh.Mesh):
+        self._grid = pvmesh
 
     def write_data(self, filename):
         self._grid.save(filename)
@@ -55,11 +64,39 @@ class vtkMesh:
         self.__init__()
         self._grid = pv.read(filename)
 
+    @property
     def pyvista_grid(self):
         return self._grid
 
+    def brief(self):
+        if self._grid:
+            m = self._grid
+            api.io.printstd(f"pyvista object: {m}")
+            api.io.printstd("> mesh")
+            api.io.printstd(f"  bounds : {m.bounds}")
+            api.io.printstd(f"  ncells : {m.n_cells}")
+            api.io.printstd(f"  npoints: {m.n_points}")
+            api.io.printstd("> data")
+            api.io.printstd(f"  cell  data names: {m.cell_data.keys()}")
+            api.io.printstd(f"  point data names: {m.point_data.keys()}")
+            api.io.printstd(f"  field data names: {m.field_data.keys()}")
+            #api.io.printstd("> properties")
+        else:
+            api.io.warning("  no pyvista mesh available")
+
     def plot(self, background='white', show_edges=True, *args, **kwargs):
-        self.pyvista_grid().plot(background='white', show_edges=True, *args, **kwargs)
+        self.pyvista_grid().plot(
+            background=background,
+            show_edges=show_edges,
+            *args, **kwargs
+        )
+
+    def dumhdfgroup(self, hgroup: hdf5.Group, **options):
+        hgroup.attrs['meshtype'] = 'unsvtk'
+        hgroup.create_dataset("nodes", data=self._grid.points, **options)
+        hcells = hgroup.create_group("cells")
+        for itype, cellco in self._grid.cells_dict.items():
+            hcells.create_dataset(ele_vtktype[itype], data=cellco, **options)
 
 
 class vtkList():
@@ -94,7 +131,7 @@ class vtkList():
                     api.io.printstd(f"  . {name}: {d}")
         if self._verbose:
             api.io.printstd(f"  {count}/{self.nfile} grids are not {pos}-coincident")
-        return count > 0
+        return count == 0
 
     def read(self, filterdata=None, reorder=False, tol=1e-10):
         count = 0
@@ -117,7 +154,7 @@ class vtkList():
             Tread.start()
             vtk = pv.read(name)
             Tread.pause()
-            namelist = filterdata if filterdata else pv.cell_data.keys()
+            namelist = filterdata if filterdata else vtk.cell_data.keys()
             Tcomp.start()
             ctr = vtk.cell_centers().points
             d = np.max(maths.distance(ctrRef, ctr))
@@ -144,15 +181,14 @@ class vtkList():
             api.io.printstd(f"    grid comparison: {Tcomp.elapsed:.2f}s")
             api.io.printstd(f"    data reordering: {Tsort.elapsed:.2f}s")
 
-    def dumphdf(self, filename, options={}):
-        file = hdf5.h5file(filename)
+    def dumphdf(self, filename, **options):
+        file = hdf5.h5File(filename)
         file.find_safe_newfile()
         file.open(mode="w", datatype='datalist')
         hmesh = file._h5file.create_group("mesh")
-        hmesh.create_dataset("nodes", data=self._mesh.points, **options)
-        hcells = file._h5file.create_group("mesh/cells")
-        for itype, cellco in self._mesh.cells_dict.items():
-            hcells.create_dataset(ele_vtktype[itype], data=cellco, **options)
+        vtkmesh = vtkMesh(pvmesh=self._mesh)
+        vtkmesh.dumhdfgroup(hmesh, **options)
+        #
         hdata = file._h5file.create_group("datalist")
-        self._data.dumphdf(hdata, options)
+        self._data._dumphdfgroup(hdata, **options)
         file.close()

@@ -17,7 +17,7 @@ import cfdtools.probes.data as probedata
 import numpy as np
 
 # To add a command line tool, just add the function pyproject.toml in section
-# [tool.poetry.scripts]
+# [project.scripts]
 # cfdinfo = 'cfdtools._cli:info'
 
 # print(api._fileformat_map)
@@ -57,15 +57,15 @@ class cli_argparser:
     def add_argument(self, option, **kwargs):
         return self._parser.add_argument(option, **kwargs)
 
-    def addarg_filenameformat(self):
+    def addarg_filenameformat(self, format=None):
         self.add_argument('filename', help="file")
-        self.add_argument('--fmt', help="input format", choices=self._available_readers)
-        self.add_argument('--outpath', help="output folder")
+        self.add_argument('--fmt', help="input file format", choices=self._available_readers, default=format)
+        self.add_argument('--outpath', help="output folder path")
         self.add_argument(
-            "--check", action="store_true", dest="check", help="process some checks"
+            '--check', action="store_true", dest="check", help="process some checks"
         )
         self.add_argument(
-            "--info", action="store_true", dest="info", help="print information"
+            '--info', action="store_true", dest="info", help="print information"
         )
 
     def addarg_prefix(self):
@@ -90,7 +90,8 @@ class cli_argparser:
             '--extrude', type=int, help="total number of planes",
         )
         self.add_argument(
-            '--scale', nargs=3, type=float, help="x, y, z scaling coefficients",
+            '--scale', nargs=3, type=float,
+            help="x, y, z scaling coefficients",
         )
 
     def parse_cli_args(self, argv):
@@ -140,7 +141,7 @@ def info(argv=None):
     parser.parse_filenameformat()
     #
     inputfile = Path(parser.args('filename'))
-    r = parser._reader(str(inputfile))
+    r = parser._reader(str(inputfile), cIntegrity=parser.args('check'))
     r.read_data()
     mesh = r.export_mesh()
     mesh.printinfo()
@@ -150,12 +151,25 @@ def info(argv=None):
 @cli_header()
 def ic3brief(argv=None):
     parser = cli_argparser(prog=__fname__)
-    parser.addarg_filenameformat()
+    parser.addarg_filenameformat(format='IC3')
     parser.parse_cli_args(argv)
     parser.parse_filenameformat()
     #
     r = ic3.binreader(parser.args().filename)
     r.read_headers()
+    return True  # needed for pytest
+
+
+def vtkbrief(argv=None):
+    cli_header("vtkbrief")
+    parser = cli_argparser()
+    parser.addarg_filenameformat(format="VTK")
+    parser.parse_cli_args(argv)
+    parser.parse_filenameformat()
+    #
+    r = vtk.vtkMesh()
+    r.read(parser.args().filename)
+    r.brief()
     return True  # needed for pytest
 
 
@@ -197,9 +211,9 @@ def write_generic(argv, ext, writer, fname=None):
         nz = parser.args().extrude
         api.io.printstd(f"> extrusion along nz={nz} cells, {nz*ncell} total cells")
         cfdmesh = cfdmesh.export_extruded(
-            extrude=np.linspace(0.0, 1.0, nz+1, endpoint=True)
+            extrude=np.linspace(0.0, 1.0, nz + 1, endpoint=True)
         )
-        timer.stop(nelem=nz*ncell)
+        timer.stop(nelem=nz * ncell)
     if parser.args().scale:
         cfdmesh.scale(parser.args().scale)
     if parser.args().info:

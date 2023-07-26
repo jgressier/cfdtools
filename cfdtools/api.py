@@ -19,7 +19,7 @@ def fileformat_reader(name, extension):
 
     def decorator(thisclass):
         properties = {'reader': thisclass, 'ext': extension}
-        if name in _fileformat_map.keys():
+        if name in _fileformat_map:
             _fileformat_map[name].update(properties)
         else:
             _fileformat_map[name] = properties
@@ -35,7 +35,7 @@ def fileformat_writer(name, extension):
 
     def decorator(thisclass):
         properties = {'writer': thisclass, 'ext': extension}
-        if name in _fileformat_map.keys():
+        if name in _fileformat_map:
             _fileformat_map[name].update(properties)
         else:
             _fileformat_map[name] = properties
@@ -117,6 +117,9 @@ class api_output:
 
     def printdebug(self, *args, **kwargs):
         self.print('debug', *args, **kwargs)
+
+    def warning(self, *args, **kwargs):
+        self.print('warning', *args, **kwargs)
 
 
 io = api_output()

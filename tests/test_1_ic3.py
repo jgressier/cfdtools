@@ -5,9 +5,6 @@ from pathlib import Path
 import pytest
 import filecmp
 
-_datadir = Path("./tests/data")
-_builddir = Path("./tests/build")
-
 
 @pytest.mark.parametrize(
     "filename",
@@ -17,8 +14,8 @@ _builddir = Path("./tests/build")
         "nrg-tinycube-v2.ic3",
     ],
 )
-def test_reader(filename):
-    ic3mesh = ic3reader.reader(_datadir / filename)
+def test_reader(datadir, filename):
+    ic3mesh = ic3reader.reader(datadir / filename, cIntegrity=True)
     ic3mesh.read_data()
     ic3mesh.printinfo()
     rmesh = ic3mesh.export_mesh()
@@ -32,15 +29,15 @@ def test_reader(filename):
         "nrg-tinycube-v2.ic3",
     ],
 )
-def test_writer_v2_litend(filename):
-    refpath = _datadir / filename
+def test_writer_v2_litend(datadir, builddir, filename):
+    refpath = datadir / filename
     ic3read = ic3reader.reader(refpath)
     ic3read.read_data()
     rmesh = ic3read.export_mesh()
     assert rmesh.check()
     ic3write = ic3wv2.writer(rmesh, endian='little')
-    _builddir.mkdir(exist_ok=True)
-    outpath = _builddir / filename
+    builddir.mkdir(exist_ok=True)
+    outpath = builddir / filename
     ic3write.write_data(outpath)
     assert filecmp.cmp(refpath, outpath) # shallow=True by default, only size is compared
     outpath.unlink()

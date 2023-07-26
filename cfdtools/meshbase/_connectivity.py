@@ -296,7 +296,6 @@ class elem_connectivity:
 
     # @profile
     def create_faces_from_elems(self):
-
         # @profile
         def __build_face_and_neighbour():
             """build a dict of face type to a list of tuples of each (oriented) face and its neighbor

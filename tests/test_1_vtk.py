@@ -1,17 +1,16 @@
 import cfdtools.meshbase.simple as sm
-from cfdtools.vtk import vtkMesh
+from cfdtools.vtk import vtkMesh, vtkList
+from cfdtools.hdf5 import h5File
+
 # import cfdtools.vtk as vtk
 # import cfdtools.api as api
 from pathlib import Path
 import pytest
 
-_datadir = Path("./tests/data")
-_builddir = Path("./tests/build")
 
-
-def test_cube_vtk():
+def test_cube_vtk(builddir):
     filename = "cube.vtu"
-    filepath = _builddir / filename
+    filepath = builddir / filename
     cube = sm.Cube(10, 10, 10)
     mesh = cube.export_mesh()
     vtkmesh = vtkMesh(mesh)
@@ -19,29 +18,38 @@ def test_cube_vtk():
     Path(filepath).unlink()
 
 
-# @pytest.mark.parametrize("filename", ["cavity-degen.hdf"])
-# def test_reader(filename):
-#     input = cgns.cgnsMesh(_datadir / filename)
-#     input.read_data()
-#     rmesh = input.export_mesh()
-#     assert rmesh.check()
+def test_vtkread(datadir):
+    name = datadir / "cubemixed0000.vtu"
+    vtkfile = vtkMesh()
+    vtkfile.read(name)
+    assert vtkfile.pyvista_grid.n_cells == 1000
 
 
-# @pytest.mark.parametrize("filename", ["cavity-degen.hdf"
-#     input = cgns.reader(_datadir / filename)
-#     input.read_data()
-#     rmesh = input.export_mesh()
-#     ic3write = ic3writer.writer(rmesh)
-#     _builddir.mkdir(exist_ok=True)
-#     outfile = api._files(_builddir / Path(filename))
-#     outfile.change_suffix('.ic3')
-#     ic3write.write_data(outfile.filename)
-# # def test_reader3dv22():
-#     rmesh = gmsh.reader(_datadir+'box3d-v22.msh')
-#     rmesh = gmshmesh.read_data()
-#     assert rmesh.check()
+def test_vtkList(datadir):
+    namelist = list(datadir.glob("cubemixed00*.vtu"))
+    vtklist = vtkList(namelist)
+    assert vtklist.nfile == len(namelist)
+    assert vtklist.allexist()
 
-# def test_reader3dv41():
-#     gmshmesh = gmsh.reader(_datadir+'box3d-v41.msh')
-#     rmesh = gmshmesh.read_data()
-#     assert rmesh.check()
+
+def test_vtkList_check(datadir):
+    namelist = list(datadir.glob("cubemixed00*.vtu"))
+    vtklist = vtkList(namelist, verbose=True)
+    assert not vtklist.check_order('cellcenter')  # known to be mixed
+
+
+def test_vtkList_read(datadir):
+    namelist = list(datadir.glob("cubemixed00*.vtu"))
+    vtklist = vtkList(namelist, verbose=True)
+    vtklist.read()
+
+
+def test_vtkList_dump(datadir, builddir):
+    namelist = list(datadir.glob("cubemixed00*.vtu"))
+    vtklist = vtkList(namelist, verbose=True)
+    vtklist.read()
+    h5filename = builddir / "vtklist.hdf"
+    vtklist.dumphdf(h5filename)
+    h5file = h5File(h5filename)
+    h5file.open()
+    assert h5file.datatype == 'datalist'

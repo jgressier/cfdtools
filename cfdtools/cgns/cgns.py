@@ -7,7 +7,7 @@ except ImportError:
     cache = lru_cache(maxsize=None)
     del lru_cache
 from cfdtools.api import io, error_stop, fileformat_reader  # , memoize
-from cfdtools.hdf5 import h5file, h5_str
+from cfdtools.hdf5 import h5File, h5_str
 from cfdtools.meshbase._mesh import Mesh, submeshmark
 import cfdtools.meshbase._connectivity as _conn
 import cfdtools.meshbase._elements as _elem
@@ -123,7 +123,7 @@ class cgnszone:
         return boco
 
 
-class cgnsfile(h5file):
+class cgnsfile(h5File):
     def __init__(self, filename: str):
         super().__init__(filename)
         self.open()
