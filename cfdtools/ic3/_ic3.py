@@ -33,22 +33,22 @@ ic3_restart_codes = {
     "UGP_IO_EOF": 51,
 }
 
-stc, sz, npt = 'structcode', 'size', 'numpytype'
+scode, sz, ntype = 'structcode', 'size', 'numpytype'
 
 properties_ugpcode = {
-    ic3_restart_codes["UGP_IO_FA_D1"]: {stc: "d", sz: 8, npt: np.float64},
-    ic3_restart_codes["UGP_IO_FA_D3"]: {stc: "d", sz: 8, npt: np.float64},
-    ic3_restart_codes["UGP_IO_NO_D1"]: {stc: "d", sz: 8, npt: np.float64},
-    ic3_restart_codes["UGP_IO_NO_D3"]: {stc: "d", sz: 8, npt: np.float64},
-    ic3_restart_codes["UGP_IO_CV_D1"]: {stc: "d", sz: 8, npt: np.float64},
-    ic3_restart_codes["UGP_IO_CV_D3"]: {stc: "d", sz: 8, npt: np.float64},
-    ic3_restart_codes["UGP_IO_CV_D33"]: {stc: "d", sz: 8, npt: np.float64},
-    ic3_restart_codes["UGP_IO_FA_II1"]: {stc: "q", sz: 8, npt: np.int64},
-    ic3_restart_codes["UGP_IO_NO_II1"]: {stc: "q", sz: 8, npt: np.int64},
-    ic3_restart_codes["UGP_IO_CV_II1"]: {stc: "q", sz: 8, npt: np.int64},
+    ic3_restart_codes["UGP_IO_FA_D1"]: {scode: "d", sz: 8, ntype: np.float64},
+    ic3_restart_codes["UGP_IO_FA_D3"]: {scode: "d", sz: 8, ntype: np.float64},
+    ic3_restart_codes["UGP_IO_NO_D1"]: {scode: "d", sz: 8, ntype: np.float64},
+    ic3_restart_codes["UGP_IO_NO_D3"]: {scode: "d", sz: 8, ntype: np.float64},
+    ic3_restart_codes["UGP_IO_CV_D1"]: {scode: "d", sz: 8, ntype: np.float64},
+    ic3_restart_codes["UGP_IO_CV_D3"]: {scode: "d", sz: 8, ntype: np.float64},
+    ic3_restart_codes["UGP_IO_CV_D33"]: {scode: "d", sz: 8, ntype: np.float64},
+    ic3_restart_codes["UGP_IO_FA_II1"]: {scode: "q", sz: 8, ntype: np.int64},
+    ic3_restart_codes["UGP_IO_NO_II1"]: {scode: "q", sz: 8, ntype: np.int64},
+    ic3_restart_codes["UGP_IO_CV_II1"]: {scode: "q", sz: 8, ntype: np.int64},
 }
 
-del stc, sz, npt
+del scode, sz, ntype
 
 # Dictionary to convert type of data [string] to a number of bytes for clean binary parsing
 type2nbytes = {
@@ -246,19 +246,15 @@ class restartSectionHeader:
     def skip(self):
         return self._skip[0]  # numpy array size 1 to handle int type
 
-    def readVar(self, bfile, byte_swap, nametypes, reset_offset=True):
+    def readVar(self, bfile, byte_swap, nametypes, reset_offset=True, required=False):
         '''
         Once initialization is done, this method actually reads
         the header data from the packed binary formatted string.
         '''
-        id_list = []
-        for nametype in nametypes:
-            id_list.append(ic3_restart_codes[nametype])
+        id_list = [ic3_restart_codes[nametype] for nametype in nametypes]
         if reset_offset is True:
             bfile.seek(8, os.SEEK_SET)
-        while (self.id[0] not in id_list) and (
-            self.id[0] != ic3_restart_codes["UGP_IO_EOF"]
-        ):
+        while True:
             self.name = ""
             self.id = np.zeros((1,), dtype=np.int32)
             self.idata = np.zeros((8,), dtype=np.int64)
@@ -293,7 +289,23 @@ class restartSectionHeader:
                     nlen + self.id.size + self._skip.size + self.idata.size + i
                 ]
             # print(self)
-        return self.id[0] in id_list
+            if self.id[0] in id_list:
+                return True
+            if self.id[0] == ic3_restart_codes["UGP_IO_EOF"]:
+                break
+        if required:
+            api.error_stop(
+                f"Fatal error."
+                f" Section(s) {nametypes} not found in dataset {self.name}."
+                f" Exiting."
+            )
+        return False
+
+    def readReqVar(self, *args, **kwargs):
+        '''
+        error_stop if required data is not found.
+        '''
+        return self.readVar(*args, **kwargs, required=True)
 
     def write(self, bfile, endian):
         """

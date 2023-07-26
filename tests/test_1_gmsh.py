@@ -19,7 +19,7 @@ _builddir = Path("./tests/build")
     ],
 )
 def test_reader(filename):
-    gmesh = gmsh.reader(_datadir.joinpath(filename))
+    gmesh = gmsh.reader(_datadir / filename)
     gmesh.read_data()
     rmesh = gmesh.export_mesh()
     assert rmesh.check()
@@ -34,23 +34,13 @@ def test_reader(filename):
     ],
 )
 def test_convert_ic3(filename):
-    gmesh = gmsh.reader(_datadir.joinpath(filename))
+    gmesh = gmsh.reader(_datadir / filename)
     gmesh.read_data()
     rmesh = gmesh.export_mesh()
+    assert rmesh.check()
     ic3write = ic3writer.writer(rmesh)
     _builddir.mkdir(exist_ok=True)
-    outfile = api._files(_builddir / Path(filename))
+    outfile = api._files(_builddir / filename)
     outfile.change_suffix('.ic3')
     ic3write.write_data(outfile.filename)
     Path(outfile.filename).unlink()
-
-
-# def test_reader3dv22():
-#     rmesh = gmsh.reader(_datadir+'box3d-v22.msh')
-#     rmesh = gmshmesh.read_data()
-#     assert rmesh.check()
-
-# def test_reader3dv41():
-#     gmshmesh = gmsh.reader(_datadir+'box3d-v41.msh')
-#     rmesh = gmshmesh.read_data()
-#     assert rmesh.check()

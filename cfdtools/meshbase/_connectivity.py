@@ -214,13 +214,12 @@ class elem_connectivity:
 
     def print(self, prefix="", detailed=False):
         for elemtype, elemco in self._elem2node.items():
-            api.io.print(
-                "std",
+            api.io.printstd(
                 prefix + f"{elemtype}: {elemco['elem2node'].shape} with index {elemco['index']}",
             )
             if detailed:
-                api.io.print("std", prefix + f"  index: {elemco['index'].list()}")
-                api.io.print("std", prefix + f"  faces: {elemco['elem2node']}")
+                api.io.printstd(prefix + f"  index: {elemco['index'].list()}")
+                api.io.printstd(prefix + f"  faces: {elemco['elem2node']}")
 
     def all_index(self):
         return list(sum([econ['index'].list() for _, econ in self.items()], []))

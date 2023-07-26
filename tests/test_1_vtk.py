@@ -21,14 +21,14 @@ def test_cube_vtk():
 
 # @pytest.mark.parametrize("filename", ["cavity-degen.hdf"])
 # def test_reader(filename):
-#     input = cgns.cgnsMesh(_datadir.joinpath(filename))
+#     input = cgns.cgnsMesh(_datadir / filename)
 #     input.read_data()
 #     rmesh = input.export_mesh()
 #     assert rmesh.check()
 
 
 # @pytest.mark.parametrize("filename", ["cavity-degen.hdf"
-#     input = cgns.reader(_datadir.joinpath(filename))
+#     input = cgns.reader(_datadir / filename)
 #     input.read_data()
 #     rmesh = input.export_mesh()
 #     ic3write = ic3writer.writer(rmesh)

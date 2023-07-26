@@ -55,36 +55,33 @@ class writer(writerV2.writer):
         #
         nno = self.params["no_count"]
         #
-        for nvname, nvdata in self.vars["nodes"].items():
+        for ndname, nddata in self.vars["nodes"].items():
             # Scalar
-            if nvdata.size == nvdata.shape[0]:
+            if nddata.size == nddata.shape[0]:
                 # Header
-                api.io.print('std', f"  write node scalar data {nvname}")
+                api.io.printstd(f"  write node scalar data {ndname}")
                 header = restartSectionHeader()
-                header.name = nvname
+                header.name = ndname
                 header.id = {
                     "float64": ic3_restart_codes["UGP_IO_NO_D1"],
                     "int64": ic3_restart_codes["UGP_IO_NO_II1"],
-                }[nvdata.dtype.name]
-                header.skip = (
-                    header.hsize + nvdata.itemsize * nno
-                )
+                }[nddata.dtype.name]
+                header.skip = header.hsize + nddata.itemsize * nno
                 header.idata[0] = nno
                 header.write(self.fid, self.endian)
                 # Field
                 chartype = properties_ugpcode[header.id]['structcode']
                 BinaryWrite(
-                    self.fid, self.endian, chartype * nno,
-                    nvdata,
+                    self.fid, self.endian, chartype * nno, nddata,
                 )
         #
-        for nvname, nvdata in self.vars["nodes"].items():
+        for ndname, nddata in self.vars["nodes"].items():
             # Vector
-            if len(nvdata.shape) == 2:
-                api.io.print('std', f"  write node vector data {nvname}")
+            if len(nddata.shape) == 2:
+                api.io.printstd(f"  write node vector data {ndname}")
                 # Header
                 header = restartSectionHeader()
-                header.name = nvname
+                header.name = ndname
                 header.id = ic3_restart_codes["UGP_IO_NO_D3"]
                 header.skip = (
                     header.hsize + type2nbytes["float64"] * nno * 3
@@ -95,12 +92,12 @@ class writer(writerV2.writer):
                 # Field
                 BinaryWrite(
                     self.fid, self.endian, "d" * nno * 3,
-                    nvdata.ravel(order='C'),
+                    nddata.ravel(order='C'),
                 )
         #
-        for nvname, nvdata in self.vars["nodes"].items():
+        for ndname, nddata in self.vars["nodes"].items():
             # Tensor
-            if len(nvdata.shape) == 3:
+            if len(nddata.shape) == 3:
                 pass
 
         # Then the cell based variables
@@ -114,7 +111,7 @@ class writer(writerV2.writer):
             # Scalar
             if cvdata.size == cvdata.shape[0]:
                 # Header
-                api.io.print('std', f"  write cell scalar data {cvname}")
+                api.io.printstd(f"  write cell scalar data {cvname}")
                 header = restartSectionHeader()
                 header.name = cvname
                 header.id = {
@@ -130,15 +127,14 @@ class writer(writerV2.writer):
                 # Field
                 chartype = properties_ugpcode[header.id]['structcode']
                 BinaryWrite(
-                    self.fid, self.endian, chartype * totsize,
-                    cvdata,
+                    self.fid, self.endian, chartype * totsize, cvdata,
                 )
         #
         for cvname, cvdata in self.vars["cells"].items():
             # Vector
             if len(cvdata.shape) == 2:
                 # Header
-                api.io.print('std', f"  write cell vector data {cvname}")
+                api.io.printstd(f"  write cell vector data {cvname}")
                 header = restartSectionHeader()
                 header.name = cvname
                 header.id = ic3_restart_codes["UGP_IO_CV_D3"]
@@ -159,7 +155,7 @@ class writer(writerV2.writer):
             # Tensor
             if len(cvdata.shape) == 3:
                 # Header
-                api.io.print('std', f"  write cell tensor data {cvname}")
+                api.io.printstd(f"  write cell tensor data {cvname}")
                 header = restartSectionHeader()
                 header.name = cvname
                 header.id = ic3_restart_codes["UGP_IO_CV_D33"]

@@ -24,12 +24,12 @@ class writer:
         """
         Initialization of a ic3 restart file writer.
         """
-        api.io.print('std', "> Initialization of IC3 writer V" + self.__version__)
+        api.io.printstd("> Initialization of IC3 writer V" + self.__version__)
         if not endian in struct_endian.keys():
             raise ValueError("unknown endian key")
         else:
             self.endian = endian
-        #self.vars = {"nodes": {}, "cells": {}}
+        # self.vars = {"nodes": {}, "cells": {}}
         self._mesh = mesh
         self.params = {}
         # Initialize the simulation state
@@ -46,7 +46,7 @@ class writer:
         as per CharlesX implementation.
         """
         timer = api.Timer()
-        api.io.print('std', "> Check connectivity and compute mandatory")
+        api.io.printstd("> Check connectivity and compute mandatory")
         if not self._mesh._faces:  # empty dict of faces
             with api.Timer(task="  generate all faces"):
                 self._mesh.make_face_connectivity()
@@ -63,7 +63,7 @@ class writer:
             ):
                 self._mesh.reindex_boundaryfaces()
 
-        api.io.print('std', "Setting coordinates and connectivity arrays..")
+        api.io.printstd("Setting coordinates and connectivity arrays..")
 
         # Nodes
         self.coordinates = np.stack(
@@ -116,7 +116,7 @@ class writer:
         __WriteRestartConnectivity method.
         The bocos slicing is expressed in terms of faces.
         """
-        api.io.print('std', "Setting boundary conditions...")
+        api.io.printstd("Setting boundary conditions...")
         self.bocos = {
             key: boco
             for key, boco in self._mesh._bocos.items()
@@ -151,44 +151,44 @@ class writer:
         api.io.printstd("Setting variables..")
         self.vars = {
             "nodes": self._mesh._nodedata,
-            "cells": self._mesh._celldata
-            }
+            "cells": self._mesh._celldata,
+        }
         # Start with the variables stored at the vertices
         # for key, item in self._mesh._nodedata.items():
-        #     api.io.print('std', "  node data: " + key)
+        #     api.io.printstd("  node data: " + key)
         #     self.vars["nodes"][key] = item
 
         # # Then the variables stored at the cells:
         # for key, item in self._mesh._celldata.items():
-        #     api.io.print('std', "  cell data: " + key)
+        #     api.io.printstd("  cell data: " + key)
         #     self.vars["cells"][key] = item
 
     def write_data(self, filename):
         """
         Main method of the ic3 restart file writer
         """
-        api.io.print('std', f"> WRITING FILE {filename!r}")
+        api.io.printstd(f"> WRITING FILE {filename!r}")
         self.filename = filename
         # Open the file for binary reading
         with open(self.filename, "wb") as self.fid:
             #
-            api.io.print('std', "> check consistency before writing")
+            api.io.printstd("> check consistency before writing")
             if not self.check():
                 raise RuntimeError("Inconsistent data to write")
             #
-            api.io.print('std', "> Writing header")
+            api.io.printstd("> Writing header")
             self.__WriteRestartHeader()
             #
-            api.io.print('std', "> Writing connectivity")
+            api.io.printstd("> Writing connectivity")
             self.__WriteRestartConnectivity()
             #
-            api.io.print('std', "> Writing informative values")
+            api.io.printstd("> Writing informative values")
             self.__WriteInformativeValues()
             #
-            api.io.print('std', "> Writing variables")
+            api.io.printstd("> Writing variables")
             self.__WriteRestartVar()
             #
-            api.io.print('std', "> End of file")
+            api.io.printstd("> End of file")
             header = restartSectionHeader()
             header.name = "EOF"
             header.id = ic3_restart_codes["UGP_IO_EOF"]
@@ -300,7 +300,7 @@ class writer:
         # Connectivities
         # Faces-to-nodes connectivities
         # Header
-        api.io.print('std', f"  face to node connectivity")
+        api.io.printstd(f"  face to node connectivity")
         header = restartSectionHeader()
         header.name = "NOOFA_I_AND_V"
         header.id = ic3_restart_codes["UGP_IO_NOOFA_I_AND_V"]
@@ -323,11 +323,11 @@ class writer:
             "i" * self.params["noofa_count"],
             self.f2v["noofa_v"].tolist(),
         )
-        # print('noofa',self.f2v["noofa"] )
-        # print('noofa_v',self.f2v["noofa_v"] )
+        # print('noofa', self.f2v["noofa"] )
+        # print('noofa_v', self.f2v["noofa_v"] )
         # Faces-to-cells connectivities
         # Header
-        api.io.print('std', f"  face to cell connectivity")
+        api.io.printstd(f"  face to cell connectivity")
         header = restartSectionHeader()
         header.name = "CVOFA"
         header.id = ic3_restart_codes["UGP_IO_CVOFA"]
@@ -336,12 +336,12 @@ class writer:
         header.idata[1] = 2
         header.write(self.fid, self.endian)
         # Flattened face-to-cell connectivity
-        # print("W",self.f2e)
+        # print("W", self.f2e)
         # print(self.f2e.ravel())
         BinaryWrite(self.fid, self.endian, "i" * nface * 2, self.f2e.ravel().tolist())
-        # print('cellofface',self.f2e.ravel().tolist() )
+        # print('cellofface', self.f2e.ravel().tolist() )
         # Face zones, a.k.a boundary condition patches
-        api.io.print('std', f"  marks (face based)")
+        api.io.printstd(f"  marks (face based)")
         last_boco = 0
         for key, boco in self.bocos.items():
             assert key == boco.name
@@ -356,7 +356,7 @@ class writer:
                 boco.type in type2zonekind.keys()
             ), f"unsupported type of boco for IC3 output: {boco.type}"
             ifmin, ifmax = boco.index.range()
-            api.io.print('std', f"  . ({boco.type}) {boco.name}: {ifmin}-{ifmax}")
+            api.io.printstd(f"  . ({boco.type}) {boco.name}: {ifmin}-{ifmax}")
             header.idata[0] = type2zonekind[boco.type]
             assert (
                 boco.index.type == 'range'
@@ -384,7 +384,7 @@ class writer:
         header.rdata[:] = 0.0
         header.write(self.fid, self.endian)  # Partition information
         # Header
-        api.io.print('std', f"  cell based partition info")
+        api.io.printstd(f"  cell based partition info")
         header = restartSectionHeader()
         header.name = "CV_PART"
         header.id = ic3_restart_codes["UGP_IO_CV_PART"]
@@ -401,7 +401,7 @@ class writer:
         )
         # Coordinates
         # Header
-        api.io.print('std', f"  nodes coordinates")
+        api.io.printstd(f"  nodes coordinates")
         header = restartSectionHeader()
         header.name = "X_NO"
         header.id = ic3_restart_codes["UGP_IO_X_NO"]
@@ -432,7 +432,7 @@ class writer:
         header = restartSectionHeader()
         header.name = key
         value = self.simstate[key.lower()]
-        api.io.print("std", "  write section for {} parameter: {}".format(key, value))
+        api.io.printstd(f"  write section for {key} parameter: {value}")
         header.id = ic3_restart_codes["UGP_IO_I0"]
         header.skip = header.hsize
         header.idata[0] = value
@@ -441,9 +441,7 @@ class writer:
         # The monomials first
         for key in ["DT", "TIME"]:
             value = self.simstate[key.lower()]
-            api.io.print(
-                "std", "  write section for {} parameter: {}".format(key, value)
-            )
+            api.io.printstd(f"  write section for {key} parameter: {value}")
             header = restartSectionHeader()
             header.name = key
             header.id = ic3_restart_codes["UGP_IO_D0"]
@@ -468,13 +466,13 @@ class writer:
         #
         nno = self.params["no_count"]
         #
-        for nvname, nvdata in self.vars["nodes"].items():
+        for ndname, nddata in self.vars["nodes"].items():
             # Scalar
-            if nvdata.size == nvdata.shape[0]:
+            if nddata.size == nddata.shape[0]:
                 # Header
-                api.io.print('std', f"  write node scalar data {nvname}")
+                api.io.printstd(f"  write node scalar data {ndname}")
                 header = restartSectionHeader()
-                header.name = nvname
+                header.name = ndname
                 header.id = ic3_restart_codes["UGP_IO_NO_D1"]
                 header.skip = (
                     header.hsize + type2nbytes["float64"] * nno
@@ -483,17 +481,16 @@ class writer:
                 header.write(self.fid, self.endian)
                 # Field
                 BinaryWrite(
-                    self.fid, self.endian, "d" * nno,
-                    nvdata,
+                    self.fid, self.endian, "d" * nno, nddata,
                 )
         #
-        for nvname, nvdata in self.vars["nodes"].items():
+        for ndname, nddata in self.vars["nodes"].items():
             # Vector
-            if len(nvdata.shape) == 2:
-                api.io.print('std', f"  write node vector data {nvname}")
+            if len(nddata.shape) == 2:
+                api.io.printstd(f"  write node vector data {ndname}")
                 # Header
                 header = restartSectionHeader()
-                header.name = nvname
+                header.name = ndname
                 header.id = ic3_restart_codes["UGP_IO_NO_D3"]
                 header.skip = (
                     header.hsize + type2nbytes["float64"] * nno * 3
@@ -504,12 +501,12 @@ class writer:
                 # Field
                 BinaryWrite(
                     self.fid, self.endian, "d" * nno * 3,
-                    nvdata.ravel(order='C'),
+                    nddata.ravel(order='C'),
                 )
         #
-        for nvname, nvdata in self.vars["nodes"].items():
+        for ndname, nddata in self.vars["nodes"].items():
             # Tensor
-            if len(nvdata.shape) == 3:
+            if len(nddata.shape) == 3:
                 pass
 
         # Then the cell based variables
@@ -521,7 +518,7 @@ class writer:
             # Scalar
             if cvdata.size == cvdata.shape[0]:
                 # Header
-                api.io.print('std', f"  write cell scalar data {cvname}")
+                api.io.printstd(f"  write cell scalar data {cvname}")
                 header = restartSectionHeader()
                 header.name = cvname
                 header.id = ic3_restart_codes["UGP_IO_CV_D1"]
@@ -532,15 +529,14 @@ class writer:
                 header.write(self.fid, self.endian)
                 # Field
                 BinaryWrite(
-                    self.fid, self.endian, "d" * ncv,
-                    cvdata,
+                    self.fid, self.endian, "d" * ncv, cvdata,
                 )
         #
         for cvname, cvdata in self.vars["cells"].items():
             # Vector
             if len(cvdata.shape) == 2:
                 # Header
-                api.io.print('std', f"  write cell vector data {cvname}")
+                api.io.printstd(f"  write cell vector data {cvname}")
                 header = restartSectionHeader()
                 header.name = cvname
                 header.id = ic3_restart_codes["UGP_IO_CV_D3"]
@@ -560,7 +556,7 @@ class writer:
             # Tensor
             if len(cvdata.shape) == 3:
                 # Header
-                api.io.print('std', f"  write cell tensor data {cvname}")
+                api.io.printstd(f"  write cell tensor data {cvname}")
                 header = restartSectionHeader()
                 header.name = cvname
                 header.id = ic3_restart_codes["UGP_IO_CV_D33"]
