@@ -1,11 +1,16 @@
 # cgns.py
 from pathlib import Path
-from cfdtools.api import io, error_stop, fileformat_reader, memoize
+try:
+    from functools import cache  # python >= 3.9
+except ImportError:
+    from functools import lru_cache  #  3.6 <= python <= 3.8
+    cache = lru_cache(maxsize=None)
+    del lru_cache
+from cfdtools.api import io, error_stop, fileformat_reader  # , memoize
 from cfdtools.hdf5 import h5File, h5_str
 from cfdtools.meshbase._mesh import Mesh, submeshmark
-import cfdtools.meshbase._connectivity as conn
-import cfdtools.meshbase._elements as ele
-import numpy as np
+import cfdtools.meshbase._connectivity as _conn
+import cfdtools.meshbase._elements as _elem
 
 cgtype = {}
 ele_cgns2local = {2: 'node1', 3: 'bar2', 5: 'tri3', 7: 'quad4', 17: 'hexa8'}
@@ -27,6 +32,7 @@ def cg_gridlocation(bc):
     else:
         bcloc = "Vertex"
     return bcloc
+
 
 class cgnszone:
     def __init__(self, zone, geodim=None) -> None:
@@ -59,23 +65,24 @@ class cgnszone:
         return x, y, z
 
     def elemcon(self, geodim):
-        cellconn = conn.elem_connectivity()
+        cellconn = _conn.elem_connectivity()
         for _, elements in self._elems.items():
             cgnstype = elements[" data"][0]
             etype = ele_cgns2local[cgnstype]
-            nnode = ele.nnode_elem[etype]
+            nnode = _elem.nnode_elem[etype]
             # extract cell connectivity only
-            if ele.elem_dim[etype] == geodim:
-                index = conn.indexlist(irange=elements["ElementRange/ data"][:] - 1)
+            if _elem.elem_dim[etype] == geodim:
+                index = _conn.indexlist(irange=elements["ElementRange/ data"][:] - 1)
                 econ = elements["ElementConnectivity/ data"][:].reshape((-1, nnode))
-                econ -= 1 # shift node index (starts 0)
+                econ -= 1  # shift node index (starts 0)
                 cellconn.add_elems(etype, econ, index)
         return cellconn
 
-    def export_cellcon(self): 
+    def export_cellcon(self):
         return self.elemcon(self._geodim)
 
-    @memoize
+    # @memoize
+    @cache
     def export_facecon(self):
         return self.elemcon(self._geodim-1)
 
@@ -83,17 +90,17 @@ class cgnszone:
         if "FamilyName" in BC.keys():
             name = h5_str(BC["FamilyName/ data"])
         else:
-            name = Path(BC.name).name # extract final name of 
+            name = Path(BC.name).name  # extract final name of
         boco = submeshmark(name)
         boco.geodim = 'node'  # don't know if node, intnode or bdnode
         boco.type = 'boundary'
         boco.properties['BCtype'] = h5_str(BC[" data"])
         boco.properties['periodic_transform'] = None
         if "PointList" in BC.keys():
-            indexlist = (BC["PointList/ data"][:] - 1).ravel().tolist() 
+            indexlist = (BC["PointList/ data"][:] - 1).ravel().tolist()
             gridloc = cg_gridlocation(BC)
-        elif "ElementList" in BC.keys(): # not in CGNS norm
-            indexlist = (BC["ElementList/ data"][:] - 1).ravel().tolist() 
+        elif "ElementList" in BC.keys():  # not in CGNS norm
+            indexlist = (BC["ElementList/ data"][:] - 1).ravel().tolist()
             gridloc = "FaceCenter"
             if len(indexlist) == self.ncell:
                 gridloc = "CellCenter"
@@ -108,11 +115,11 @@ class cgnszone:
             if len(nodelist) == self.nnode:
                 boco.type = 'internal'
         elif gridloc == "CellCenter":
-            nodelist = indexlist # cells indeed
+            nodelist = indexlist  # cells indeed
             boco.geodim = 'cell'
         else:
             error_stop(f'unknown gridlocation {gridloc}')
-        boco.index = conn.indexlist(ilist=nodelist)  # must start at 0
+        boco.index = _conn.indexlist(ilist=nodelist)  # must start at 0
         return boco
 
 
@@ -142,11 +149,15 @@ class cgnsMesh:
         self._filename = filename
         self._ncell = None
 
-    @property 
+    @property
     def ncell(self):
         return self._ncell
-    
+
     def read_data(self, zone=None):
+        io.printstd(f"> CGNS reader: starts reading {self._filename}")
+        # Check file exists
+        if not Path(self._filename).exists():
+            error_stop(f"File not found: {self._filename!r}")
         self._file = cgnsfile(self._filename)
         # get BASE list
         self._bases = self._file.list_bases()
@@ -166,19 +177,18 @@ class cgnsMesh:
         self._zone = cgnszone(self._zones[name], self._geodim)
         self._ncell = self._zone.ncell
 
-
     def printinfo(self):
         # super().printinfo()
         self._file.printinfo()
-        io.print('std', 'CGNS version:', self._file._cgnsver)
-        io.print('std', 'bases:', self._bases)
-        io.print('std', 'zones:', list(self._zones.keys()))
+        io.printstd('CGNS version:', self._file._cgnsver)
+        io.printstd('bases:', self._bases)
+        io.printstd('zones:', list(self._zones.keys()))
         for zn, _ in self._zones.items():
-            io.print('std', f"  Zone {zn}")
+            io.printstd(f"  Zone {zn}")
             # for bcn, bc in
 
     def export_mesh(self):
-        # io.print('std', f"> export mesh ") # printed by parent
+        # io.printstd(f"> export mesh ") # printed by parent
         cgzone = self._zone
         io.printstd(f"Parse zone {self._zonename} ({self._geodim}D) ncell: {cgzone.ncell}, nnode: {cgzone.nnode}",)
         meshdata = Mesh(ncell=cgzone.ncell, nnode=cgzone.nnode)
@@ -191,9 +201,9 @@ class cgnsMesh:
             boco = cgzone.export_BC(bc)
             # filter full domain
             if boco.type in ['internal']:
-                io.print('std', f"  filter internal mark {boco.name}")
+                io.printstd(f"  filter internal mark {boco.name}")
             else:
-                io.print('std', f"  add boco {boco}")
+                io.printstd(f"  add boco {boco}")
                 meshdata.add_boco(boco)
         # meshdata.check()
         # meshdata.printinfo()
