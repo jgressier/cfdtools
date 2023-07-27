@@ -75,6 +75,12 @@ def test_vtkbrief(datadir: Path):
     assert cli.vtkbrief([str(datadir / file)])
 
 
+def test_vtkpack(datadir: Path):
+    filelist = map(str, sorted(list(datadir.glob("cubemixed*.vtu"))))
+    print(filelist)
+    assert cli.vtkpack(filelist)
+
+
 @pytest.mark.parametrize("args", [["--fmt", "CGNS", "./tests/data/cavity-degen.hdf"]])
 def test_vtkwrite(builddir, args):
     builddir.mkdir(exist_ok=True)

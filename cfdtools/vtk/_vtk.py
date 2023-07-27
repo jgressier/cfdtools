@@ -126,13 +126,21 @@ class vtkList():
         self._ncell = self._mesh.n_cells
         ctrRef = self._mesh.cell_centers().points
         Tread.pause()
+        if self._verbose:
+            api.io.printstd(f"> build kd-tree")
         Tsort.start()
         tree = spspa.KDTree(ctrRef)
         Tsort.pause()
         #
         self._data = DataSetList(self.nfile, Xrep='cellaverage', Trep='instant')
         # may add alive-progress or other
+        if self._verbose:
+            api.io.printstd("> read all files, get only CELL data")
+        if filterdata:
+            api.io.printstd(f"  select only {', '.join(filterdata)}")
         for name in self._list:
+            if self._verbose:
+                api.io.printstd(f"  - {name}")
             Tread.start()
             vtk = pv.read(name)
             Tread.pause()
@@ -174,4 +182,5 @@ class vtkList():
         hdata = file._h5file.create_group("datalist")
         self._data._dumphdfgroup(hdata, **options)
         file.close()
+        return file.filename
         

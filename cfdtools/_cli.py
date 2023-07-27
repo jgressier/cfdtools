@@ -48,6 +48,9 @@ class cli_argparser:
     def addarg_prefix(self):
         self.add_argument('prefix', help="prefix of files")
 
+    def addarg_filelist(self):
+        self.add_argument('filelist', nargs="+", help="list of files")
+
     def addarg_data(self):
         self.add_argument(
             '--remove-node-data',
@@ -146,6 +149,24 @@ def vtkbrief(argv=None):
     r = vtk.vtkMesh()
     r.read(parser.args().filename)
     r.brief()
+    return True  # needed for pytest
+
+
+def vtkpack(argv=None):
+    cli_header("vtkpack")
+    parser = cli_argparser()
+    parser.addarg_filelist()
+    parser.parse_cli_args(argv)
+    #
+    api.io.printstd(f"> number of files: {len(parser.args().filelist)}")
+    vtklist = vtk.vtkList(parser.args().filelist, verbose=True)
+    if vtklist.allexist():
+        api.io.printstd(f"  all files exist")
+    else:
+        api.error_stop("some files are missing")
+    vtklist.read()
+    outfilename = vtklist.dumphdf("dumped.h5")
+    api.io.printstd(f"> mesh and data dumped to {outfilename}")
     return True  # needed for pytest
 
 
@@ -292,10 +313,11 @@ def ic3probe_plotline(argv=None):
     # basename, ext = os.path.splitext(parser.args().filenames[0])
     var = parser.args('datalist')[0]  # ext[1:]
     basename = parser.args('prefix')
+    # axis must be the last to get right time size
     expected_data = [
         var,
         parser.args().axis,
-    ]  # axis must be the last to get right time size
+    ]  
     # check files and read data
     data = probedata.phydata(basename, verbose=parser.args().verbose)
 

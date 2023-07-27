@@ -41,6 +41,7 @@ cfdwrite_ic3v3 = 'cfdtools._cli:write_ic3v3'
 cfdwrite_ic3 = 'cfdtools._cli:write_ic3v3'
 cfdwrite_vtk = 'cfdtools._cli:write_vtk'
 vtkbrief = 'cfdtools._cli:vtkbrief'
+vtkpack = 'cfdtools._cli:vtkpack'
 
 [project.optional-dependencies]
 dev = [ 
