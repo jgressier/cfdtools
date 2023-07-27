@@ -1,4 +1,5 @@
 from functools import wraps
+from collections import namedtuple
 from pathlib import Path
 import numpy as np
 import time
@@ -7,7 +8,8 @@ _fileformat_map = {}
 
 
 def fileformat_reader(name, extension):
-    """decorator to register fileformat properties for given name in api._fileformat_map
+    """decorator to register fileformat properties for given name
+       in api._fileformat_map
 
     a reader is a class which is initialized with a filename
     and has the following functions
@@ -27,7 +29,9 @@ def fileformat_reader(name, extension):
 
 
 def fileformat_writer(name, extension):
-    """decorator to register fileformat properties for given name  in api._fileformat_map"""
+    """decorator to register fileformat properties for given name
+       in api._fileformat_map
+    """
 
     def decorator(thisclass):
         properties = {'writer': thisclass, 'ext': extension}
@@ -55,6 +59,7 @@ def _printreadable(string, value):
 class api_output:
     """class to handle library outputs"""
 
+    _contd = False
     _prefix = {
         'internal': 'int:',
         'error': 'ERROR:',
@@ -88,8 +93,24 @@ class api_output:
         self.set_modes(self._default)
 
     def print(self, mode, *args, **kwargs):
+        if self._contd:
+            # if timed, pass the line to be continued...
+            print()
+            # ...and tell the timer stop printer
+            self._contd = False
         if mode in self._api_output:
-            print(self._prefix[mode], *args, **kwargs)
+            prefix = self._prefix[mode]
+            if len(prefix) == 0:
+                # avoid leading space if prefix is empty
+                print(*args, **kwargs)
+            else:
+                spcpfx = (len(prefix) + 1) * ' '
+                # add space-replaced prefix for additional lines
+                print(
+                    prefix,
+                    *([s.replace('\n', '\n' + spcpfx) for s in args]),
+                    **kwargs
+                )
 
     def printstd(self, *args, **kwargs):
         self.print('std', *args, **kwargs)
@@ -149,7 +170,7 @@ class _files:
         while safepath.exists():
             i += 1
             # safepath = safepath.with_stem(stem+f'({i})') # only python >= 3.9
-            # print(dir,stem,f'({i})',suff)
+            # print(folder, stem, f"({i})", suff)
             safepath = Path(folder / (stem + f'({i})' + suff))
         self._path = safepath
         return i > 0
@@ -163,36 +184,36 @@ class TimerError(Exception):
 
 
 class Timer:  # from https://realpython.com/python-timer/
-    default_tab = 60
+    default_ltab = 60
     default_msg = ""
 
-    def __init__(self, task="", msg=default_msg, nelem=None, tab=default_tab):
+    def __init__(self, task="", msg=default_msg, nelem=None, ltab=default_ltab):
         self.reset()
         self._nelem = nelem
-        self._tab = tab
+        self._ltab = ltab
         self._task = task
         self._msg = msg
 
     def reset(self):
         self._start_time = None
         self._task = ""
-        self._col = 0
+        self._ncol = 0
         self._elapsed = 0.
 
     @property
     def elapsed(self):
         return self._elapsed
-        
+
     def start(self):
         """Start a new timer"""
         if self._start_time is not None:
-            raise TimerError(f"Timer is running. Use .stop() to stop it")
+            raise TimerError("Timer is running. Use .stop() to stop it")
         self._start_time = time.perf_counter()
 
     def pause(self):
         """Stop the timer, add elapsed and do NOT report"""
         if self._start_time is None:
-            raise TimerError(f"Timer is not running. Use .start() to start it")
+            raise TimerError("Timer is not running. Use .start() to start it")
         self._elapsed += time.perf_counter() - self._start_time
         self._start_time = None
 
@@ -204,16 +225,33 @@ class Timer:  # from https://realpython.com/python-timer/
         normalized_time_ms = (
             0.0 if self._nelem is None else 1e6 * self._elapsed / self._nelem
         )
-        if self._nelem is None:
-            io.printstd(f"{' '*(self._tab-self._col)}wtime: {self._elapsed:0.4f}s")
+        if io._contd:
+            # There was no print, line can be continued
+            io._contd = False
         else:
-            io.printstd(f"{' '*(self._tab-self._col)}wtime: {self._elapsed:0.4f}s | {normalized_time_ms:0.4f}µs/elem",)
+            # There was a print, line is restarted
+            self._ncol = 0
+        nspc = (self._ltab - self._ncol) * ' '
+        io.printstd(nspc + f"wtime: {self._elapsed:0.4f}s", end='')
+        if self._nelem is None:
+            io.printstd("")
+        else:
+            io.printstd(f" | {normalized_time_ms:0.4f}µs/elem",)
         # reset
         self.reset()
 
     def __enter__(self):
-        io.print('std', self._task, end='')
-        self._col = len(self._task) + 1
+        # Print line to be continued
+        io.printstd(self._task, end='')
+        self._ncol = len(self._task)
+        # If line is too long...
+        if self._ncol >= self._ltab:
+            self._ncol = 0
+            # ...then line is restarted...
+            io.printstd('')
+        # ...else line is continued
+        else:
+            io._contd = True
         self.start()
 
     def __exit__(self, *exitoptions):
@@ -222,12 +260,25 @@ class Timer:  # from https://realpython.com/python-timer/
 
 def memoize(f):
     cache = {}
+    hits = 0
+    misses = 0
+    maxsize = None
+
+    _CacheInfo = namedtuple("CacheInfo", ["hits", "misses", "maxsize", "currsize"])
+
+    def cache_info():
+        return _CacheInfo(hits, misses, maxsize, len(cache))
 
     @wraps(f)
     def wrapper(*args):
-        if not args in cache:
+        nonlocal hits, misses
+        if args in cache:
+            hits += 1
+        else:
+            misses += 1
             cache[args] = f(*args)
         # Warning: You may wish to do a deepcopy here if returning objects
         return cache[args]
 
+    wrapper.cache_info = cache_info
     return wrapper

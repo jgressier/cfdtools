@@ -39,7 +39,7 @@ pip show cfdtools
 - `cfdwrite_vtk` command line
 - new option `--extrude n` to command lines
 - new option `--scale x y z` to command lines
-  
+
 ### [0.3.3](https://pypi.org/project/cfdtools/) (2023-03-13)
 
 #### new
@@ -62,7 +62,7 @@ pip show cfdtools
 #### new
 
 - command line `ic3brief` only section headers
-- command line writers can remove date with `--remove-[cell/node]-data` options
+- command line writers can remove date with `--remove-[cell/face/node]-data` options
 
 #### changed
 
@@ -88,4 +88,4 @@ pip show cfdtools
 
 #### fixed
 
-- v2 IC3 reader 
+- v2 IC3 reader
