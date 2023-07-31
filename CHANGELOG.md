@@ -16,6 +16,13 @@ pip show cfdtools
 
 ## Versions
 
+### [0.5.1](https://pypi.org/project/cfdtools/) (2023-08-01)
+
+#### new
+
+- vtkMesh: import from hdf5 file (from dumped dataSet or dataSetList)
+- new `vtkpack` command line tool: creates a hdf5 file from a list of vtk/vtu files
+
 ### [0.5.0](https://pypi.org/project/cfdtools/) (2023-07-25)
 
 #### new
@@ -39,7 +46,7 @@ pip show cfdtools
 - `cfdwrite_vtk` command line
 - new option `--extrude n` to command lines
 - new option `--scale x y z` to command lines
-  
+
 ### [0.3.3](https://pypi.org/project/cfdtools/) (2023-03-13)
 
 #### new
@@ -62,7 +69,7 @@ pip show cfdtools
 #### new
 
 - command line `ic3brief` only section headers
-- command line writers can remove date with `--remove-[cell/node]-data` options
+- command line writers can remove date with `--remove-[cell/face/node]-data` options
 
 #### changed
 
@@ -88,4 +95,4 @@ pip show cfdtools
 
 #### fixed
 
-- v2 IC3 reader 
+- v2 IC3 reader

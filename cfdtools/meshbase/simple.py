@@ -1,7 +1,7 @@
 # simple subpackage
 import cfdtools.api as api
 import cfdtools.meshbase._mesh as _mesh
-import cfdtools.meshbase._connectivity as conn
+import cfdtools.meshbase._connectivity as _conn
 from itertools import product
 import numpy as np
 
@@ -60,9 +60,9 @@ class Cube:
     def export_mesh(self):
         meshdata = _mesh.Mesh(ncell=self.ncell, nnode=self.nnode)
         # set cell connectivity
-        cell2node = conn.elem_connectivity()
+        cell2node = _conn.elem_connectivity()
         hexanode, ielem = self._elems()
-        cell2node.add_elems('hexa8', np.array(hexanode), conn.indexlist(ilist=ielem))
+        cell2node.add_elems('hexa8', np.array(hexanode), _conn.indexlist(ilist=ielem))
         meshdata.set_cell2node(cell2node)
         # set node coordinates
         ni, nj, nk = np.array(self.nodes_ijk()).T
@@ -101,7 +101,7 @@ class Cube:
             bcmark.type = 'boundary'
             ni, nj, nk = np.array(list(task['ijknodes'])).T
             nodes = self.nodeglobindex_ijk(ni, nj, nk)
-            bcmark.index = conn.indexlist(ilist=nodes.tolist())
+            bcmark.index = _conn.indexlist(ilist=nodes.tolist())
             meshdata.add_boco(bcmark)
         return meshdata
 

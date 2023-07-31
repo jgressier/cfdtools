@@ -1,6 +1,6 @@
 [project]
 name = "cfdtools"
-version = "0.5.0"
+version = "0.5.1"
 description = "Tools for mesh and solution management in CFD"
 authors = [{name="J. Gressier", email="jeremie.gressier@isae-supaero.fr"}]
 readme = "README.md"
@@ -41,6 +41,7 @@ cfdwrite_ic3v3 = 'cfdtools._cli:write_ic3v3'
 cfdwrite_ic3 = 'cfdtools._cli:write_ic3v3'
 cfdwrite_vtk = 'cfdtools._cli:write_vtk'
 vtkbrief = 'cfdtools._cli:vtkbrief'
+vtkpack = 'cfdtools._cli:vtkpack'
 
 [project.optional-dependencies]
 dev = [ 
@@ -67,7 +68,7 @@ testpaths = [
 ]
 
 [tool.bumpver]
-current_version = "v0.5.0"
+current_version = "v0.5.1"
 version_pattern = "vMAJOR.MINOR.PATCH"
 commit_message = "bump version {old_version} to {new_version}"
 commit = true
