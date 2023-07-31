@@ -23,6 +23,7 @@ def h5_str(obj):
 class h5File(_files):
     def __init__(self, filename: str):
         super().__init__(filename)
+        self._openedmode = None
 
     def open(self, mode='r', datatype=None):
         try:
@@ -42,6 +43,7 @@ class h5File(_files):
                 error_stop(f"unable to find {self.filename} (mode r)")
         else:
             error_stop("unknown mode for opening h5 file")
+        self._openedmode = mode
 
     def close(self):
         return self._h5file.close()
@@ -55,7 +57,11 @@ class h5File(_files):
 
     def printinfo(self):
         super().printinfo()
-        io.printstd(h5_str(self._h5ver))
+        if self._openedmode:
+            if self._h5ver:
+                io.printstd(f"   hdf5 version: {h5_str(self._h5ver)}")
+            if self._datatype:
+                io.printstd(f"  cfdtools type: {self._datatype}")
 
 
 # if __name__ == "__main__":
