@@ -34,7 +34,6 @@ class vtkMesh:
     '''Implementation of the writer to write binary Vtk files using pyvista'''
 
     def __init__(self, mesh=None, pvmesh=None):
-        self._mesh = mesh
         if mesh and pvmesh:
             api.error_stop("vtkMesh cannot be initialized by both structures")
         if mesh:
@@ -42,7 +41,11 @@ class vtkMesh:
         if pvmesh:
             self.set_pvmesh(pvmesh)
 
+    def _reset(self):
+        self._volume = None
+
     def set_mesh(self, mesh: cfdmesh.Mesh):
+        self._reset()
         self._mesh = mesh
         coords = self._mesh.nodescoord(ndarray=True)
         try:
@@ -55,6 +58,7 @@ class vtkMesh:
             api.error_stop("pyvista (with CellType) could not be imported")
 
     def set_pvmesh(self, pvmesh: cfdmesh.Mesh):
+        self._reset()
         self._grid = pvmesh
 
     def write_data(self, filename):
@@ -91,6 +95,15 @@ class vtkMesh:
             *args, **kwargs
         )
 
+    def importhdfgroup(self, hgroup: hdf5.Group, verbose=False):
+        assert hgroup.attrs['meshtype'] == 'unsvtk'
+        points = np.array(hgroup["nodes"])
+        celldict = {
+                vtktype_ele[etype]: np.array(elem2node)
+                for etype, elem2node in hgroup["cells"].items()
+            }
+        self.set_pvmesh(pv.UnstructuredGrid(celldict, points))
+
     def dumhdfgroup(self, hgroup: hdf5.Group, **options):
         hgroup.attrs['meshtype'] = 'unsvtk'
         hgroup.create_dataset("nodes", data=self._grid.points, **options)
@@ -98,6 +111,11 @@ class vtkMesh:
         for itype, cellco in self._grid.cells_dict.items():
             hcells.create_dataset(ele_vtktype[itype], data=cellco, **options)
 
+    def volumes(self):
+        if not self._volume:
+            self._volume = self._grid.compute_cell_sizes().cell_data["Volume"]
+        return self._volume
+    
 
 class vtkList():
 
@@ -144,13 +162,21 @@ class vtkList():
         self._ncell = self._mesh.n_cells
         ctrRef = self._mesh.cell_centers().points
         Tread.pause()
+        if self._verbose:
+            api.io.printstd(f"> build kd-tree")
         Tsort.start()
         tree = spspa.KDTree(ctrRef)
         Tsort.pause()
         #
         self._data = DataSetList(self.nfile, Xrep='cellaverage', Trep='instant')
         # may add alive-progress or other
+        if self._verbose:
+            api.io.printstd("> read all files, get only CELL data")
+        if filterdata:
+            api.io.printstd(f"  select only {', '.join(filterdata)}")
         for name in self._list:
+            if self._verbose:
+                api.io.printstd(f"  - {name}")
             Tread.start()
             vtk = pv.read(name)
             Tread.pause()
@@ -192,3 +218,5 @@ class vtkList():
         hdata = file._h5file.create_group("datalist")
         self._data._dumphdfgroup(hdata, **options)
         file.close()
+        return file.filename
+        

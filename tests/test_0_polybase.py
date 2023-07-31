@@ -2,16 +2,11 @@ import cfdtools.utils.polybase as poly
 import numpy as np
 import pytest
 
-def test_initlegendre():
+@pytest.mark.parametrize('series', ['legendre', 'polynomial'])
+def test_init(series):
     order = 3
-    b = poly.poly1d(order, series='legendre')
-    assert b._name == 'legendre'
-    assert len(b._basis) == order
-
-def test_initpolynomial():
-    order = 3
-    b = poly.poly1d(order, series='polynomial')
-    assert b._name == 'polynomial'
+    b = poly.poly1d(order, series=series)
+    assert b._name == series
     assert len(b._basis) == order
 
 @pytest.mark.parametrize('series', ['legendre', 'polynomial'])
@@ -34,6 +29,6 @@ def test_compare_gradv():
     order = 5
     b1 = poly.poly1d(order, series='legendre')
     b2 = poly.poly1d(order, series='polynomial')
-    # interpolation coefficients must be the same, non dependant of poly basis
+    # differentiation coefficients must be the same, non dependant of poly basis
     assert np.allclose(b1.gradv_weights(-1), b2.gradv_weights(-1))
     assert b1.gradv_weights(-1) == pytest.approx(b2.gradv_weights(-1))

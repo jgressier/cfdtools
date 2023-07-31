@@ -10,6 +10,7 @@ import cfdtools.ic3 as ic3  # .reader_legacy # needed to map readers
 import cfdtools.gmsh as gmsh  # .reader_legacy # needed to map readers
 import cfdtools.cgns as cgns  # .reader_legacy # needed to map readers
 import cfdtools.vtk as vtk
+
 #
 import cfdtools.meshbase.simple as simplemesh
 import cfdtools.probes.plot as probeplot
@@ -40,7 +41,9 @@ def cli_header(prefix=None, altfname=None):
             func.__globals__['__fname__'] = fname  # need noqa: F821 for flake8 if using __fname__
             api.io.printstd(f"CFDTOOLS - {fname}")
             return func(*args, **kwargs)
+
         return decorator
+
     return name_decorator
 
 
@@ -48,10 +51,7 @@ class cli_argparser:
     def __init__(self, **kwargs):
         self._parser = argparse.ArgumentParser(**kwargs)
         self._available_readers = list(
-            filter(
-                lambda fname: 'reader' in api._fileformat_map[fname].keys(),
-                api._fileformat_map
-            )
+            filter(lambda fname: 'reader' in api._fileformat_map[fname].keys(), api._fileformat_map)
         )
 
     def add_argument(self, option, **kwargs):
@@ -61,38 +61,40 @@ class cli_argparser:
         self.add_argument('filename', help="file")
         self.add_argument('--fmt', help="input file format", choices=self._available_readers, default=format)
         self.add_argument('--outpath', help="output folder path")
-        self.add_argument(
-            '--check', action="store_true", dest="check", help="process some checks"
-        )
-        self.add_argument(
-            '--info', action="store_true", dest="info", help="print information"
-        )
+        self.add_argument('--check', action="store_true", dest="check", help="process some checks")
+        self.add_argument('--info', action="store_true", dest="info", help="print information")
 
     def addarg_prefix(self):
         self.add_argument('prefix', help="prefix of files")
 
+    def addarg_filelist(self):
+        self.add_argument('filelist', nargs="+", help="list of files")
+
     def addarg_removedata(self):
         self.add_argument(
-            '--remove-node-data', nargs='+', help="list of node data to remove",
+            '--remove-node-data',
+            nargs='+',
+            help="list of node data to remove",
         )
         self.add_argument(
-            '--remove-face-data', nargs='+', help="list of face data to remove",
+            '--remove-face-data',
+            nargs='+',
+            help="list of face data to remove",
         )
         self.add_argument(
-            '--remove-cell-data', nargs='+', help="list of cell data to remove",
+            '--remove-cell-data',
+            nargs='+',
+            help="list of cell data to remove",
         )
         self.add_argument(
-            '--', dest='',
-            help="needed to separate data to remove from following filename\n\n",)
+            '--',
+            dest='',
+            help="may be used to separate data to remove from following filename\n\n",
+        )
 
     def addarg_transform(self):
-        self.add_argument(
-            '--extrude', type=int, help="total number of planes",
-        )
-        self.add_argument(
-            '--scale', nargs=3, type=float,
-            help="x, y, z scaling coefficients",
-        )
+        self.add_argument('--extrude', type=int, help="total number of planes")
+        self.add_argument('--scale', nargs=3, type=float, help="x, y, z scaling coefficients")
 
     def parse_cli_args(self, argv):
         self._args = self._parser.parse_args(argv)
@@ -107,21 +109,13 @@ class cli_argparser:
         """parse args to get filename, automatic or specified format"""
         if self.args().fmt is None:
             ext = Path(self._args.filename).suffix
-            thisfmt = list(
-                filter(
-                    lambda n: api._fileformat_map[n]['ext'] == ext,
-                    api._fileformat_map
-                )
-            )
+            thisfmt = list(filter(lambda n: api._fileformat_map[n]['ext'] == ext, api._fileformat_map))
         else:
             thisfmt = [self.args().fmt]
         if len(thisfmt) == 0:
             api.error_stop("no extension found")
         elif len(thisfmt) > 1:
-            api.error_stop(
-                "too many extensions found\n"
-                "must specify format with --fmt"
-            )
+            api.error_stop("too many extensions found\n" "must specify format with --fmt")
         self._fileformat = thisfmt[0]
         self._reader = api._fileformat_map[self._fileformat].get('reader', None)
         self._writer = api._fileformat_map[self._fileformat].get('writer', None)
@@ -160,8 +154,8 @@ def ic3brief(argv=None):
     return True  # needed for pytest
 
 
+@cli_header()
 def vtkbrief(argv=None):
-    cli_header("vtkbrief")
     parser = cli_argparser()
     parser.addarg_filenameformat(format="VTK")
     parser.parse_cli_args(argv)
@@ -170,6 +164,24 @@ def vtkbrief(argv=None):
     r = vtk.vtkMesh()
     r.read(parser.args().filename)
     r.brief()
+    return True  # needed for pytest
+
+
+@cli_header()
+def vtkpack(argv=None):
+    parser = cli_argparser()
+    parser.addarg_filelist()
+    parser.parse_cli_args(argv)
+    #
+    api.io.printstd(f"> number of files: {len(parser.args().filelist)}")
+    vtklist = vtk.vtkList(parser.args().filelist, verbose=True)
+    if vtklist.allexist():
+        api.io.printstd(f"  all files exist")
+    else:
+        api.error_stop("some files are missing")
+    vtklist.read()
+    outfilename = vtklist.dumphdf("dumped.h5")
+    api.io.printstd(f"> mesh and data dumped to {outfilename}")
     return True  # needed for pytest
 
 
@@ -210,9 +222,7 @@ def write_generic(argv, ext, writer, fname=None):
         timer.start()
         nz = parser.args().extrude
         api.io.printstd(f"> extrusion along nz={nz} cells, {nz*ncell} total cells")
-        cfdmesh = cfdmesh.export_extruded(
-            extrude=np.linspace(0.0, 1.0, nz + 1, endpoint=True)
-        )
+        cfdmesh = cfdmesh.export_extruded(extrude=np.linspace(0.0, 1.0, nz + 1, endpoint=True))
         timer.stop(nelem=nz * ncell)
     if parser.args().scale:
         cfdmesh.scale(parser.args().scale)
@@ -250,15 +260,27 @@ def writecube(argv=None):
     parser = cli_argparser(prog=__fname__)  # noqa: F821
     parser.addarg_filenameformat()
     parser.add_argument(
-        "--nx", action="store", dest="nx", default=10, type=int,
+        "--nx",
+        action="store",
+        dest="nx",
+        default=10,
+        type=int,
         help="number of cells in x direction",
     )
     parser.add_argument(
-        "--ny", action="store", dest="ny", default=10, type=int,
+        "--ny",
+        action="store",
+        dest="ny",
+        default=10,
+        type=int,
         help="number of cells in y direction",
     )
     parser.add_argument(
-        "--nz", action="store", dest="nz", default=10, type=int,
+        "--nz",
+        action="store",
+        dest="nz",
+        default=10,
+        type=int,
         help="number of cells in z direction",
     )
     parser.parse_cli_args(argv)
@@ -281,32 +303,52 @@ def ic3probe_plotline(argv=None):
     parser.addarg_prefix()
     # parser.add_argument("filenames", nargs="*", help="list of files")
     parser.add_argument(
-        "-v", action="store_true", dest="verbose",
+        "-v",
+        action="store_true",
+        dest="verbose",
         help="verbose output",
     )
     parser.add_argument(
-        "--data", action="store", dest="datalist", default="P",
+        "--data",
+        action="store",
+        dest="datalist",
+        default="P",
         help="quantity to plot",
     )
     parser.add_argument(
-        "--axis", action="store", dest="axis", default="X",
+        "--axis",
+        action="store",
+        dest="axis",
+        default="X",
         help="axis to follow",
     )
     parser.add_argument(
-        "--map", action="store", dest="map", default="time",
+        "--map",
+        action="store",
+        dest="map",
+        default="time",
         choices=["time", "freq"],
         help="type of map",
     )
     parser.add_argument(
-        "--check", action="store_true", dest="check",
+        "--check",
+        action="store_true",
+        dest="check",
         help="process some checks",
     )
     parser.add_argument(
-        "--cmap", action="store", dest="cmap", default="turbo",
+        "--cmap",
+        action="store",
+        dest="cmap",
+        default="turbo",
         help="colormap",
     )
     parser.add_argument(
-        "--cmaplevels", action="store", dest="nlevels", default=30, type=int,
+        "--cmaplevels",
+        action="store",
+        dest="nlevels",
+        default=30,
+        type=int,
         help="colormap number of levels",
     )
     parser.parse_cli_args(argv)
@@ -314,10 +356,11 @@ def ic3probe_plotline(argv=None):
     # basename, ext = os.path.splitext(parser.args().filenames[0])
     var = parser.args('datalist')[0]  # ext[1:]
     basename = parser.args('prefix')
+    # axis must be the last to get right time size
     expected_data = [
         var,
         parser.args().axis,
-    ]  # axis must be the last to get right time size
+    ]
     # check files and read data
     data = probedata.phydata(basename, verbose=parser.args().verbose)
 

@@ -20,7 +20,6 @@ For every tool, use option `-h` to get help.
 Some specific options are available to transform mesh or variables:
 
 - `--remove-cell-data varname1 [varname2 ...]` removes the listed names (should be at the end of command line if several names, or followed by `--`)
-- `--remove-face-data varname1 [varname2 ...]` removes the listed names (should be at the end of command line if several names, or followed by `--`)
 - `--remove-node-data varname1 [varname2 ...]` removes the listed names (should be at the end of command line if several names, or followed by `--`)
 
 `cfdwrite_ic3` is a shortname for last current IC3 writer, namely `cfdwrite_ic3v3`.
@@ -35,6 +34,20 @@ If the extension is missing or unknown, format can be forced with `--fmt <format
 
 ## cfdwrite_vtk
 
+`cfdwrite_vtk` write a vtk (vtu) file from available readers (IC3 to VTK is not yet available)
+
 ## cfdwritecube
 
+`cfdwritecube` creates a structured cube, convert it to unstructured hexa mesh and save to specified format
+
 ## ic3probe_plotline
+
+`ic3probe_plotline` can read csv-like IC3 probe files and plot it (or save png figure)
+
+## vtkbrief
+
+`vtkbrief` reads all pyvista-available formats and prints information on mesh and data
+
+## vtkpack
+
+`vtkpack` reads a list of file and packs it to an cfdtools hdf5 format
