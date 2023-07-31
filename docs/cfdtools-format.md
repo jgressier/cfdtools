@@ -1,4 +1,12 @@
-# CFDtools internal format
+# CFDtools internal formats
+
+CFDtools defines several internal classes that aim at manipulating various types grids and data. One can currently find
+
+- `meshbase.Mesh`
+- `data.dataSet`
+- `data.dataSetList`
+- `vtkMesh`
+- `vtkMeshList`
 
 ## mesh
 

@@ -20,7 +20,6 @@ For every tool, use option `-h` to get help.
 Some specific options are available to transform mesh or variables:
 
 - `--remove-cell-data varname1 [varname2 ...]` removes the listed names (should be at the end of command line if several names, or followed by `--`)
-- `--remove-face-data varname1 [varname2 ...]` removes the listed names (should be at the end of command line if several names, or followed by `--`)
 - `--remove-node-data varname1 [varname2 ...]` removes the listed names (should be at the end of command line if several names, or followed by `--`)
 
 `cfdwrite_ic3` is a shortname for last current IC3 writer, namely `cfdwrite_ic3v3`.
