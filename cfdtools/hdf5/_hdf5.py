@@ -3,12 +3,13 @@ from cfdtools.api import io, _files, error_stop
 
 try:
     import h5py
+
     import_h5py = True
 except ImportError:
     import_h5py = False
 
 
-from h5py import Group # to be available in _hdf5
+from h5py import Group  # to be available in _hdf5
 
 _available_types = ('external', 'dataset', 'datalist', 'probes', 'cfdmesh')
 
@@ -47,7 +48,7 @@ class h5File(_files):
 
     def close(self):
         return self._h5file.close()
-    
+
     @property
     def datatype(self):
         return self._datatype

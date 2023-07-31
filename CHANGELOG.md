@@ -16,6 +16,13 @@ pip show cfdtools
 
 ## Versions
 
+### [0.5.1](https://pypi.org/project/cfdtools/) (2023-08-01)
+
+#### new
+
+- vtkMesh: import from hdf5 file (from dumped dataSet or dataSetList)
+- new `vtkpack` command line tool: creates a hdf5 file from a list of vtk/vtu files
+
 ### [0.5.0](https://pypi.org/project/cfdtools/) (2023-07-25)
 
 #### new

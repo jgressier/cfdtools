@@ -176,7 +176,7 @@ def vtkpack(argv=None):
     api.io.printstd(f"> number of files: {len(parser.args().filelist)}")
     vtklist = vtk.vtkList(parser.args().filelist, verbose=True)
     if vtklist.allexist():
-        api.io.printstd(f"  all files exist")
+        api.io.printstd("  all files exist")
     else:
         api.error_stop("some files are missing")
     vtklist.read()

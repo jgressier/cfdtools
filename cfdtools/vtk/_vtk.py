@@ -1,6 +1,7 @@
 try:
     import pyvista as pv
     from pyvista import CellType
+
     importpyvista = True
 except ImportError:
     importpyvista = False
@@ -21,9 +22,7 @@ try:
         'quad4': CellType.QUAD,
         'hexa8': CellType.HEXAHEDRON,
     }
-    ele_vtktype = {
-        i: etype for etype, i in vtktype_ele.items()
-    }
+    ele_vtktype = {i: etype for etype, i in vtktype_ele.items()}
 except NameError:
     api.io.print('error', "pyvista (with CellType) could not be imported")
     raise
@@ -84,24 +83,17 @@ class vtkMesh:
             api.io.printstd(f"  cell  data names: {m.cell_data.keys()}")
             api.io.printstd(f"  point data names: {m.point_data.keys()}")
             api.io.printstd(f"  field data names: {m.field_data.keys()}")
-            #api.io.printstd("> properties")
+            # api.io.printstd("> properties")
         else:
             api.io.warning("  no pyvista mesh available")
 
     def plot(self, background='white', show_edges=True, *args, **kwargs):
-        self.pyvista_grid().plot(
-            background=background,
-            show_edges=show_edges,
-            *args, **kwargs
-        )
+        self.pyvista_grid().plot(background=background, show_edges=show_edges, *args, **kwargs)
 
     def importhdfgroup(self, hgroup: hdf5.Group, verbose=False):
         assert hgroup.attrs['meshtype'] == 'unsvtk'
         points = np.array(hgroup["nodes"])
-        celldict = {
-                vtktype_ele[etype]: np.array(elem2node)
-                for etype, elem2node in hgroup["cells"].items()
-            }
+        celldict = {vtktype_ele[etype]: np.array(elem2node) for etype, elem2node in hgroup["cells"].items()}
         self.set_pvmesh(pv.UnstructuredGrid(celldict, points))
 
     def dumhdfgroup(self, hgroup: hdf5.Group, **options):
@@ -115,10 +107,9 @@ class vtkMesh:
         if not self._volume:
             self._volume = self._grid.compute_cell_sizes().cell_data["Volume"]
         return self._volume
-    
 
-class vtkList():
 
+class vtkList:
     def __init__(self, filelist, verbose=False) -> None:
         self._list = filelist
         self._verbose = verbose
@@ -132,10 +123,8 @@ class vtkList():
 
     def check_order(self, pos='cellcenter', tol=1e-10):
         mappos = {
-            'cellcenter':
-                lambda m: m.cell_centers().points,
-            'node':
-                lambda m: m.points,
+            'cellcenter': lambda m: m.cell_centers().points,
+            'node': lambda m: m.points,
         }
         count = 0
         assert self.nfile > 0
@@ -163,7 +152,7 @@ class vtkList():
         ctrRef = self._mesh.cell_centers().points
         Tread.pause()
         if self._verbose:
-            api.io.printstd(f"> build kd-tree")
+            api.io.printstd("> build kd-tree")
         Tsort.start()
         tree = spspa.KDTree(ctrRef)
         Tsort.pause()
@@ -196,9 +185,7 @@ class vtkList():
                 rindex[index] = np.arange(index.size)
                 assert np.max(dfinal) <= tol
                 # automatically deals with differnt shapes
-                datalist = {
-                    name: vtk.cell_data[name][rindex] for name in namelist
-                }
+                datalist = {name: vtk.cell_data[name][rindex] for name in namelist}
                 Tsort.pause()
                 self._data.add_datalist(datalist)
         if self._verbose:
@@ -219,4 +206,3 @@ class vtkList():
         self._data._dumphdfgroup(hdata, **options)
         file.close()
         return file.filename
-        
