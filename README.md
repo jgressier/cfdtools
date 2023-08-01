@@ -18,7 +18,7 @@ cfdtools
 - generic options for command line writers: extrusion
 - generic format command line: `cfdinfo`
 - specific IC3 command line: `ic3brief`
-- specific VTK command line: `vtkbrief`
+- specific VTK command line: `vtkbrief`, `vtkpack`
 
 ### Installation and usage
 

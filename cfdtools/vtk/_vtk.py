@@ -65,7 +65,7 @@ class vtkMesh:
 
     def read(self, filename):
         self.__init__()
-        self._grid = pv.read(filename)
+        self.set_pvmesh(pv.read(filename))
 
     @property
     def pyvista_grid(self):
@@ -102,6 +102,33 @@ class vtkMesh:
         hcells = hgroup.create_group("cells")
         for itype, cellco in self._grid.cells_dict.items():
             hcells.create_dataset(ele_vtktype[itype], data=cellco, **options)
+
+    def dumphdf(self, filename, overwrite=False, **options):
+        """dump pyvista mesh and (future) data to cfdtools hdf5 file
+
+        Args:
+            filename (string or pathlib): file name
+            overwrite (bool): overwrite file or find new safe name
+            **options: passed to dumpdfgroup and h5py.createdataset
+
+        Returns:
+            string: file name of the actual (safe) saved file
+        """
+        file = hdf5.h5File(filename)
+        if not overwrite:
+            file.find_safe_newfile()
+        file.open(mode="w", datatype='dataset')
+        hmesh = file._h5file.create_group("mesh")
+        print(list(hmesh.attrs.keys()))
+        self.dumhdfgroup(hmesh, **options)
+        print(list(hmesh.attrs.keys()))
+        #
+        #hdata = file._h5file.create_group("data")
+        #_data = ...
+        #_data._dumphdfgroup(hdata, **options)
+        print(list(file["mesh"].attrs.keys()))
+        file.close()
+        return file.filename
 
     def volumes(self):
         if not self._volume:
@@ -194,9 +221,10 @@ class vtkList:
             api.io.printstd(f"    grid comparison: {Tcomp.elapsed:.2f}s")
             api.io.printstd(f"    data reordering: {Tsort.elapsed:.2f}s")
 
-    def dumphdf(self, filename, **options):
+    def dumphdf(self, filename, overwrite=False, **options):
         file = hdf5.h5File(filename)
-        file.find_safe_newfile()
+        if not overwrite:
+            file.find_safe_newfile()
         file.open(mode="w", datatype='datalist')
         hmesh = file._h5file.create_group("mesh")
         vtkmesh = vtkMesh(pvmesh=self._mesh)
