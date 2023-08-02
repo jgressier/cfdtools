@@ -8,15 +8,10 @@ def outdirlist(nameaslist):
     return nameaslist + ["--outpath", str(_builddir)]
 
 
-@pytest.mark.parametrize(
-    "filename",
-    [
-        "./tests/data/Box3x3x2v2.ic3",
-        "./tests/data/nrg-o1hllc-vf-v3.ic3",
-    ],
-)
-def test_info(filename):
-    assert cli.info([filename])
+@pytest.mark.parametrize("filename", ["Box3x3x2v2.ic3", "nrg-o1hllc-vf-v3.ic3"])
+def test_info(datadir, filename):
+    filepath = str(datadir / filename)
+    assert cli.info([filepath])
 
 
 def test_cube_ic3(builddir):
@@ -30,43 +25,35 @@ def test_cube_ic3(builddir):
 @pytest.mark.parametrize(
     "filename",
     [
-        "./tests/data/Box3x3x2v2.ic3",
-        "./tests/data/nrg-tinycube-v2.ic3",
-        "./tests/data/nrg-o1hllc-vf-v3.ic3",
+        "Box3x3x2v2.ic3",
+        "nrg-tinycube-v2.ic3",
+        "nrg-o1hllc-vf-v3.ic3",
     ],
 )
-def test_ic3brief(filename):
-    assert cli.ic3brief([filename])
+def test_ic3brief(datadir, filename):
+    filepath = str(datadir / filename)
+    assert cli.ic3brief([filepath])
 
 
-@pytest.mark.parametrize(
-    "filename",
-    [
-        "./tests/data/Box3x3x2v2.ic3",
-    ],
-)
-def test_ic3writev2(builddir, filename):
+@pytest.mark.parametrize("filename", ["Box3x3x2v2.ic3"])
+def test_ic3writev2(datadir, builddir, filename):
     builddir.mkdir(exist_ok=True)
-    file1 = cli.write_ic3v2(outdirlist([filename]))
-    file2 = cli.write_ic3v2(outdirlist([filename]))  # write twice to test safe new name
-    assert file1 != filename
-    assert file2 != filename
+    filepath = str(datadir / filename)
+    file1 = cli.write_ic3v2(outdirlist([filepath]))
+    file2 = cli.write_ic3v2(outdirlist([filepath]))  # write twice to test safe new name
+    assert file1 != filepath
+    assert file2 != filepath
     assert file1 != file2
     Path(file1).unlink()
     Path(file2).unlink()
 
 
-@pytest.mark.parametrize(
-    "filename",
-    [
-        "./tests/data/Box3x3x2v2.ic3",
-        "./tests/data/nrg-o1hllc-vf-v3.ic3",
-    ],
-)
-def test_ic3writev3(builddir, filename):
+@pytest.mark.parametrize( "filename", [ "Box3x3x2v2.ic3", "nrg-o1hllc-vf-v3.ic3"])
+def test_ic3writev3(datadir, builddir, filename):
     builddir.mkdir(exist_ok=True)
-    file1 = cli.write_ic3v3(outdirlist([filename]))
-    assert file1 != filename
+    filepath = str(datadir / filename)
+    file1 = cli.write_ic3v3(outdirlist([filepath]))
+    assert file1 != filepath
     Path(file1).unlink()
 
 
@@ -77,8 +64,10 @@ def test_vtkbrief(datadir: Path):
 
 def test_vtkpack(datadir: Path):
     filelist = map(str, sorted(list(datadir.glob("cubemixed*.vtu"))))
-    print(filelist)
-    assert cli.vtkpack(filelist)
+    outfile = cli.vtkpack(filelist)
+    assert Path(outfile).exists()
+    Path(outfile).unlink()
+
 
 
 @pytest.mark.parametrize("args", [["--fmt", "CGNS", "./tests/data/cavity-degen.hdf"]])
