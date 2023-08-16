@@ -30,8 +30,7 @@ class h5File(_files):
         try:
             self._h5file = h5py.File(self._path, mode=mode)
         except NameError:
-            io.print('error', "h5py could not be imported")
-            raise
+            raise NameError(f'{self._path} can not be open in {mode} mode.')
         if mode == 'w':
             assert datatype in _available_types
             self._h5file.attrs.update({'cfdtools_version': __version__, 'cfd_datatype': datatype})
