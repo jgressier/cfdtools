@@ -186,12 +186,12 @@ class DataSetList(DataSetBase):
                 datagroup.create_dataset(vname, data=var, **options)
 
     def xdmf_content(self, filename, geometry_content):
-        """Create the XMF content associated to the data set.
+        """Create the XDMF content associated to the data set.
 
         :param str filename: Name of the output HDF5 file.
         :param list(str) geometry_content: XDMF content for the geometry and topology of the mesh.
           The mesh is time-invariant.
-        :return: The XMF content.
+        :return: The XDMF content.
         :rtype: list(str)
         """
         lines = ['<Grid Name="IC3" GridType="Collection" CollectionType="Temporal">']

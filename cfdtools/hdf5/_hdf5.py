@@ -3,13 +3,11 @@ from cfdtools.api import io, _files, error_stop
 
 try:
     import h5py
+    from h5py import Group  # to be available in _hdf5
 
     import_h5py = True
 except ImportError:
     import_h5py = False
-
-
-from h5py import Group  # to be available in _hdf5
 
 _available_types = ('external', 'dataset', 'datalist', 'probes', 'cfdmesh')
 
@@ -30,7 +28,7 @@ class h5File(_files):
         try:
             self._h5file = h5py.File(self._path, mode=mode)
         except NameError:
-            raise NameError(f'{self._path} can not be open in {mode} mode.')
+            raise NameError(f"{self._path} can not be open in {mode} mode.")
         if mode == 'w':
             assert datatype in _available_types
             self._h5file.attrs.update({'cfdtools_version': __version__, 'cfd_datatype': datatype})

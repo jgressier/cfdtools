@@ -1,3 +1,5 @@
+import os
+
 try:
     import pyvista as pv
     from pyvista import CellType
@@ -15,7 +17,6 @@ from pathlib import Path
 import numpy as np
 import scipy.spatial as spspa
 
-
 try:
     vtktype_ele = {
         'bar2': CellType.LINE,
@@ -23,14 +24,13 @@ try:
         'hexa8': CellType.HEXAHEDRON,
     }
     ele_vtktype = {i: etype for etype, i in vtktype_ele.items()}
+    PYVISTA2XDMF = {
+        CellType.HEXAHEDRON: "Hexahedron",
+        CellType.QUAD: "Quadrilateral",
+    }
 except NameError:
     api.io.print('error', "pyvista (with CellType) could not be imported")
     raise
-
-PYVISTA2XMF = {
-    CellType.HEXAHEDRON: "Hexahedron",
-    CellType.QUAD: "Quadrilateral",
-}
 
 
 @api.fileformat_writer("VTK", '.vtu')
@@ -109,10 +109,10 @@ class vtkMesh:
             hcells.create_dataset(ele_vtktype[itype], data=cellco, **options)
 
     def xdmf_content(self, filename):
-        """Create the XMF content associated to the mesh.
+        """Create the XDMF content associated to the mesh.
 
         :param str filename: Name of the output HDF5 file.
-        :return: The XMF content.
+        :return: The XDMF content.
         :rtype: list(str)
         """
         dim2type = {1: "X", 2: "XY", 3: "XYZ"}
@@ -125,7 +125,7 @@ class vtkMesh:
 
         for itype, cellco in self._grid.cells_dict.items():
             lines += [
-                f'<Topology NumberOfElements="{cellco.shape[0]:d}" TopologyType="{PYVISTA2XMF[itype]}">'
+                f'<Topology NumberOfElements="{cellco.shape[0]:d}" TopologyType="{PYVISTA2XDMF[itype]}">'
             ]
             lines += [f'<DataItem Dimensions="{np.prod(cellco.shape)}" Format="HDF">']
             lines += [f"{filename}:/mesh/cells/{ele_vtktype[itype]}"]
@@ -228,11 +228,11 @@ class vtkList:
     def dumphdf(self, filename: str, xdmf: bool = False, **options):
         """Convert a list of VTK files into a single HDF5 file.
 
-        :param str filename: Name of the output HDF5 file.
-        :param xdmf: Output a XDMF as well if True.
+        :param str filename: Path of the output HDF5 file.
+        :param xdmf: Output a XMF file as well if True.
         :param options: Options for h5py.
         :type options: dict
-        :return: The effective output filename.
+        :return: The effective output HDF5 filename.
         :rtype: str
         """
         file = hdf5.h5File(filename)
@@ -251,7 +251,7 @@ class vtkList:
 
         return file.filename
 
-    def _dumpxdmf(self, filename: str, vtkmesh: vtkMesh, data: DataSetList):
+    def _dumpxdmf(self, filepath: str, vtkmesh: vtkMesh, data: DataSetList):
         """Create the XMF file associated to the single HDF5 file created by dumphdf()."""
 
         def xdmf_domain(content):
@@ -263,10 +263,11 @@ class vtkList:
             return lines
 
         # get the XDMF content for the mesh geometry and topology
-        geometry_content = vtkmesh.xdmf_content(filename)
+        geometry_content = vtkmesh.xdmf_content(filepath)
         # get the XDMF content for the time data series
-        content = data.xdmf_content(filename, geometry_content)
-        content = xdmf_domain(content)
+        geom_dat_content = data.xdmf_content(filepath, geometry_content)
+        content = xdmf_domain(geom_dat_content)
 
-        with open(Path(filename).stem + ".xdmf", "w") as fid:
+        # write the XMF file
+        with open(os.path.splitext(filepath)[0] + ".xmf", "w") as fid:
             fid.write('\n'.join(content))

@@ -2,10 +2,7 @@ import cfdtools.meshbase.simple as sm
 from cfdtools.vtk import vtkMesh, vtkList
 from cfdtools.hdf5 import h5File
 
-# import cfdtools.vtk as vtk
-# import cfdtools.api as api
 from pathlib import Path
-import pytest
 
 
 def test_cube_vtk(builddir):
@@ -53,3 +50,24 @@ def test_vtkList_dump(datadir, builddir):
     h5file = h5File(h5filename)
     h5file.open()
     assert h5file.datatype == 'datalist'
+    h5filename.unlink()
+
+
+def test_vtkList_dumpxdmf(datadir, tmpdir):
+    """Test the xmf file creation."""
+    namelist = sorted(list(datadir.glob("cubemixed000[0-1].vtu")))
+    vtklist = vtkList(namelist, verbose=True)
+    vtklist.read()
+    h5filename = tmpdir / "vtklist.hdf"
+    vtklist.dumphdf(h5filename, xdmf=True)
+
+    xmf_filepath = tmpdir / "vtklist.xmf"
+    assert xmf_filepath.exists()
+
+    xdmf_content = '<Xdmf Version="3.0"><Domain><Grid Name="IC3" GridType="Collection" CollectionType="Temporal"><Grid Name="Unstructured Mesh"><Time Value="0"/><Geometry GeometryType="XYZ"><DataItem Dimensions="3993" Format="HDF">vtklist.hdf:/mesh/nodes</DataItem></Geometry><Topology NumberOfElements="1000" TopologyType="Hexahedron"><DataItem Dimensions="8000" Format="HDF">vtklist.hdf:/mesh/cells/hexa8</DataItem></Topology><Attribute AttributeType="Scalar" Center="Cell" Name="Q"><DataItem Dimensions="1000" Format="HDF">vtklist.hdf:/datalist/i000000/Q</DataItem></Attribute></Grid></Grid></Domain></Xdmf>'
+    lines = open(xmf_filepath, 'r').read()
+    # replace end of lines with blanks
+    lines = lines.replace('\n', '')
+    # replace temporary path with reference path
+    lines = lines.replace(str(h5filename), "vtklist.hdf")
+    assert xdmf_content == lines
