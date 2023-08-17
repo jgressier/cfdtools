@@ -64,7 +64,28 @@ def test_vtkList_dumpxdmf(datadir, tmpdir):
     xmf_filepath = tmpdir / "vtklist.xmf"
     assert xmf_filepath.exists()
 
-    xdmf_content = '<Xdmf Version="3.0"><Domain><Grid Name="IC3" GridType="Collection" CollectionType="Temporal"><Grid Name="Unstructured Mesh"><Time Value="0"/><Geometry GeometryType="XYZ"><DataItem Dimensions="3993" Format="HDF">vtklist.hdf:/mesh/nodes</DataItem></Geometry><Topology NumberOfElements="1000" TopologyType="Hexahedron"><DataItem Dimensions="8000" Format="HDF">vtklist.hdf:/mesh/cells/hexa8</DataItem></Topology><Attribute AttributeType="Scalar" Center="Cell" Name="Q"><DataItem Dimensions="1000" Format="HDF">vtklist.hdf:/datalist/i000000/Q</DataItem></Attribute></Grid></Grid></Domain></Xdmf>'
+    xdmf_content_formatted = """
+        <Xdmf Version="3.0">
+            <Domain>
+                <Grid Name="IC3" GridType="Collection" CollectionType="Temporal">
+                    <Grid Name="Unstructured Mesh">
+                        <Time Value="0"/>
+                        <Geometry GeometryType="XYZ">
+                            <DataItem Dimensions="3993" Format="HDF">vtklist.hdf:/mesh/nodes</DataItem>
+                        </Geometry>
+                        <Topology NumberOfElements="1000" TopologyType="Hexahedron">
+                            <DataItem Dimensions="8000" Format="HDF">vtklist.hdf:/mesh/cells/hexa8</DataItem>
+                        </Topology>
+                        <Attribute AttributeType="Scalar" Center="Cell" Name="Q">
+                            <DataItem Dimensions="1000" Format="HDF">vtklist.hdf:/datalist/i000000/Q</DataItem>
+                        </Attribute>
+                    </Grid>
+                </Grid>
+            </Domain>
+        </Xdmf>
+        """
+    xdmf_content = ''.join([t.strip() for t in xdmf_content_formatted.split('\n')])
+
     lines = open(xmf_filepath, 'r').read()
     # replace end of lines with blanks
     lines = lines.replace('\n', '')
