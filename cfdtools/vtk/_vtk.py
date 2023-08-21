@@ -1,3 +1,5 @@
+import os
+
 try:
     import pyvista as pv
     from pyvista import CellType
@@ -15,7 +17,6 @@ from pathlib import Path
 import numpy as np
 import scipy.spatial as spspa
 
-
 try:
     vtktype_ele = {
         'bar2': CellType.LINE,
@@ -23,6 +24,10 @@ try:
         'hexa8': CellType.HEXAHEDRON,
     }
     ele_vtktype = {i: etype for etype, i in vtktype_ele.items()}
+    PYVISTA2XDMF = {
+        CellType.HEXAHEDRON: "Hexahedron",
+        CellType.QUAD: "Quadrilateral",
+    }
 except NameError:
     api.io.print('error', "pyvista (with CellType) could not be imported")
     raise
@@ -96,12 +101,38 @@ class vtkMesh:
         celldict = {vtktype_ele[etype]: np.array(elem2node) for etype, elem2node in hgroup["cells"].items()}
         self.set_pvmesh(pv.UnstructuredGrid(celldict, points))
 
-    def dumhdfgroup(self, hgroup: hdf5.Group, **options):
+    def dumphdfgroup(self, hgroup: hdf5.Group, **options):
         hgroup.attrs['meshtype'] = 'unsvtk'
         hgroup.create_dataset("nodes", data=self._grid.points, **options)
         hcells = hgroup.create_group("cells")
         for itype, cellco in self._grid.cells_dict.items():
             hcells.create_dataset(ele_vtktype[itype], data=cellco, **options)
+
+    def xdmf_content(self, filename):
+        """Create the XDMF content associated to the mesh.
+
+        :param str filename: Name of the output HDF5 file.
+        :return: The XDMF content.
+        :rtype: list(str)
+        """
+        dim2type = {1: "X", 2: "XY", 3: "XYZ"}
+        geomtype = dim2type[self._grid.points.shape[1]]
+        lines = [f'<Geometry GeometryType="{geomtype}">']
+        lines += [f'<DataItem Dimensions="{np.prod(self._grid.points.shape)}" Format="HDF">']
+        lines += [f"{filename}:/mesh/nodes"]
+        lines += ["</DataItem>"]
+        lines += ["</Geometry>"]
+
+        for itype, cellco in self._grid.cells_dict.items():
+            lines += [
+                f'<Topology NumberOfElements="{cellco.shape[0]:d}" TopologyType="{PYVISTA2XDMF[itype]}">'
+            ]
+            lines += [f'<DataItem Dimensions="{np.prod(cellco.shape)}" Format="HDF">']
+            lines += [f"{filename}:/mesh/cells/{ele_vtktype[itype]}"]
+            lines += ["</DataItem>"]
+            lines += ["</Topology>"]
+
+        return lines
 
     def volumes(self):
         if not self._volume:
@@ -194,15 +225,49 @@ class vtkList:
             api.io.printstd(f"    grid comparison: {Tcomp.elapsed:.2f}s")
             api.io.printstd(f"    data reordering: {Tsort.elapsed:.2f}s")
 
-    def dumphdf(self, filename, **options):
+    def dumphdf(self, filename: str, xdmf: bool = False, **options):
+        """Convert a list of VTK files into a single HDF5 file.
+
+        :param str filename: Path of the output HDF5 file.
+        :param xdmf: Output a XMF file as well if True.
+        :param options: Options for h5py.
+        :type options: dict
+        :return: The effective output HDF5 filename.
+        :rtype: str
+        """
         file = hdf5.h5File(filename)
         file.find_safe_newfile()
         file.open(mode="w", datatype='datalist')
         hmesh = file._h5file.create_group("mesh")
         vtkmesh = vtkMesh(pvmesh=self._mesh)
-        vtkmesh.dumhdfgroup(hmesh, **options)
+        vtkmesh.dumphdfgroup(hmesh, **options)
         #
         hdata = file._h5file.create_group("datalist")
         self._data._dumphdfgroup(hdata, **options)
         file.close()
+
+        if xdmf:
+            self._dumpxdmf(file.filename, vtkmesh, self._data)
+
         return file.filename
+
+    def _dumpxdmf(self, filepath: str, vtkmesh: vtkMesh, data: DataSetList):
+        """Create the XMF file associated to the single HDF5 file created by dumphdf()."""
+
+        def xdmf_domain(content):
+            lines = ['<Xdmf Version="3.0">']
+            lines += ["<Domain>"]
+            lines += content
+            lines += ["</Domain>"]
+            lines += ["</Xdmf>"]
+            return lines
+
+        # get the XDMF content for the mesh geometry and topology
+        geometry_content = vtkmesh.xdmf_content(filepath)
+        # get the XDMF content for the time data series
+        geom_dat_content = data.xdmf_content(filepath, geometry_content)
+        content = xdmf_domain(geom_dat_content)
+
+        # write the XMF file
+        with open(os.path.splitext(filepath)[0] + ".xmf", "w") as fid:
+            fid.write('\n'.join(content))
