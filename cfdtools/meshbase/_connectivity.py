@@ -198,7 +198,7 @@ class elem_connectivity:
     def elems(self):
         return self._elem2node.keys()
 
-    def keys(self): # duplicate but needed to iterate as a dict
+    def keys(self):  # duplicate but needed to iterate as a dict
         return self._elem2node.keys()
 
     def __getitem__(self, key):

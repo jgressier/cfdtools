@@ -69,7 +69,7 @@ class h5File(_files):
 
     def __getitem__(self, item):
         return self._h5file[item]
-    
+
     def write_unsmesh(self, cellnode: dict, nodes: np.ndarray, path="/mesh", meshtype="unsmesh", **options):
         hgroup = self._h5file.create_group(path)
         hgroup.attrs['meshtype'] = meshtype

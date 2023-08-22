@@ -4,7 +4,8 @@ import matplotlib.pyplot as plt
 import cfdtools.api as api
 import cfdtools.hdf5 as hdf5
 import cfdtools.meshbase as meshbase
-#from cfdtools.vtk._vtk import vtkMesh # should be avoided in the future ?
+
+# from cfdtools.vtk._vtk import vtkMesh # should be avoided in the future ?
 
 
 class DataSetBase:
@@ -160,7 +161,7 @@ class DataSetList(DataSetBase):
     _available_Xrep = ('nodal', 'cellaverage', 'spectralcell')
     _available_Trep = ('instant', 'timeevol', 'pod')
     # defines the names of data items that should be written as attributes; not hdf5 dataset
-    _properties = ('time')
+    _properties = 'time'
 
     def __init__(self, ndataset, Xrep='cellaverage', ndof=1, Trep='timeevol'):
         super().__init__(Xrep, ndof, Trep)
@@ -246,4 +247,3 @@ class DataSetList(DataSetBase):
         self._dumphdfgroup(hdata, **options)
         file.close()
         return file.filename
-

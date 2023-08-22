@@ -67,4 +67,3 @@ _cxDico = {
 }
 
 _default = 'IC3'
-

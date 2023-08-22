@@ -1,7 +1,9 @@
 import os
 from pathlib import Path
+
 try:
     import pyvista as pv
+
     importpyvista = True
 except ImportError:
     importpyvista = False
@@ -9,7 +11,8 @@ import cfdtools.api as api
 import cfdtools.utils.maths as maths
 from cfdtools.vtk import vtkMesh
 from cfdtools.data import DataSetList
-#import cfdtools.hdf5 as hdf5
+
+# import cfdtools.hdf5 as hdf5
 import numpy as np
 import scipy.spatial as spspa
 

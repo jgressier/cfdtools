@@ -161,16 +161,14 @@ def BinaryRead(bfile, form, byte_swap, size):
                 api.io.print(
                     'error',
                     "mismatched record ({}) and expected ({}) sizes".format(
-                        len(record), size,
+                        len(record),
+                        size,
                     ),
                 )
                 break
             return s.unpack(record)
     except IOError:
-        api.error_stop(
-            f"Fatal error. Could not read {size} bytes from {bfile.name!r}."
-            " Exiting."
-        )
+        api.error_stop(f"Fatal error. Could not read {size} bytes from {bfile.name!r}." " Exiting.")
 
 
 ###################################################################################################
@@ -195,9 +193,7 @@ def BinaryWrite(bfile, endian, form, varargs):
     try:
         bfile.write(packed_ba)
     except IOError:
-        api.error_stop(
-            "Fatal error. Could not write to {bfile.name!r}. Exiting."
-        )
+        api.error_stop("Fatal error. Could not write to {bfile.name!r}. Exiting.")
 
 
 class restartSectionHeader:
@@ -289,9 +285,7 @@ class restartSectionHeader:
                 break
         if required:
             api.error_stop(
-                f"Fatal error."
-                f" Section(s) {nametypes} not found in dataset {self.name}."
-                f" Exiting."
+                f"Fatal error." f" Section(s) {nametypes} not found in dataset {self.name}." f" Exiting."
             )
         return False
 
@@ -330,14 +324,7 @@ class restartSectionHeader:
         mystring += "\n"
         mystring += "Id   : %i %s" % (
             self.id,
-            list(
-                dict(
-                    filter(
-                        lambda items: items[1] == self.id[0],
-                        ic3_restart_codes.items()
-                    )
-                ).keys()
-            ),
+            list(dict(filter(lambda items: items[1] == self.id[0], ic3_restart_codes.items())).keys()),
         )
         mystring += "\n"
         mystring += "hsize: %i" % self.hsize
@@ -431,6 +418,5 @@ class binreader(api._files):
         self.ic3_version = s[1]
         api.io.print(
             'std',
-            f"  version: {self.ic3_version} "
-            + ("little-endian" if self.byte_swap else "big-endian"),
+            f"  version: {self.ic3_version} " + ("little-endian" if self.byte_swap else "big-endian"),
         )

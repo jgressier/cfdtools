@@ -106,9 +106,7 @@ class reader(api._files):
         # Boundary patches element-to-vertex
         for bnd_tag in connect_bc.keys():
             for elt_type in connect_bc[bnd_tag].keys():
-                connect_bc[bnd_tag][elt_type] = (
-                    np.array(connect_bc[bnd_tag][elt_type]) - 1
-                )
+                connect_bc[bnd_tag][elt_type] = np.array(connect_bc[bnd_tag][elt_type]) - 1
 
         # Fill the dictionary of boundary conditions
         self._famm = []
@@ -141,16 +139,12 @@ class reader(api._files):
             "periodic_transform": None,
         }
         boundaries["int_fluid"]["type"] = "internal"
-        boundaries["int_fluid"]["periodic_transform"] = np.zeros(
-            (16,), dtype=np.float64
-        )
+        boundaries["int_fluid"]["periodic_transform"] = np.zeros((16,), dtype=np.float64)
         boundaries["int_fluid"]["slicing"] = []
         for elt_type in connectivity.keys():
             raveled = np.unique(connectivity[elt_type].ravel())
             boundaries["int_fluid"]["slicing"] += raveled.tolist()
-        boundaries["int_fluid"]["slicing"] = np.array(
-            boundaries["int_fluid"]["slicing"]
-        )
+        boundaries["int_fluid"]["slicing"] = np.array(boundaries["int_fluid"]["slicing"])
 
         self._elems = elts
         self._coords = (x, y, z)
@@ -229,7 +223,7 @@ class reader(api._files):
         assert sectionName.startswith('$')
         ibeg = msh.index(["$" + sectionName[1:]])
         iend = msh.index(["$End" + sectionName[1:]])
-        return msh[ibeg+1:iend]
+        return msh[ibeg + 1 : iend]
 
     def __read_sections_V2(self, msh):
 

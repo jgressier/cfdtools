@@ -31,9 +31,8 @@ except NameError:
 
 @api.fileformat_writer("VTK", '.vtu')
 class vtkMesh:
-    """Implementation of the writer to write binary Vtk files using pyvista
+    """Implementation of the writer to write binary Vtk files using pyvista"""
 
-    """
     _version = 1
 
     def __init__(self, mesh=None, pvmesh=None):
@@ -58,8 +57,7 @@ class vtkMesh:
         self._mesh = mesh
         coords = self._mesh.nodescoord(ndarray=True)
         self._celldict = {
-            vtktype_ele[etype]: elem2node['elem2node']
-            for etype, elem2node in self._mesh._cell2node.items()
+            vtktype_ele[etype]: elem2node['elem2node'] for etype, elem2node in self._mesh._cell2node.items()
         }
         self._grid = pv.UnstructuredGrid(self._celldict, coords)
 
@@ -115,7 +113,7 @@ class vtkMesh:
         self.pyvista_grid().plot(background=background, show_edges=show_edges, *args, **kwargs)
 
     def importhdfgroup(self, hgroup: hdf5.Group, verbose=False):
-        assert hgroup.attrs['meshtype'] in ('unsmesh') # 'unsvtk' for backward compatibility
+        assert hgroup.attrs['meshtype'] in ('unsmesh')  # 'unsvtk' for backward compatibility
         points = np.array(hgroup["nodes"])
         celldict = {vtktype_ele[etype]: np.array(elem2node) for etype, elem2node in hgroup["cells"].items()}
         self.set_pvmesh(pv.UnstructuredGrid(celldict, points))
@@ -126,7 +124,7 @@ class vtkMesh:
     #     hcells = hgroup.create_group("cells")
     #     for itype, cellco in self._grid.cells_dict.items():
     #         hcells.create_dataset(ele_vtktype[itype], data=cellco, **options)
-    
+
     def xdmf_content(self, filename):
         """Create the XDMF content associated to the mesh.
 
@@ -175,8 +173,7 @@ class vtkMesh:
             file.find_safe_newfile()
         file.open(mode="w", datatype='dataset', version=self._version)
         # map element types from vtk type to cfdtools type
-        celldict = { ele_vtktype[itype]: cellco for itype, cellco in self._grid.cells_dict.items() }
+        celldict = {ele_vtktype[itype]: cellco for itype, cellco in self._grid.cells_dict.items()}
         file.write_unsmesh(celldict, self._grid.points, **options)
         file.close()
         return file.filename
-    

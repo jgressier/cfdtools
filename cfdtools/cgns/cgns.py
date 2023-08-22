@@ -1,9 +1,11 @@
 # cgns.py
 from pathlib import Path
+
 try:
     from functools import cache  # python >= 3.9
 except ImportError:
     from functools import lru_cache  #  3.6 <= python <= 3.8
+
     cache = lru_cache(maxsize=None)
     del lru_cache
 from cfdtools.api import io, error_stop, fileformat_reader  # , memoize
@@ -84,7 +86,7 @@ class cgnszone:
     # @memoize
     @cache
     def export_facecon(self):
-        return self.elemcon(self._geodim-1)
+        return self.elemcon(self._geodim - 1)
 
     def export_BC(self, BC):
         if "FamilyName" in BC.keys():
@@ -136,11 +138,7 @@ class cgnsfile(h5File):
         super().printinfo()
 
     def list_bases(self):
-        return [
-            bname
-            for bname, base in self._h5file.items()
-            if cgnstype(base) == b'CGNSBase_t'
-        ]
+        return [bname for bname, base in self._h5file.items() if cgnstype(base) == b'CGNSBase_t']
 
 
 @fileformat_reader('CGNS', '.cgns')
@@ -167,9 +165,7 @@ class cgnsMesh:
         # geo dimension from base
         self._geodim = self._file._h5file[self._bases[0]][" data"][0]
         if zone is None:
-            assert (
-                len(self._zones) == 1
-            ), "Multiple zones found, must specify which zone to export"
+            assert len(self._zones) == 1, "Multiple zones found, must specify which zone to export"
             name = list(self._zones.keys())[0]
         else:
             name = zone
@@ -190,7 +186,9 @@ class cgnsMesh:
     def export_mesh(self):
         # io.printstd(f"> export mesh ") # printed by parent
         cgzone = self._zone
-        io.printstd(f"Parse zone {self._zonename} ({self._geodim}D) ncell: {cgzone.ncell}, nnode: {cgzone.nnode}",)
+        io.printstd(
+            f"Parse zone {self._zonename} ({self._geodim}D) ncell: {cgzone.ncell}, nnode: {cgzone.nnode}",
+        )
         meshdata = Mesh(ncell=cgzone.ncell, nnode=cgzone.nnode)
         # get coordinates
         meshdata.set_nodescoord_xyz(*cgzone.coords())
