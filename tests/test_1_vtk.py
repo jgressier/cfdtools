@@ -32,9 +32,9 @@ def test_vtkdump(datadir, builddir):
     name = vtkfile.dumphdf(hname, overwrite=True)
     h5file = h5File(hname)
     h5file.open()
-    assert h5file.datatype == 'dataset'
+    #assert h5file.datatype in ('unsvtk', 'dataset')
+    assert h5file.datatype in ('dataset')
     assert "mesh" in h5file["/"].keys()
-    print(list(h5file["/mesh"].attrs.keys()))
     vtkfile.importhdfgroup(h5file["mesh"])
     assert vtkfile.pyvista_grid.n_cells == 1000
     assert vtkfile.volumes().sum() == pytest.approx(1.)

@@ -198,6 +198,12 @@ class elem_connectivity:
     def elems(self):
         return self._elem2node.keys()
 
+    def keys(self): # duplicate but needed to iterate as a dict
+        return self._elem2node.keys()
+
+    def __getitem__(self, key):
+        return self._elem2node[key]['elem2node']
+
     def check(self):
         # check uniqueness of all index
         index = np.concatenate(tuple(e2n['index'].list() for _, e2n in self._elem2node.items()))

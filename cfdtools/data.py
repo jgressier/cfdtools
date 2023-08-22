@@ -3,6 +3,8 @@ import numpy.fft as fftm
 import matplotlib.pyplot as plt
 import cfdtools.api as api
 import cfdtools.hdf5 as hdf5
+import cfdtools.meshbase as meshbase
+#from cfdtools.vtk._vtk import vtkMesh # should be avoided in the future ?
 
 
 class DataSetBase:
@@ -63,6 +65,9 @@ class DataSetBase:
             self._geoprop['y'] = y
         if z:
             self._geoprop['z'] = z
+
+    def set_mesh(self, mesh):
+        self._geoprop['mesh'] = mesh
 
 
 class DataSet(DataSetBase):
@@ -150,8 +155,12 @@ class DataSet(DataSetBase):
 
 
 class DataSetList(DataSetBase):
+
+    _version = 1
     _available_Xrep = ('nodal', 'cellaverage', 'spectralcell')
     _available_Trep = ('instant', 'timeevol', 'pod')
+    # defines the names of data items that should be written as attributes; not hdf5 dataset
+    _properties = ('time')
 
     def __init__(self, ndataset, Xrep='cellaverage', ndof=1, Trep='timeevol'):
         super().__init__(Xrep, ndof, Trep)
@@ -179,11 +188,13 @@ class DataSetList(DataSetBase):
         Args:
             hgroup (hdf5.Group): _description_
         """
-        # ? n = len(self._datalist)
         for i, datadict in enumerate(self._datalist):
             datagroup = hgroup.create_group(f"i{i:06}")
             for vname, var in datadict.items():
-                datagroup.create_dataset(vname, data=var, **options)
+                if vname in self._properties:
+                    datagroup.attrs[vname] = var
+                else:
+                    datagroup.create_dataset(vname, data=var, **options)
 
     def xdmf_content(self, filename, geometry_content):
         """Create the XDMF content associated to the data set.
@@ -218,3 +229,21 @@ class DataSetList(DataSetBase):
         lines += ["</Grid>"]
 
         return lines
+
+    def dumphdf(self, filename, overwrite=False, **options):
+        file = hdf5.h5File(filename)
+        if not overwrite:
+            file.find_safe_newfile()
+        file.open(mode="w", datatype='datalist', version=self._version)
+        # map element types from vtk type to cfdtools type
+        if isinstance(self._geoprop['mesh'], meshbase.Mesh):
+            celldict = dict(self._geoprop['mesh']._cell2node)
+        else:
+            api.error_stop("not yet implemented to dump mesh with instance {self._geoprop['mesh']}")
+        file.write_unsmesh(celldict, self._geoprop['mesh'].nodescoord(ndarray=True), **options)
+        #
+        hdata = file._h5file.create_group("datalist")
+        self._dumphdfgroup(hdata, **options)
+        file.close()
+        return file.filename
+
