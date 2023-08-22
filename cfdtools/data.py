@@ -10,7 +10,7 @@ import cfdtools.meshbase as meshbase
 
 class DataSetBase:
     _available_Xrep = ('nodal', 'cellaverage')
-    _available_Trep = 'instant'
+    _available_Trep = ('instant',)
 
     def __init__(self, Xrep='cellaverage', ndof=1, Trep='instant'):
         self.Trep = Trep
@@ -161,7 +161,7 @@ class DataSetList(DataSetBase):
     _available_Xrep = ('nodal', 'cellaverage', 'spectralcell')
     _available_Trep = ('instant', 'timeevol', 'pod')
     # defines the names of data items that should be written as attributes; not hdf5 dataset
-    _properties = 'time'
+    _properties = ('time',)
 
     def __init__(self, ndataset, Xrep='cellaverage', ndof=1, Trep='timeevol'):
         super().__init__(Xrep, ndof, Trep)
