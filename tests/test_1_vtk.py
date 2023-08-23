@@ -25,12 +25,13 @@ def test_vtkread(datadir):
 
 
 def test_vtkdump(datadir, builddir):
-    vname = datadir / "cubemixed0000.vtu"
+    vtkname = datadir / "cubemixed0000.vtu"
     hname = builddir / "cubemixed0000.cfdh5"
     vtkfile = vtkMesh()
-    vtkfile.read(vname)
+    vtkfile.read(vtkname)
     name = vtkfile.dumphdf(hname, overwrite=True)
-    h5file = h5File(hname)
+    assert name == str(hname) # since overwrite
+    h5file = h5File(name)
     h5file.open()
     #assert h5file.datatype in ('unsvtk', 'dataset')
     assert h5file.datatype in ('dataset')

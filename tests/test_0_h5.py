@@ -23,6 +23,7 @@ def test_WriteOpen(builddir):
 def test_readaccess(datadir):
     f = hdf5.h5File(datadir / "cavity-degen.hdf")
     f.open()
+    f.printinfo()
     x = f["/BASE#1/cavity-degen/GridCoordinates/CoordinateX/ data"]
     assert np.mean(x) == pytest.approx(1.166317)
     f.close()

@@ -335,16 +335,16 @@ class Mesh:
         oldindex = self.list_boco_index()
         # checks
         c_unique = np.all(np.unique(oldindex) == sorted(oldindex))
-        if not c_unique:
+        if not c_unique: # pragma: no cover
             api.io.print('error', "  some faces are marked by several boundary marks")
         c_min0 = min(oldindex) == 0
-        if not c_min0:
+        if not c_min0: # pragma: no cover
             api.io.print(
                 'error',
                 "  first face index (0) is not marked as a boundary\n" "  some boundary faces may be missing",
             )
         c_max = max(oldindex) <= len(oldindex) - 1
-        if not c_max:
+        if not c_max: # pragma: no cover
             api.io.print(
                 'error',
                 "  max face reference is greater than the number of found faces\n"

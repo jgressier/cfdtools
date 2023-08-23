@@ -7,17 +7,17 @@ try:
     from h5py import Group  # to be available in _hdf5
 
     import_h5py = True
-except ImportError:
+except ImportError: # pragma: no cover
     import_h5py = False
 
 _available_types = ('external', 'dataset', 'datalist', 'probes', 'cfdmesh')
 
 
 def h5_str(obj):
-    str = ""
+    line = ""
     for c in map(chr, obj[:]):
-        str += c
-    return str
+        line += c
+    return line
 
 
 class h5File(_files):

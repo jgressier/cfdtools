@@ -11,7 +11,7 @@ elem_properties = [  # itype, name, nnode, geodim, extruded
     (0, '   hexa8', 8, 3, '    none'),
 ]
 
-elem_properties = [tuple(i.lstrip() if type(i) is str else i for i in u) for u in elem_properties]
+elem_properties = [tuple(i.lstrip() if isinstance(i, str) else i for i in u) for u in elem_properties]
 
 elem_dim = {e: d for _, e, _, d, _ in elem_properties}
 nnode_elem = {e: n for _, e, n, _, _ in elem_properties}

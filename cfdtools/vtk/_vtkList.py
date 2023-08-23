@@ -5,7 +5,7 @@ try:
     import pyvista as pv
 
     importpyvista = True
-except ImportError:
+except ImportError: # pragma: no cover
     importpyvista = False
 import cfdtools.api as api
 import cfdtools.utils.maths as maths
