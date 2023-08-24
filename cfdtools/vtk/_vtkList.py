@@ -5,7 +5,7 @@ try:
     import pyvista as pv
 
     importpyvista = True
-except ImportError: # pragma: no cover
+except ImportError:  # pragma: no cover
     importpyvista = False
 import cfdtools.api as api
 import cfdtools.utils.maths as maths
@@ -114,7 +114,7 @@ class vtkList:
         :rtype: str
         """
         vtkmesh = vtkMesh(pvmesh=self._mesh)
-        self._data.set_mesh(vtkmesh.export_Mesh())
+        self._data.set_mesh(vtkmesh.export_mesh())
         actual_filename = self._data.dumphdf(filename, overwrite=overwrite, **options)
         if xdmf:
             self._dumpxdmf(actual_filename, vtkmesh, self._data)

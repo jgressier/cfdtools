@@ -7,17 +7,14 @@ try:
     from h5py import Group  # to be available in _hdf5
 
     import_h5py = True
-except ImportError: # pragma: no cover
+except ImportError:  # pragma: no cover
     import_h5py = False
 
 _available_types = ('external', 'dataset', 'datalist', 'probes', 'cfdmesh')
 
 
 def h5_str(obj):
-    line = ""
-    for c in map(chr, obj[:]):
-        line += c
-    return line
+    return "".join(map(chr, obj))
 
 
 class h5File(_files):
@@ -42,20 +39,17 @@ class h5File(_files):
         if mode in ('w', 'w-', 'x'):
             assert datatype in _available_types
             self._h5file.attrs.update({'cfdtools_version': __version__, 'cfd_datatype': datatype})
-            if datatype and (version is None):
+            if datatype is not None and (version is None):
                 error_stop('an existing cfdtools datatype must provide a version number for writing')
-            if datatype:
+            if datatype is not None:
                 self._h5file.attrs.update({'data_version': version})
         elif mode in ('r', 'r+'):
-            if self.exists():
-                # only for cgns file (I guess)
-                self._h5ver = self._h5file.get(' hdf5version', None)
-                self._datatype = self._h5file.attrs.get('cfd_datatype', None)
-                self._cfdtools_version = self._h5file.attrs.get('cfdtools_version', None)
-                # if datatype, read or set to 0 (backward compatibility) else ignore
-                self._version = self._h5file.attrs.get('data_version', 0 if self._datatype else None)
-            else:
-                error_stop(f"unable to find {self.filename} (mode r)")
+            # only for cgns file (I guess)
+            self._h5ver = self._h5file.get(' hdf5version', None)
+            self._datatype = self._h5file.attrs.get('cfd_datatype', None)
+            self._cfdtools_version = self._h5file.attrs.get('cfdtools_version', None)
+            # if datatype, read or set to 0 (backward compatibility) else ignore
+            self._version = self._h5file.attrs.get('data_version', 0 if self._datatype else None)
         else:
             error_stop("unknown mode for opening h5 file")
         self._openedmode = mode

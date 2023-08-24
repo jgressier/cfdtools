@@ -489,7 +489,7 @@ class reader(binreader):
                     self.celldata.ndof = ndof
                 api.io.print(
                     'internal',
-                    "cell variable section of size ncells * ndofs" " {}x{}".format(cv_count, ndof),
+                    "cell variable section of size ncells * ndofs {}x{}".format(cv_count, ndof),
                 )
                 s = BinaryRead(
                     self.fid, "%d" % (ndof * cv_count) + typechar, self.byte_swap, typesize * ndof * cv_count

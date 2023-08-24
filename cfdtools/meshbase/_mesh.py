@@ -163,7 +163,7 @@ class Mesh:
         if facetype in self.__available_facetypes:
             self._faces[facetype] = {'face2node': face2node, 'face2cell': face2cell}
         else:
-            api.io.error_stop(f"bad face type: {facetype}" f" since {self.__available_facetypes} expected")
+            api.io.error_stop(f"bad face type: {facetype} since {self.__available_facetypes} expected")
         self.nface = np.sum([fcon['face2node'].nelem for _, fcon in self._faces.items()])
 
     def pop_faces(self, facetype: str):
@@ -218,7 +218,7 @@ class Mesh:
                 # print(boco.name, len(nodeset), len(boco.index.list()))
 
     def list_boco_index(self):
-        return list(itertools.chain(*[boco.index.list() for _, boco in self._bocos.items()]))
+        return list(itertools.chain(*[boco.index.list() for boco in self._bocos.values()]))
 
     def make_unmarked_BC(self, name="unmarked_faces"):
         """check all boundaring faces are marked and create a specific boco if not"""
@@ -335,16 +335,16 @@ class Mesh:
         oldindex = self.list_boco_index()
         # checks
         c_unique = np.all(np.unique(oldindex) == sorted(oldindex))
-        if not c_unique: # pragma: no cover
+        if not c_unique:  # pragma: no cover
             api.io.print('error', "  some faces are marked by several boundary marks")
         c_min0 = min(oldindex) == 0
-        if not c_min0: # pragma: no cover
+        if not c_min0:  # pragma: no cover
             api.io.print(
                 'error',
                 "  first face index (0) is not marked as a boundary\n" "  some boundary faces may be missing",
             )
         c_max = max(oldindex) <= len(oldindex) - 1
-        if not c_max: # pragma: no cover
+        if not c_max:  # pragma: no cover
             api.io.print(
                 'error',
                 "  max face reference is greater than the number of found faces\n"
@@ -373,7 +373,7 @@ class Mesh:
         api.io.printstd(f"nnode: {self.nnode}")
         for c in ('x', 'y', 'z'):
             api.io.printstd(
-                f"  {c} min:avg:max =" " {:.3f}:{:.3f}:{:.3f}".format(*minavgmax(self._nodes[c])),
+                f"  {c} min:avg:max =" + " {:.3f}:{:.3f}:{:.3f}".format(*minavgmax(self._nodes[c])),
             )
 
         api.io.printstd(f"ncell: {self.ncell}")

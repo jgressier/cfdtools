@@ -168,7 +168,7 @@ def BinaryRead(bfile, form, byte_swap, size):
                 break
             return s.unpack(record)
     except IOError:
-        api.error_stop(f"Fatal error. Could not read {size} bytes from {bfile.name!r}." " Exiting.")
+        api.error_stop(f"Fatal error. Could not read {size} bytes from {bfile.name!r}. Exiting.")
 
 
 ###################################################################################################
@@ -284,9 +284,7 @@ class restartSectionHeader:
             if self.id[0] == ic3_restart_codes["UGP_IO_EOF"]:
                 break
         if required:
-            api.error_stop(
-                f"Fatal error." f" Section(s) {nametypes} not found in dataset {self.name}." f" Exiting."
-            )
+            api.error_stop(f"Fatal error. Section(s) {nametypes} not found in dataset {self.name}. Exiting.")
         return False
 
     def readReqVar(self, *args, **kwargs):

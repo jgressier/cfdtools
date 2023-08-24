@@ -72,7 +72,12 @@ class vtkMesh:
         self.__init__()
         self.set_pvmesh(pv.read(filename))
 
-    def export_Mesh(self):
+    def export_mesh(self):
+        """generates a cfdtools meshbase from vtk connectivity, boundary conditions are missing
+
+        Returns:
+            meshbase.Mesh: cell to node connectivity and node positions
+        """
         cellnode = _conn.elem_connectivity()
         for itype, cellco in self._grid.cells_dict.items():
             cellnode.add_elems(ele_vtktype[itype], cellco)
@@ -113,17 +118,10 @@ class vtkMesh:
         self.pyvista_grid().plot(background=background, show_edges=show_edges, *args, **kwargs)
 
     def importhdfgroup(self, hgroup: hdf5.Group, verbose=False):
-        assert hgroup.attrs['meshtype'] in ('unsmesh')  # 'unsvtk' for backward compatibility
+        assert hgroup.attrs['meshtype'] in ('unsmesh',)
         points = np.array(hgroup["nodes"])
         celldict = {vtktype_ele[etype]: np.array(elem2node) for etype, elem2node in hgroup["cells"].items()}
         self.set_pvmesh(pv.UnstructuredGrid(celldict, points))
-
-    # def _dumphdfgroup(self, hgroup: hdf5.Group, **options):
-    #     hgroup.attrs['meshtype'] = 'unsvtk'
-    #     hgroup.create_dataset("nodes", data=self._grid.points, **options)
-    #     hcells = hgroup.create_group("cells")
-    #     for itype, cellco in self._grid.cells_dict.items():
-    #         hcells.create_dataset(ele_vtktype[itype], data=cellco, **options)
 
     def xdmf_content(self, filename):
         """Create the XDMF content associated to the mesh.

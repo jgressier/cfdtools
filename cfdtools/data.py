@@ -5,8 +5,6 @@ import cfdtools.api as api
 import cfdtools.hdf5 as hdf5
 import cfdtools.meshbase as meshbase
 
-# from cfdtools.vtk._vtk import vtkMesh # should be avoided in the future ?
-
 
 class DataSetBase:
     _available_Xrep = ('nodal', 'cellaverage')
@@ -61,6 +59,7 @@ class DataSetBase:
         return self._geoprop[key] if key else self._geoprop
 
     def set_nodes(self, x, y=None, z=None):
+        """ """
         self._geoprop['x'] = x
         if y:
             self._geoprop['y'] = y
@@ -161,7 +160,7 @@ class DataSetList(DataSetBase):
     _available_Xrep = ('nodal', 'cellaverage', 'spectralcell')
     _available_Trep = ('instant', 'timeevol', 'pod')
     # defines the names of data items that should be written as attributes; not hdf5 dataset
-    _properties = ('time',)
+    _property_names = ('time',)
 
     def __init__(self, ndataset, Xrep='cellaverage', ndof=1, Trep='timeevol'):
         super().__init__(Xrep, ndof, Trep)
@@ -192,7 +191,7 @@ class DataSetList(DataSetBase):
         for i, datadict in enumerate(self._datalist):
             datagroup = hgroup.create_group(f"i{i:06}")
             for vname, var in datadict.items():
-                if vname in self._properties:
+                if vname in self._property_names:
                     datagroup.attrs[vname] = var
                 else:
                     datagroup.create_dataset(vname, data=var, **options)
