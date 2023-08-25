@@ -118,7 +118,7 @@ class DataSet(DataSetBase):
         datalist = datafilter if datafilter else list(self.keys())
         datalist.remove('time')
         for name in datalist:
-            newdataset.add_data(name, np.abs(fftm.fft(self[name] - dtavg)))
+            newdataset.add_data(name, np.abs(fftm.fft(self[name])))
         return newdataset
 
     def dataSet_spectrogram(self, datafilter=None, window=None):
@@ -126,7 +126,6 @@ class DataSet(DataSetBase):
         datalist = datafilter if datafilter else list(self.keys())
         datalist.remove('time')
         dtavg, dtdev, ntot = self.dtstats()  # check 'timeevol'
-        # print(dtavg, dtdev)
         if dtdev / dtavg > 1.0e-6:
             api.io.warning(f"dt standard deviation is significant: {100*dtdev / dtavg:.4f}%")
         newdataset = DataSet(self.Xrep, self.ndof, Trep='spectrogram')
@@ -176,7 +175,6 @@ class DataSetList(DataSetBase):
         datalist = datafilter if datafilter else list(self.keys())
         datalist.remove('time')
         dtavg, dtdev, ntot = self.dtstats()  # check 'timeevol'
-        # print(dtavg, dtdev)
         if dtdev / dtavg > 1.0e-6:
             api.io.warning(f"dt standard deviation is significant: {100*dtdev / dtavg:.4f}%")
         newdataset = DataSet(self.Xrep, self.ndof, Trep='spectrogram')
