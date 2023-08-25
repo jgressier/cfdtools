@@ -16,6 +16,12 @@ pip show cfdtools
 
 ## Versions
 
+### [0.5.2](https://pypi.org/project/cfdtools/) (2023-08-xx)
+
+#### new
+
+- new option to write XDMF descriptor while dumping vtkMesh, vtkList or DataSetList
+
 ### [0.5.1](https://pypi.org/project/cfdtools/) (2023-08-01)
 
 #### new

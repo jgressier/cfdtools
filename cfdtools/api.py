@@ -30,7 +30,7 @@ def fileformat_reader(name, extension):
 
 def fileformat_writer(name, extension):
     """decorator to register fileformat properties for given name
-       in api._fileformat_map
+    in api._fileformat_map
     """
 
     def decorator(thisclass):
@@ -106,11 +106,7 @@ class api_output:
             else:
                 spcpfx = (len(prefix) + 1) * ' '
                 # add space-replaced prefix for additional lines
-                print(
-                    prefix,
-                    *([s.replace('\n', '\n' + spcpfx) for s in args]),
-                    **kwargs
-                )
+                print(prefix, *([s.replace('\n', '\n' + spcpfx) for s in args]), **kwargs)
 
     def printstd(self, *args, **kwargs):
         self.print('std', *args, **kwargs)
@@ -198,7 +194,7 @@ class Timer:  # from https://realpython.com/python-timer/
         self._start_time = None
         self._task = ""
         self._ncol = 0
-        self._elapsed = 0.
+        self._elapsed = 0.0
 
     @property
     def elapsed(self):
@@ -222,9 +218,7 @@ class Timer:  # from https://realpython.com/python-timer/
         if nelem is not None:
             self._nelem = nelem
         self.pause()
-        normalized_time_ms = (
-            0.0 if self._nelem is None else 1e6 * self._elapsed / self._nelem
-        )
+        normalized_time_ms = 0.0 if self._nelem is None else 1e6 * self._elapsed / self._nelem
         if io._contd:
             # There was no print, line can be continued
             io._contd = False
@@ -236,7 +230,9 @@ class Timer:  # from https://realpython.com/python-timer/
         if self._nelem is None:
             io.printstd("")
         else:
-            io.printstd(f" | {normalized_time_ms:0.4f}µs/elem",)
+            io.printstd(
+                f" | {normalized_time_ms:0.4f}µs/elem",
+            )
         # reset
         self.reset()
 

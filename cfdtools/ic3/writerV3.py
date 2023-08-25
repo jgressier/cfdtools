@@ -38,7 +38,9 @@ class writer(writerV2.writer):
         """
         # Write the two integers
         BinaryWrite(
-            self.fid, self.endian, "ii",
+            self.fid,
+            self.endian,
+            "ii",
             [ic3_restart_codes["UGP_IO_MAGIC_NUMBER"], 3],
         )
 
@@ -72,7 +74,10 @@ class writer(writerV2.writer):
                 # Field
                 chartype = properties_ugpcode[header.id]['structcode']
                 BinaryWrite(
-                    self.fid, self.endian, chartype * nno, nddata,
+                    self.fid,
+                    self.endian,
+                    chartype * nno,
+                    nddata,
                 )
         #
         for ndname, nddata in self.vars["nodes"].items():
@@ -83,15 +88,15 @@ class writer(writerV2.writer):
                 header = restartSectionHeader()
                 header.name = ndname
                 header.id = ic3_restart_codes["UGP_IO_NO_D3"]
-                header.skip = (
-                    header.hsize + type2nbytes["float64"] * nno * 3
-                )
+                header.skip = header.hsize + type2nbytes["float64"] * nno * 3
                 header.idata[0] = nno
                 header.idata[1] = 3
                 header.write(self.fid, self.endian)
                 # Field
                 BinaryWrite(
-                    self.fid, self.endian, "d" * nno * 3,
+                    self.fid,
+                    self.endian,
+                    "d" * nno * 3,
                     nddata.ravel(order='C'),
                 )
         #
@@ -118,16 +123,17 @@ class writer(writerV2.writer):
                     "float64": ic3_restart_codes["UGP_IO_CV_D1"],
                     "int64": ic3_restart_codes["UGP_IO_CV_II1"],
                 }[cvdata.dtype.name]
-                header.skip = (
-                    header.hsize + type2nbytes[cvdata.dtype.name] * totsize
-                )
+                header.skip = header.hsize + type2nbytes[cvdata.dtype.name] * totsize
                 header.idata[0] = ncv
                 header.idata[1] = ndof
                 header.write(self.fid, self.endian)
                 # Field
                 chartype = properties_ugpcode[header.id]['structcode']
                 BinaryWrite(
-                    self.fid, self.endian, chartype * totsize, cvdata,
+                    self.fid,
+                    self.endian,
+                    chartype * totsize,
+                    cvdata,
                 )
         #
         for cvname, cvdata in self.vars["cells"].items():
@@ -138,16 +144,16 @@ class writer(writerV2.writer):
                 header = restartSectionHeader()
                 header.name = cvname
                 header.id = ic3_restart_codes["UGP_IO_CV_D3"]
-                header.skip = (
-                    header.hsize + type2nbytes["float64"] * totsize * 3
-                )
+                header.skip = header.hsize + type2nbytes["float64"] * totsize * 3
                 header.idata[0] = ncv
                 header.idata[1] = ndof
                 # header.idata[1] = 3
                 header.write(self.fid, self.endian)
                 # Field
                 BinaryWrite(
-                    self.fid, self.endian, "d" * totsize * 3,
+                    self.fid,
+                    self.endian,
+                    "d" * totsize * 3,
                     cvdata.ravel(order='C'),
                 )
         #
@@ -159,9 +165,7 @@ class writer(writerV2.writer):
                 header = restartSectionHeader()
                 header.name = cvname
                 header.id = ic3_restart_codes["UGP_IO_CV_D33"]
-                header.skip = (
-                    header.hsize + type2nbytes["float64"] * totsize * 9
-                )
+                header.skip = header.hsize + type2nbytes["float64"] * totsize * 9
                 header.idata[0] = ncv
                 header.idata[1] = ndof
                 # header.idata[1] = 3
@@ -169,6 +173,8 @@ class writer(writerV2.writer):
                 header.write(self.fid, self.endian)
                 # Field
                 BinaryWrite(
-                    self.fid, self.endian, "d" * totsize * 9,
+                    self.fid,
+                    self.endian,
+                    "d" * totsize * 9,
                     cvdata.ravel(order='C'),
                 )

@@ -3,6 +3,7 @@ from cfdtools.vtk import vtkMesh, vtkList
 from cfdtools.hdf5 import h5File
 
 from pathlib import Path
+import pytest
 
 
 def test_cube_vtk(builddir):
@@ -20,6 +21,24 @@ def test_vtkread(datadir):
     vtkfile = vtkMesh()
     vtkfile.read(name)
     assert vtkfile.pyvista_grid.n_cells == 1000
+    assert vtkfile.volumes().sum() == pytest.approx(1.)
+
+
+def test_vtkdump(datadir, builddir):
+    vtkname = datadir / "cubemixed0000.vtu"
+    hname = builddir / "cubemixed0000.cfdh5"
+    vtkfile = vtkMesh()
+    vtkfile.read(vtkname)
+    name = vtkfile.dumphdf(hname, overwrite=True)
+    assert name == str(hname) # since overwrite
+    h5file = h5File(name)
+    h5file.open()
+    #assert h5file.datatype in ('unsvtk', 'dataset')
+    assert h5file.datatype in ('dataset')
+    assert "mesh" in h5file["/"].keys()
+    vtkfile.importhdfgroup(h5file["mesh"])
+    assert vtkfile.pyvista_grid.n_cells == 1000
+    assert vtkfile.volumes().sum() == pytest.approx(1.)
 
 
 def test_vtkList(datadir):
@@ -46,8 +65,8 @@ def test_vtkList_dump(datadir, builddir):
     vtklist = vtkList(namelist, verbose=True)
     vtklist.read()
     h5filename = builddir / "vtklist.hdf"
-    vtklist.dumphdf(h5filename)
-    h5file = h5File(h5filename)
+    newname = vtklist.dumphdf(h5filename)
+    h5file = h5File(newname)
     h5file.open()
     assert h5file.datatype == 'datalist'
     h5filename.unlink()

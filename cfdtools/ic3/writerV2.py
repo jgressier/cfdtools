@@ -58,17 +58,13 @@ class writer:
                 api.io.printstd("  create a specific boco mark for unmarked faces: (unmarked)")
         # self._mesh.printinfo()
         if any([boco.index.type == 'list' for _, boco in self._mesh._bocos.items()]):
-            with api.Timer(
-                task="  reindex boundary faces with boco marks and compress"
-            ):
+            with api.Timer(task="  reindex boundary faces with boco marks and compress"):
                 self._mesh.reindex_boundaryfaces()
 
         api.io.printstd("Setting coordinates and connectivity arrays..")
 
         # Nodes
-        self.coordinates = np.stack(
-            [self._mesh._nodes[c] for c in 'xyz'], axis=1
-        )
+        self.coordinates = np.stack([self._mesh._nodes[c] for c in 'xyz'], axis=1)
 
         # Compute the number of nodes and elements
         assert self.coordinates.shape[0] == self._mesh.nnode
@@ -86,9 +82,7 @@ class writer:
 
         # check face connectivity
         if 'mixed' in self._mesh._faces.keys():
-            zface2node = self._mesh._faces['mixed'][
-                'face2node'
-            ].exportto_compressedindex()
+            zface2node = self._mesh._faces['mixed']['face2node'].exportto_compressedindex()
             self.f2e = self._mesh._faces['mixed']['face2cell'].conn
         else:
             with api.Timer(task="  compressing faces connectivity"):
@@ -103,9 +97,7 @@ class writer:
         if not 'partition' in self._mesh._cellprop.keys():
             self.params["partition"] = {}
             self.params["partition"]['npart'] = 1
-            self.params["partition"]['icvpart'] = np.zeros(
-                (self._mesh.ncell,), dtype=np.int32
-            )
+            self.params["partition"]['icvpart'] = np.zeros((self._mesh.ncell,), dtype=np.int32)
         else:
             self.params['partition'] = self._mesh._cellprop['partition']
 
@@ -117,11 +109,7 @@ class writer:
         The bocos slicing is expressed in terms of faces.
         """
         api.io.printstd("Setting boundary conditions...")
-        self.bocos = {
-            key: boco
-            for key, boco in self._mesh._bocos.items()
-            if not boco.type == 'internal'
-        }
+        self.bocos = {key: boco for key, boco in self._mesh._bocos.items() if not boco.type == 'internal'}
         # self.bocos.pop("nfa_b")
         # self.bocos.pop("nfa_bp")
 
@@ -220,9 +208,7 @@ class writer:
         input   : handle on an open restart file, [type file identifier]
         """
         # Write the two integers
-        BinaryWrite(
-            self.fid, self.endian, "ii", [ic3_restart_codes["UGP_IO_MAGIC_NUMBER"], 2]
-        )
+        BinaryWrite(self.fid, self.endian, "ii", [ic3_restart_codes["UGP_IO_MAGIC_NUMBER"], 2])
 
     def __WriteRestartConnectivity_check(self):
         # Node check
@@ -277,9 +263,7 @@ class writer:
         Also the number of nodes, faces and volumes for later checks.
         """
         # First the header for counts
-        nnode, nface, ncell = (
-            self.params[key] for key in ('no_count', 'fa_count', 'cv_count')
-        )
+        nnode, nface, ncell = (self.params[key] for key in ('no_count', 'fa_count', 'cv_count'))
         api.io.print(
             'std',
             f"  sizes: {nnode} nodes, {nface} faces and reference to {ncell} cells",
@@ -305,17 +289,13 @@ class writer:
         header.name = "NOOFA_I_AND_V"
         header.id = ic3_restart_codes["UGP_IO_NOOFA_I_AND_V"]
         header.skip = (
-            header.hsize
-            + type2nbytes["int32"] * nface
-            + type2nbytes["int32"] * self.params["noofa_count"]
+            header.hsize + type2nbytes["int32"] * nface + type2nbytes["int32"] * self.params["noofa_count"]
         )
         header.idata[0] = nface
         header.idata[1] = self.params["noofa_count"]
         header.write(self.fid, self.endian)
         # Node count per face
-        BinaryWrite(
-            self.fid, self.endian, "i" * nface, self.f2v["noofa"].tolist()
-        )  # remove first 0
+        BinaryWrite(self.fid, self.endian, "i" * nface, self.f2v["noofa"].tolist())  # remove first 0
         # Flattened face-to-node connectivity
         BinaryWrite(
             self.fid,
@@ -352,15 +332,11 @@ class writer:
             header.id = ic3_restart_codes["UGP_IO_FA_ZONE"]
             header.skip = header.hsize
             # diff# print(self.bocos[key]["type"], type2zonekind)
-            assert (
-                boco.type in type2zonekind.keys()
-            ), f"unsupported type of boco for IC3 output: {boco.type}"
+            assert boco.type in type2zonekind.keys(), f"unsupported type of boco for IC3 output: {boco.type}"
             ifmin, ifmax = boco.index.range()
             api.io.printstd(f"  . ({boco.type}) {boco.name}: {ifmin}-{ifmax}")
             header.idata[0] = type2zonekind[boco.type]
-            assert (
-                boco.index.type == 'range'
-            ), "indexing must be a range and may need reordering"
+            assert boco.index.type == 'range', "indexing must be a range and may need reordering"
             header.idata[1] = ifmin
             header.idata[2] = ifmax
             last_boco = max(last_boco, ifmax)
@@ -375,9 +351,7 @@ class writer:
         header.id = ic3_restart_codes["UGP_IO_FA_ZONE"]
         header.skip = header.hsize
         ifmin, ifmax = last_boco + 1, self.params['fa_count'] - 1  # last face
-        api.io.print(
-            'std', f"  additional mark (FA_ZONE) for internal faces: {ifmin}-{ifmax}"
-        )
+        api.io.print('std', f"  additional mark (FA_ZONE) for internal faces: {ifmin}-{ifmax}")
         header.idata[0] = type2zonekind['internal']
         header.idata[1] = ifmin
         header.idata[2] = ifmax
@@ -410,9 +384,7 @@ class writer:
         header.idata[1] = 3
         header.write(self.fid, self.endian)
         # X, Y and Z
-        BinaryWrite(
-            self.fid, self.endian, "d" * nnode * 3, self.coordinates.ravel(order='C')
-        )
+        BinaryWrite(self.fid, self.endian, "d" * nnode * 3, self.coordinates.ravel(order='C'))
 
     def __WriteInformativeValues(self):
         """
@@ -474,14 +446,15 @@ class writer:
                 header = restartSectionHeader()
                 header.name = ndname
                 header.id = ic3_restart_codes["UGP_IO_NO_D1"]
-                header.skip = (
-                    header.hsize + type2nbytes["float64"] * nno
-                )
+                header.skip = header.hsize + type2nbytes["float64"] * nno
                 header.idata[0] = nno
                 header.write(self.fid, self.endian)
                 # Field
                 BinaryWrite(
-                    self.fid, self.endian, "d" * nno, nddata,
+                    self.fid,
+                    self.endian,
+                    "d" * nno,
+                    nddata,
                 )
         #
         for ndname, nddata in self.vars["nodes"].items():
@@ -492,15 +465,15 @@ class writer:
                 header = restartSectionHeader()
                 header.name = ndname
                 header.id = ic3_restart_codes["UGP_IO_NO_D3"]
-                header.skip = (
-                    header.hsize + type2nbytes["float64"] * nno * 3
-                )
+                header.skip = header.hsize + type2nbytes["float64"] * nno * 3
                 header.idata[0] = nno
                 header.idata[1] = 3
                 header.write(self.fid, self.endian)
                 # Field
                 BinaryWrite(
-                    self.fid, self.endian, "d" * nno * 3,
+                    self.fid,
+                    self.endian,
+                    "d" * nno * 3,
                     nddata.ravel(order='C'),
                 )
         #
@@ -522,14 +495,15 @@ class writer:
                 header = restartSectionHeader()
                 header.name = cvname
                 header.id = ic3_restart_codes["UGP_IO_CV_D1"]
-                header.skip = (
-                    header.hsize + type2nbytes["float64"] * ncv
-                )
+                header.skip = header.hsize + type2nbytes["float64"] * ncv
                 header.idata[0] = ncv
                 header.write(self.fid, self.endian)
                 # Field
                 BinaryWrite(
-                    self.fid, self.endian, "d" * ncv, cvdata,
+                    self.fid,
+                    self.endian,
+                    "d" * ncv,
+                    cvdata,
                 )
         #
         for cvname, cvdata in self.vars["cells"].items():
@@ -540,15 +514,15 @@ class writer:
                 header = restartSectionHeader()
                 header.name = cvname
                 header.id = ic3_restart_codes["UGP_IO_CV_D3"]
-                header.skip = (
-                    header.hsize + type2nbytes["float64"] * ncv * 3
-                )
+                header.skip = header.hsize + type2nbytes["float64"] * ncv * 3
                 header.idata[0] = ncv
                 header.idata[1] = 3
                 header.write(self.fid, self.endian)
                 # Field
                 BinaryWrite(
-                    self.fid, self.endian, "d" * ncv * 3,
+                    self.fid,
+                    self.endian,
+                    "d" * ncv * 3,
                     cvdata.ravel(order='C'),
                 )
         #
@@ -560,15 +534,15 @@ class writer:
                 header = restartSectionHeader()
                 header.name = cvname
                 header.id = ic3_restart_codes["UGP_IO_CV_D33"]
-                header.skip = (
-                    header.hsize + type2nbytes["float64"] * ncv * 9
-                )
+                header.skip = header.hsize + type2nbytes["float64"] * ncv * 9
                 header.idata[0] = ncv
                 header.idata[1] = 3
                 header.idata[2] = 3
                 header.write(self.fid, self.endian)
                 # Field
                 BinaryWrite(
-                    self.fid, self.endian, "d" * ncv * 9,
+                    self.fid,
+                    self.endian,
+                    "d" * ncv * 9,
                     cvdata.ravel(order='C'),
                 )

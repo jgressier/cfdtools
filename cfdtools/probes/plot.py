@@ -11,9 +11,7 @@ def check_axis(axisdata):
         axis = np.mean(axisdata, axis=0)
         # print(axis.shape)
         err = np.mean(axisdata ** 2, axis=0) - axis ** 2
-        api.io.print(
-            'std', f"min:avg:max change of several axis {err.shape}:", *minavgmax(err)
-        )
+        api.io.print('std', f"min:avg:max change of several axis {err.shape}:", *minavgmax(err))
         api.io.print(
             'warning',
             "several lines for axis: they are merged (average change is {:.2e})".format(
@@ -50,9 +48,7 @@ def plot_timemap(data, **kwargs):
             data.alldata[var].shape,
         )
     axis = check_axis(data.alldata[axis])
-    plt.contourf(
-        axis, data.alldata["time"], data.alldata[var], levels=nlevels, cmap=colmap
-    )
+    plt.contourf(axis, data.alldata["time"], data.alldata[var], levels=nlevels, cmap=colmap)
     plt.colorbar()
     # plt.minorticks_on()
     # plt.grid(which='major', linestyle='-', alpha=0.8)
@@ -70,9 +66,7 @@ def plot_freqmap(data, **kwargs):
     figname = basename + "." + var + ".freq.png"
     t = data.alldata["time"]
     dtmin, dtavg, dtmax = minavgmax(t[1:] - t[:-1])
-    api.io.print(
-        'std', "- dt min:avg:max = {:.3f}:{:.3f}:{:.3f}".format(dtmin, dtavg, dtmax)
-    )
+    api.io.print('std', "- dt min:avg:max = {:.3f}:{:.3f}:{:.3f}".format(dtmin, dtavg, dtmax))
     if kwargs['check']:
         api.io.print('std', "    t min:max = {:.3f}:{:.3f}".format(t.min(), t.max()))
         api.io.print('std', "    dt < 0    = ", np.where(t[1:] - t[:-1] < 0.0))
@@ -87,7 +81,7 @@ def plot_freqmap(data, **kwargs):
     plt.ylabel("frequency", fontsize=10)
     n = data.alldata[var].shape[0]
     f = fftm.fftfreq(n, dtavg)
-    psdmap = np.abs(fftm.fft(data.alldata[var]-np.average(data.alldata[var]), axis=0))
+    psdmap = np.abs(fftm.fft(data.alldata[var] - np.average(data.alldata[var]), axis=0))
     if kwargs['verbose']:
         api.io.print('std', data.alldata[var].shape, n, psdmap.shape, f.shape)
     colmap = cfdplt.normalizeCmap(cmap, nlevels)

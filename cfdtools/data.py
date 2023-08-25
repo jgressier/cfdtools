@@ -3,11 +3,12 @@ import numpy.fft as fftm
 import matplotlib.pyplot as plt
 import cfdtools.api as api
 import cfdtools.hdf5 as hdf5
+import cfdtools.meshbase as meshbase
 
 
 class DataSetBase:
     _available_Xrep = ('nodal', 'cellaverage')
-    _available_Trep = 'instant'
+    _available_Trep = ('instant',)
 
     def __init__(self, Xrep='cellaverage', ndof=1, Trep='instant'):
         self.Trep = Trep
@@ -58,11 +59,15 @@ class DataSetBase:
         return self._geoprop[key] if key else self._geoprop
 
     def set_nodes(self, x, y=None, z=None):
+        """ """
         self._geoprop['x'] = x
         if y:
             self._geoprop['y'] = y
         if z:
             self._geoprop['z'] = z
+
+    def set_mesh(self, mesh):
+        self._geoprop['mesh'] = mesh
 
 
 class DataSet(DataSetBase):
@@ -113,7 +118,7 @@ class DataSet(DataSetBase):
         datalist = datafilter if datafilter else list(self.keys())
         datalist.remove('time')
         for name in datalist:
-            newdataset.add_data(name, np.abs(fftm.fft(self[name] - dtavg)))
+            newdataset.add_data(name, np.abs(fftm.fft(self[name])))
         return newdataset
 
     def dataSet_spectrogram(self, datafilter=None, window=None):
@@ -121,7 +126,6 @@ class DataSet(DataSetBase):
         datalist = datafilter if datafilter else list(self.keys())
         datalist.remove('time')
         dtavg, dtdev, ntot = self.dtstats()  # check 'timeevol'
-        # print(dtavg, dtdev)
         if dtdev / dtavg > 1.0e-6:
             api.io.warning(f"dt standard deviation is significant: {100*dtdev / dtavg:.4f}%")
         newdataset = DataSet(self.Xrep, self.ndof, Trep='spectrogram')
@@ -150,8 +154,12 @@ class DataSet(DataSetBase):
 
 
 class DataSetList(DataSetBase):
+
+    _version = 1
     _available_Xrep = ('nodal', 'cellaverage', 'spectralcell')
     _available_Trep = ('instant', 'timeevol', 'pod')
+    # defines the names of data items that should be written as attributes; not hdf5 dataset
+    _property_names = ('time',)
 
     def __init__(self, ndataset, Xrep='cellaverage', ndof=1, Trep='timeevol'):
         super().__init__(Xrep, ndof, Trep)
@@ -167,7 +175,6 @@ class DataSetList(DataSetBase):
         datalist = datafilter if datafilter else list(self.keys())
         datalist.remove('time')
         dtavg, dtdev, ntot = self.dtstats()  # check 'timeevol'
-        # print(dtavg, dtdev)
         if dtdev / dtavg > 1.0e-6:
             api.io.warning(f"dt standard deviation is significant: {100*dtdev / dtavg:.4f}%")
         newdataset = DataSet(self.Xrep, self.ndof, Trep='spectrogram')
@@ -179,11 +186,13 @@ class DataSetList(DataSetBase):
         Args:
             hgroup (hdf5.Group): _description_
         """
-        # ? n = len(self._datalist)
         for i, datadict in enumerate(self._datalist):
             datagroup = hgroup.create_group(f"i{i:06}")
             for vname, var in datadict.items():
-                datagroup.create_dataset(vname, data=var, **options)
+                if vname in self._property_names:
+                    datagroup.attrs[vname] = var
+                else:
+                    datagroup.create_dataset(vname, data=var, **options)
 
     def xdmf_content(self, filename, geometry_content):
         """Create the XDMF content associated to the data set.
@@ -218,3 +227,20 @@ class DataSetList(DataSetBase):
         lines += ["</Grid>"]
 
         return lines
+
+    def dumphdf(self, filename, overwrite=False, **options):
+        file = hdf5.h5File(filename)
+        if not overwrite:
+            file.find_safe_newfile()
+        file.open(mode="w", datatype='datalist', version=self._version)
+        # map element types from vtk type to cfdtools type
+        if isinstance(self._geoprop['mesh'], meshbase.Mesh):
+            celldict = dict(self._geoprop['mesh']._cell2node)
+        else:
+            api.error_stop("not yet implemented to dump mesh with instance {self._geoprop['mesh']}")
+        file.write_unsmesh(celldict, self._geoprop['mesh'].nodescoord(ndarray=True), **options)
+        #
+        hdata = file._h5file.create_group("datalist")
+        self._dumphdfgroup(hdata, **options)
+        file.close()
+        return file.filename

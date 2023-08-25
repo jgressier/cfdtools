@@ -182,7 +182,7 @@ def vtkpack(argv=None):
     vtklist.read()
     outfilename = vtklist.dumphdf("dumped.h5")
     api.io.printstd(f"> mesh and data dumped to {outfilename}")
-    return True  # needed for pytest
+    return outfilename  # needed for pytest
 
 
 def write_generic(argv, ext, writer, fname=None):
