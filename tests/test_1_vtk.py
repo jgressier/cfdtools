@@ -2,6 +2,7 @@ import cfdtools.meshbase.simple as sm
 from cfdtools.vtk import vtkMesh, vtkList
 from cfdtools.hdf5 import h5File
 
+import numpy as np
 from pathlib import Path
 import pytest
 
@@ -21,7 +22,7 @@ def test_vtkread(datadir):
     vtkfile = vtkMesh()
     vtkfile.read(name)
     assert vtkfile.pyvista_grid.n_cells == 1000
-    assert vtkfile.volumes().sum() == pytest.approx(1.)
+    assert vtkfile.volumes().sum() == pytest.approx(1.0)
 
 
 def test_vtkdump(datadir, builddir):
@@ -30,15 +31,15 @@ def test_vtkdump(datadir, builddir):
     vtkfile = vtkMesh()
     vtkfile.read(vtkname)
     name = vtkfile.dumphdf(hname, overwrite=True)
-    assert name == str(hname) # since overwrite
+    assert name == str(hname)  # since overwrite
     h5file = h5File(name)
     h5file.open()
-    #assert h5file.datatype in ('unsvtk', 'dataset')
+    # assert h5file.datatype in ('unsvtk', 'dataset')
     assert h5file.datatype in ('dataset')
     assert "mesh" in h5file["/"].keys()
     vtkfile.importhdfgroup(h5file["mesh"])
     assert vtkfile.pyvista_grid.n_cells == 1000
-    assert vtkfile.volumes().sum() == pytest.approx(1.)
+    assert vtkfile.volumes().sum() == pytest.approx(1.0)
 
 
 def test_vtkList(datadir):
@@ -77,6 +78,10 @@ def test_vtkList_dumpxdmf(datadir, tmpdir):
     namelist = sorted(list(datadir.glob("cubemixed000[0-1].vtu")))
     vtklist = vtkList(namelist, verbose=True)
     vtklist.read()
+    # vtu files do not contain time values, add them artificially
+    for dataset in vtklist._data._datalist:
+        dataset['time'] = np.array([3.14])
+
     h5filename = tmpdir / "vtklist.hdf"
     vtklist.dumphdf(h5filename, xdmf=True)
 

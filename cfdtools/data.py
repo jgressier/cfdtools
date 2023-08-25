@@ -154,7 +154,6 @@ class DataSet(DataSetBase):
 
 
 class DataSetList(DataSetBase):
-
     _version = 1
     _available_Xrep = ('nodal', 'cellaverage', 'spectralcell')
     _available_Trep = ('instant', 'timeevol', 'pod')
@@ -209,7 +208,10 @@ class DataSetList(DataSetBase):
             lines += ['<Grid Name="Unstructured Mesh">']
             lines += [f'<Time Value="{i}"/>']
             lines += geometry_content
-            for vname, var in datadict.items():
+            data_wo_properties = {
+                vname: datadict[vname] for vname in datadict if vname not in self._property_names
+            }
+            for vname, var in data_wo_properties.items():
                 if len(var.shape) == 1:
                     typ = "Scalar"
                 elif len(var.shape) == 2:
