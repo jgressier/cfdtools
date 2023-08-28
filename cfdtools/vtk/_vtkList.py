@@ -82,7 +82,7 @@ class vtkList:
             ctr = vtk.cell_centers().points
             d = np.max(maths.distance(ctrRef, ctr))
             Tcomp.pause()
-            if d > tol:
+            if d > tol: # should be sized by domain size
                 count += 1
                 # if self._verbose:
                 #     api.io.printstd(f"  . {name}: {d}")
@@ -92,11 +92,13 @@ class vtkList:
                 rindex = index.copy()
                 rindex[index] = np.arange(index.size)
                 assert np.max(dfinal) <= tol
-                # automatically deals with differnt shapes
-                datalist = {name: vtk.cell_data[name][rindex] for name in namelist}
                 Tsort.pause()
-                time = vtk.field_data.get("TimeValue", None)
-                self._data.add_datalist(datalist, time=time)
+                # automatically deals with different shapes
+                datalist = {name: vtk.cell_data[name][rindex] for name in namelist}
+            else:
+                datalist = {name: vtk.cell_data[name] for name in namelist}
+            time = vtk.field_data.get("TimeValue", None)
+            self._data.add_datalist(datalist, time=time)
         if self._verbose:
             api.io.printstd(f"  {count}/{self.nfile} grids were not coincident")
             api.io.printstd(f"       file reading: {Tread.elapsed:.2f}s")

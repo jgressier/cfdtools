@@ -70,7 +70,8 @@ def test_vtkList_dump(datadir, builddir):
     h5file = h5File(newname)
     h5file.open()
     assert h5file.datatype == 'datalist'
-    h5filename.unlink()
+    assert len(h5file["/datalist"].keys()) == 10
+    Path(newname).unlink()
 
 
 def test_vtkList_dumpxdmf(datadir, tmpdir):
@@ -92,8 +93,11 @@ def test_vtkList_dumpxdmf(datadir, tmpdir):
         <Xdmf Version="3.0">
             <Domain>
                 <Grid Name="IC3" GridType="Collection" CollectionType="Temporal">
+        """
+    for i in range(2):
+        xdmf_content_formatted += f"""
                     <Grid Name="Unstructured Mesh">
-                        <Time Value="0"/>
+                        <Time Value="{i}"/>
                         <Geometry GeometryType="XYZ">
                             <DataItem Dimensions="3993" Format="HDF">vtklist.hdf:/mesh/nodes</DataItem>
                         </Geometry>
@@ -101,9 +105,11 @@ def test_vtkList_dumpxdmf(datadir, tmpdir):
                             <DataItem Dimensions="8000" Format="HDF">vtklist.hdf:/mesh/cells/hexa8</DataItem>
                         </Topology>
                         <Attribute AttributeType="Scalar" Center="Cell" Name="Q">
-                            <DataItem Dimensions="1000" Format="HDF">vtklist.hdf:/datalist/i000000/Q</DataItem>
+                            <DataItem Dimensions="1000" Format="HDF">vtklist.hdf:/datalist/i{i:06}/Q</DataItem>
                         </Attribute>
                     </Grid>
+        """ 
+    xdmf_content_formatted += """
                 </Grid>
             </Domain>
         </Xdmf>
@@ -111,7 +117,7 @@ def test_vtkList_dumpxdmf(datadir, tmpdir):
     xdmf_content = ''.join([t.strip() for t in xdmf_content_formatted.split('\n')])
 
     lines = open(xmf_filepath, 'r').read()
-    # replace end of lines with blanks
+    # remove end of lines
     lines = lines.replace('\n', '')
     # replace temporary path with reference path
     lines = lines.replace(str(h5filename), "vtklist.hdf")
