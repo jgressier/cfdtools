@@ -99,7 +99,7 @@ class phydata:
             elif rdata.ndim == 2:  # supposed to be data
                 # extract data  (remove time and it)
                 self.alldata[varname] = rdata[:, 3:]
-                if ("time" not in self.alldata):  
+                if "time" not in self.alldata:
                     # if time missing, get it from current data, no consistency test with other data
                     if self.verbose:
                         api.io.printstd(" . define 'time'")

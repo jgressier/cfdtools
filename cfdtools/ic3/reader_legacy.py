@@ -210,10 +210,7 @@ class reader(binreader):
             if h.readVar(self.fid, self.byte_swap, ["UGP_IO_NO_CHECK"]):
                 assert h.idata[0] == no_count
                 assert h.id[0] == ic3_restart_codes["UGP_IO_NO_CHECK"]
-                s = BinaryRead(
-                        self.fid, "%di" % no_count, self.byte_swap,
-                        type2nbytes["int32"] * no_count
-                    )
+                s = BinaryRead(self.fid, "%di" % no_count, self.byte_swap, type2nbytes["int32"] * no_count)
                 nodes_id = np.asarray(s)
                 assert np.allclose(nodes_id, np.arange(no_count))
                 api.io.printstd("end of node integrity")
@@ -224,10 +221,7 @@ class reader(binreader):
                 sys.stdout.flush()
                 h = restartSectionHeader()
                 h.readReqVar(self.fid, self.byte_swap, ["UGP_IO_FA_CHECK"])
-                s = BinaryRead(
-                        self.fid, "%di" % fa_count, self.byte_swap,
-                        type2nbytes["int32"] * fa_count
-                    )
+                s = BinaryRead(self.fid, "%di" % fa_count, self.byte_swap, type2nbytes["int32"] * fa_count)
                 faces_id = np.asarray(s)
                 assert np.allclose(faces_id, np.arange(fa_count))
                 api.io.printstd("end of face integrity")
@@ -240,10 +234,7 @@ class reader(binreader):
                 h.readReqVar(self.fid, self.byte_swap, ["UGP_IO_CV_CHECK"])
                 assert h.idata[0] == cv_count
                 assert h.id[0] == ic3_restart_codes["UGP_IO_CV_CHECK"]
-                s = BinaryRead(
-                        self.fid, "%di" % cv_count, self.byte_swap,
-                        type2nbytes["int32"] * cv_count
-                    )
+                s = BinaryRead(self.fid, "%di" % cv_count, self.byte_swap, type2nbytes["int32"] * cv_count)
                 cells_id = np.asarray(s)
                 assert np.allclose(cells_id, np.arange(cv_count))
                 api.io.printstd("end of cell integrity")
@@ -264,10 +255,7 @@ class reader(binreader):
         assert h.idata[1] == noofa_count
 
         # Get the node count per face
-        s = BinaryRead(
-                self.fid, "%di" % fa_count, self.byte_swap,
-                type2nbytes["int32"] * fa_count
-            )
+        s = BinaryRead(self.fid, "%di" % fa_count, self.byte_swap, type2nbytes["int32"] * fa_count)
         nno_per_face = np.asarray(s)
         uniq, counts = np.unique(nno_per_face, return_counts=True)
         for facesize, nfacesize in zip(uniq, counts):
@@ -278,10 +266,7 @@ class reader(binreader):
         assert face2node_index[0] == 0
         assert face2node_index[-2] == noofa_count - nno_per_face[-1]
         # Now loop on the restart file to fill the connectivities
-        s = BinaryRead(
-                self.fid, "%di" % noofa_count, self.byte_swap,
-                type2nbytes["int32"] * noofa_count
-            )
+        s = BinaryRead(self.fid, "%di" % noofa_count, self.byte_swap, type2nbytes["int32"] * noofa_count)
         # store in 8 bytes
         face2node_value = np.asarray(s).astype(np.int64)
         zface2node = _conn.compressed_listofindex(face2node_index, face2node_value)
@@ -301,10 +286,7 @@ class reader(binreader):
         assert h.idata[0] == fa_count
         assert h.idata[1] == 2
         # Fill the connectivities
-        s = BinaryRead(
-                self.fid, "%di" % (fa_count * 2), self.byte_swap,
-                type2nbytes["int32"] * fa_count * 2
-            )
+        s = BinaryRead(self.fid, "%di" % (fa_count * 2), self.byte_swap, type2nbytes["int32"] * fa_count * 2)
         # store in 8 bytes
         self.mesh["connectivity"]["cvofa"]["cvofa"] = np.asarray(s).astype(np.int64).reshape((fa_count, 2))
 
@@ -372,10 +354,7 @@ class reader(binreader):
         self.mesh["partition"] = {}
         self.mesh["partition"]['npart'] = h.idata[1]
         self.mesh["partition"]['icvpart'] = np.zeros((cv_count,), dtype=np.int32)
-        s = BinaryRead(
-                self.fid, "%di" % cv_count, self.byte_swap,
-                type2nbytes["int32"] * cv_count
-            )
+        s = BinaryRead(self.fid, "%di" % cv_count, self.byte_swap, type2nbytes["int32"] * cv_count)
         self.mesh["partition"]['icvpart'] = np.asarray(s)
         api.io.printstd("end of partition")
         sys.stdout.flush()
@@ -389,9 +368,8 @@ class reader(binreader):
         assert h.idata[0] == no_count
         assert h.idata[1] == 3
         s = BinaryRead(
-                self.fid, "%dd" % (no_count * 3), self.byte_swap,
-                type2nbytes["float64"] * no_count * 3
-            )
+            self.fid, "%dd" % (no_count * 3), self.byte_swap, type2nbytes["float64"] * no_count * 3
+        )
         self.mesh["coordinates"] = np.ascontiguousarray(np.asarray(s).reshape(no_count, 3))
         api.io.printstd("end of node coordinates")
         sys.stdout.flush()
@@ -480,7 +458,8 @@ class reader(binreader):
         while True:
             h = restartSectionHeader()
             if not h.readVar(
-                self.fid, self.byte_swap,
+                self.fid,
+                self.byte_swap,
                 [
                     "UGP_IO_NO_D1",
                     "UGP_IO_NO_II1",
@@ -498,16 +477,10 @@ class reader(binreader):
             nptype = properties_ugpcode[h.id[0]]['numpytype']
             #
             if h.idata[0] == no_count:
-                s = BinaryRead(
-                        self.fid, "%d" % no_count + typechar, self.byte_swap,
-                        typesize * no_count
-                    )
+                s = BinaryRead(self.fid, "%d" % no_count + typechar, self.byte_swap, typesize * no_count)
                 scalar = self.variables["nodes"][h.name] = np.asarray(s).astype(nptype)
             elif h.idata[0] == fa_count:
-                s = BinaryRead(
-                        self.fid, "%d" % fa_count + typechar, self.byte_swap,
-                        typesize * fa_count
-                    )
+                s = BinaryRead(self.fid, "%d" % fa_count + typechar, self.byte_swap, typesize * fa_count)
                 scalar = self.variables["faces"][h.name] = np.asarray(s).astype(nptype)
             elif h.idata[0] == cv_count:
                 ndof = self._set_ndof_properties(h.idata[1])
@@ -516,13 +489,11 @@ class reader(binreader):
                     self.celldata.ndof = ndof
                 api.io.print(
                     'internal',
-                    "cell variable section of size ncells * ndofs"
-                    " {}x{}".format(cv_count, ndof),
+                    "cell variable section of size ncells * ndofs {}x{}".format(cv_count, ndof),
                 )
                 s = BinaryRead(
-                        self.fid, "%d" % (ndof * cv_count) + typechar, self.byte_swap,
-                        typesize * ndof * cv_count
-                    )
+                    self.fid, "%d" % (ndof * cv_count) + typechar, self.byte_swap, typesize * ndof * cv_count
+                )
                 scalar = np.asarray(s).astype(nptype)
                 # If multiple connectivities, order the tables correctly
                 if self.mesh["connectivity"]["nkeys"] > 1:
@@ -542,7 +513,8 @@ class reader(binreader):
         while True:
             h = restartSectionHeader()
             if not h.readVar(
-                self.fid, self.byte_swap,
+                self.fid,
+                self.byte_swap,
                 [
                     "UGP_IO_NO_D3",
                     "UGP_IO_FA_D3",
@@ -555,18 +527,14 @@ class reader(binreader):
             #
             if h.idata[0] == no_count:
                 s = BinaryRead(
-                        self.fid, "%dd" % (no_count * 3), self.byte_swap,
-                        type2nbytes["float64"] * no_count * 3
-                    )
+                    self.fid, "%dd" % (no_count * 3), self.byte_swap, type2nbytes["float64"] * no_count * 3
+                )
                 vector = self.variables["nodes"][h.name] = np.asarray(s).reshape((no_count, 3))
             elif h.idata[0] == fa_count:
-                self.variables["faces"][h.name] = np.zeros(
-                    (fa_count, 3), dtype=np.float64
-                )
+                self.variables["faces"][h.name] = np.zeros((fa_count, 3), dtype=np.float64)
                 s = BinaryRead(
-                        self.fid, "%dd" % (fa_count * 3), self.byte_swap,
-                        type2nbytes["float64"] * fa_count * 3
-                    )
+                    self.fid, "%dd" % (fa_count * 3), self.byte_swap, type2nbytes["float64"] * fa_count * 3
+                )
                 vector = self.variables["faces"][h.name] = np.asarray(s).reshape((fa_count, 3))
             elif h.idata[0] == cv_count:
                 ndof = self._set_ndof_properties(h.idata[1])
@@ -574,9 +542,11 @@ class reader(binreader):
                     self.celldata.Xrep = 'spectralcell'
                     self.celldata.ndof = ndof
                 s = BinaryRead(
-                        self.fid, "%dd" % (ndof * cv_count * 3), self.byte_swap,
-                        type2nbytes["float64"] * ndof * cv_count * 3,
-                    )
+                    self.fid,
+                    "%dd" % (ndof * cv_count * 3),
+                    self.byte_swap,
+                    type2nbytes["float64"] * ndof * cv_count * 3,
+                )
                 vector = np.asarray(s).reshape((ndof * cv_count, 3))
                 # If multiple connectivities, gotta order the tables correctly
                 if self.mesh["connectivity"]["nkeys"] > 1:
@@ -605,9 +575,11 @@ class reader(binreader):
                     self.celldata.Xrep = 'spectralcell'
                     self.celldata.ndof = ndof
                 s = BinaryRead(
-                        self.fid, "%dd" % (ndof * cv_count * 3 * 3), self.byte_swap,
-                        type2nbytes["float64"] * ndof * cv_count * 3 * 3,
-                    )
+                    self.fid,
+                    "%dd" % (ndof * cv_count * 3 * 3),
+                    self.byte_swap,
+                    type2nbytes["float64"] * ndof * cv_count * 3 * 3,
+                )
                 tensor = np.asarray(s).reshape((ndof * cv_count, 3, 3))
                 # If multiple connectivities, gotta order the tables correctly
                 if self.mesh["connectivity"]["nkeys"] > 1:
@@ -647,4 +619,3 @@ class reader(binreader):
 #     The script is supposed to be used with command line arguments
 #     but if it is not, it runs a test on a pre-defined file name.
 #     '''
-

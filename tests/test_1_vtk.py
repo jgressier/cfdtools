@@ -2,8 +2,7 @@ import cfdtools.meshbase.simple as sm
 from cfdtools.vtk import vtkMesh, vtkList
 from cfdtools.hdf5 import h5File
 
-# import cfdtools.vtk as vtk
-# import cfdtools.api as api
+import numpy as np
 from pathlib import Path
 import pytest
 
@@ -23,6 +22,24 @@ def test_vtkread(datadir):
     vtkfile = vtkMesh()
     vtkfile.read(name)
     assert vtkfile.pyvista_grid.n_cells == 1000
+    assert vtkfile.volumes().sum() == pytest.approx(1.0)
+
+
+def test_vtkdump(datadir, builddir):
+    vtkname = datadir / "cubemixed0000.vtu"
+    hname = builddir / "cubemixed0000.cfdh5"
+    vtkfile = vtkMesh()
+    vtkfile.read(vtkname)
+    name = vtkfile.dumphdf(hname, overwrite=True)
+    assert name == str(hname)  # since overwrite
+    h5file = h5File(name)
+    h5file.open()
+    # assert h5file.datatype in ('unsvtk', 'dataset')
+    assert h5file.datatype in ('dataset')
+    assert "mesh" in h5file["/"].keys()
+    vtkfile.importhdfgroup(h5file["mesh"])
+    assert vtkfile.pyvista_grid.n_cells == 1000
+    assert vtkfile.volumes().sum() == pytest.approx(1.0)
 
 
 def test_vtkList(datadir):
@@ -49,7 +66,59 @@ def test_vtkList_dump(datadir, builddir):
     vtklist = vtkList(namelist, verbose=True)
     vtklist.read()
     h5filename = builddir / "vtklist.hdf"
-    vtklist.dumphdf(h5filename)
-    h5file = h5File(h5filename)
+    newname = vtklist.dumphdf(h5filename)
+    h5file = h5File(newname)
     h5file.open()
     assert h5file.datatype == 'datalist'
+    assert len(h5file["/datalist"].keys()) == 10
+    Path(newname).unlink()
+
+
+def test_vtkList_dumpxdmf(datadir, tmpdir):
+    """Test the xmf file creation."""
+    namelist = sorted(list(datadir.glob("cubemixed000[0-1].vtu")))
+    vtklist = vtkList(namelist, verbose=True)
+    vtklist.read()
+    # vtu files do not contain time values, add them artificially
+    for dataset in vtklist._data._datalist:
+        dataset['time'] = np.array([3.14])
+
+    h5filename = tmpdir / "vtklist.hdf"
+    vtklist.dumphdf(h5filename, xdmf=True)
+
+    xmf_filepath = tmpdir / "vtklist.xmf"
+    assert xmf_filepath.exists()
+
+    xdmf_content_formatted = """
+        <Xdmf Version="3.0">
+            <Domain>
+                <Grid Name="IC3" GridType="Collection" CollectionType="Temporal">
+        """
+    for i in range(2):
+        xdmf_content_formatted += f"""
+                    <Grid Name="Unstructured Mesh">
+                        <Time Value="{i}"/>
+                        <Geometry GeometryType="XYZ">
+                            <DataItem Dimensions="3993" Format="HDF">vtklist.hdf:/mesh/nodes</DataItem>
+                        </Geometry>
+                        <Topology NumberOfElements="1000" TopologyType="Hexahedron">
+                            <DataItem Dimensions="8000" Format="HDF">vtklist.hdf:/mesh/cells/hexa8</DataItem>
+                        </Topology>
+                        <Attribute AttributeType="Scalar" Center="Cell" Name="Q">
+                            <DataItem Dimensions="1000" Format="HDF">vtklist.hdf:/datalist/i{i:06}/Q</DataItem>
+                        </Attribute>
+                    </Grid>
+        """ 
+    xdmf_content_formatted += """
+                </Grid>
+            </Domain>
+        </Xdmf>
+        """
+    xdmf_content = ''.join([t.strip() for t in xdmf_content_formatted.split('\n')])
+
+    lines = open(xmf_filepath, 'r').read()
+    # remove end of lines
+    lines = lines.replace('\n', '')
+    # replace temporary path with reference path
+    lines = lines.replace(str(h5filename), "vtklist.hdf")
+    assert xdmf_content == lines

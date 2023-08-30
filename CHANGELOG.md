@@ -16,6 +16,18 @@ pip show cfdtools
 
 ## Versions
 
+### [0.5.2](https://pypi.org/project/cfdtools/) (2023-08-30)
+
+#### new
+
+- dump dataSet and dataSetList to hdf5, with version number
+- option to write XDMF descriptor while dumping vtkMesh, vtkList or DataSetList
+
+#### fix
+
+- some data files were missing when reading vtk files through vtkList
+- wrong zero-mode in Fourier decomposation (dataSet_spectrum)
+
 ### [0.5.1](https://pypi.org/project/cfdtools/) (2023-08-01)
 
 #### new

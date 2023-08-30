@@ -18,9 +18,7 @@ class Cube:
         return list(product(range(self._nx), range(self._ny), range(self._nz)))
 
     def nodes_ijk(self):
-        return list(
-            product(range(self._nx + 1), range(self._ny + 1), range(self._nz + 1))
-        )
+        return list(product(range(self._nx + 1), range(self._ny + 1), range(self._nz + 1)))
 
     def nodes_xyz(self, i, j, k):
         return (i / float(self._nx), j / float(self._ny), k / float(self._nz))
@@ -70,30 +68,12 @@ class Cube:
         meshdata.set_nodescoord_xyz(x, y, z)
         # boco
         tasks = {
-            'imin': {
-                'ijknodes': product([0], range(self._ny + 1), range(self._nz + 1))
-            },
-            'imax': {
-                'ijknodes': product(
-                    [self._nx], range(self._ny + 1), range(self._nz + 1)
-                )
-            },
-            'jmin': {
-                'ijknodes': product(range(self._nx + 1), [0], range(self._nz + 1))
-            },
-            'jmax': {
-                'ijknodes': product(
-                    range(self._nx + 1), [self._ny], range(self._nz + 1)
-                )
-            },
-            'kmin': {
-                'ijknodes': product(range(self._nx + 1), range(self._ny + 1), [0])
-            },
-            'kmax': {
-                'ijknodes': product(
-                    range(self._nx + 1), range(self._ny + 1), [self._nz]
-                )
-            },
+            'imin': {'ijknodes': product([0], range(self._ny + 1), range(self._nz + 1))},
+            'imax': {'ijknodes': product([self._nx], range(self._ny + 1), range(self._nz + 1))},
+            'jmin': {'ijknodes': product(range(self._nx + 1), [0], range(self._nz + 1))},
+            'jmax': {'ijknodes': product(range(self._nx + 1), [self._ny], range(self._nz + 1))},
+            'kmin': {'ijknodes': product(range(self._nx + 1), range(self._ny + 1), [0])},
+            'kmax': {'ijknodes': product(range(self._nx + 1), range(self._ny + 1), [self._nz])},
         }
         for name, task in tasks.items():
             bcmark = _mesh.submeshmark(name)

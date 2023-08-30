@@ -11,23 +11,12 @@ elem_properties = [  # itype, name, nnode, geodim, extruded
     (0, '   hexa8', 8, 3, '    none'),
 ]
 
-elem_properties = [
-    tuple(  i.lstrip() if type(i) is str else i for i in u )
-    for u in elem_properties
-]
+elem_properties = [tuple(i.lstrip() if isinstance(i, str) else i for i in u) for u in elem_properties]
 
-elem_dim = {
-    e: d for _, e, _, d, _ in elem_properties
-}
-nnode_elem = {
-    e: n for _, e, n, _, _ in elem_properties
-}
-face_from_nnode = {
-    n: e for _, e, n, d, _ in elem_properties if d <= 2
-}
-extruded_face = {
-    e: x for _, e, _, d, x in elem_properties if d <= 2
-}
+elem_dim = {e: d for _, e, _, d, _ in elem_properties}
+nnode_elem = {e: n for _, e, n, _, _ in elem_properties}
+face_from_nnode = {n: e for _, e, n, d, _ in elem_properties if d <= 2}
+extruded_face = {e: x for _, e, _, d, x in elem_properties if d <= 2}
 
 del elem_properties
 
@@ -35,22 +24,6 @@ del elem_properties
 #   faces are defined with inward normal
 # see https://cgns.github.io/CGNS_docs_current/sids/conv.html#unst_hexa
 elem2faces = {
-    'quad4': {
-        'bar2': [
-            [0, 1],
-            [1, 2],
-            [2, 3],
-            [3, 0]
-        ]
-    },
-    'hexa8': {
-        'quad4': [
-            [0, 1, 2, 3],
-            [4, 7, 6, 5],
-            [0, 4, 5, 1],
-            [2, 6, 7, 3],
-            [0, 3, 7, 4],
-            [1, 5, 6, 2]
-        ]
-    },
+    'quad4': {'bar2': [[0, 1], [1, 2], [2, 3], [3, 0]]},
+    'hexa8': {'quad4': [[0, 1, 2, 3], [4, 7, 6, 5], [0, 4, 5, 1], [2, 6, 7, 3], [0, 3, 7, 4], [1, 5, 6, 2]]},
 }

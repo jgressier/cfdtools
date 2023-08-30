@@ -1,10 +1,13 @@
 import cfdtools.data as data
 import numpy as np
-import pytest
+#import pytest
 
 
 # class TestDataSet_import():
 
+#     def __init__(self) -> None:
+#         pass
+    
 #     def uv_dataset(self, n)-> data.DataSet:
 #         t = np.linspace(0., 1., n)
 #         uv = data.DataSet(Trep='timeevol')
@@ -33,3 +36,8 @@ import pytest
 #         sp = uv.dataSet_spectrogram()
 #         assert sp.Trep == 'spectrogram'
 #         assert 'time' in sp.keys()
+
+# class TestDataSetList_import():
+
+#     def __init__(self) -> None:
+#         pass
