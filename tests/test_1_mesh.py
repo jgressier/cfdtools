@@ -1,6 +1,7 @@
 import numpy as np
 import cfdtools.meshbase._mesh as mesh
-import pytest
+import cfdtools.meshbase.simple as simplemesh
+#import pytest
 
 
 def test_meshconnection_translate():
@@ -25,3 +26,12 @@ def test_submeshmark():
     assert mark.nodebased()
     mark.geodim = 'face'
     assert mark.facebased()
+
+
+# def test_unmarked():
+#     cube = simplemesh.Cube(2, 2, 2)
+#     rmesh = cube.export_mesh()
+#     imin_marks = rmesh.pop_mark("imin") # check it exists and pop
+#     assert imin_marks is not None
+#     print(imin_marks)
+#     assert rmesh.make_unmarked_BC(name = "new_faces") # not compatible with node marks

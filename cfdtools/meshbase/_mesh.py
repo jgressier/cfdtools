@@ -7,6 +7,9 @@ import itertools
 import numpy as np
 
 
+_default_domain_name = "fluid"
+
+
 class meshconnection():
     """general mesh connectivity
     """
@@ -221,6 +224,12 @@ class Mesh:
                 self._faces.pop(facetype)
 
     def export_mixedfaces(self):
+        """merge boundary and internal faces in the (returned) same connectivity
+
+        Returns:
+            elem_connectivity: face to node connectivity of all faces
+            indexindirection: face to cell connectivity of all faces
+        """
         mixedfaces_con = _conn.elem_connectivity()
         mixedfaces_con.importfrom_merge(
             (self._faces['boundary']['face2node'], self._faces['internal']['face2node'])
@@ -233,7 +242,6 @@ class Mesh:
             ),
             axis=0,
         )
-        # print('merge', face2cell.conn)
         return mixedfaces_con, face2cell
 
     def add_boco(self, boco: submeshmark):
@@ -285,22 +293,25 @@ class Mesh:
                 self.add_boco(boco)
         else:
             list_missing = []
-            api.io.print(
-                'warning', "can only reindex faces according to boco if separated in 'boundary' list"
-            )
+            api.io.warning("can only reindex faces according to boco if separated in 'boundary' list")
         return list_missing
 
-    def seekmark(self, name: str) -> submeshmark:  # What is this method ??
+    def get_mark(self, name: str) -> submeshmark: 
         """look for diffent marks set to find mark name"""
         # only _bocos for now
-        return self._bocos[name]
+        return self._bocos.get(name, None)
+
+    def pop_mark(self, name: str): 
+        """remove mark name"""
+        # only _bocos for now
+        return self._bocos.pop(name, None)
 
     def exportmark_asmesh(self, name):  # What is this method ??
-        # meshmark = self.seekmark(name)  # Never used. Uncomment if useful...
+        # meshmark = self.get_mark(name)  # Never used. Uncomment if useful...
         newmesh = Mesh()
         return newmesh
 
-    def export_extruded(self, direction=None, extrude=None, domain="fluid"):
+    def export_extruded(self, direction=None, extrude=None, domain=_default_domain_name):
         if direction is None:
             direction = np.array([0.0, 0.0, 1.0])
         if extrude is None:
