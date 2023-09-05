@@ -5,9 +5,9 @@ from cfdtools.meshbase._mesh import _default_domain_name
 
 
 def test_extrude(datadir):
-    input = cgns.cgnsMesh(datadir.joinpath("cavity-degen.hdf"))
-    input.read_data()
-    mesh2d = input.export_mesh()
+    cgnsmesh = cgns.cgnsMesh(datadir.joinpath("cavity-degen.hdf"))
+    cgnsmesh.read_data()
+    mesh2d = cgnsmesh.export_mesh()
     assert mesh2d.check()
     mesh3d = mesh2d.export_extruded(direction=[0.0, 0.0, 1.0], extrude=[0.0, 0.5, 1.0])
     assert mesh3d.check()

@@ -28,6 +28,14 @@ def test_submeshmark():
     assert mark.facebased()
 
 
+def test_perio_translation():
+    cube = simplemesh.Cube(5, 5, 5)
+    rmesh = cube.export_mesh()
+    meshco = rmesh.build_perio(mark1="imin", mark2='imax')
+    assert meshco.transform == 'translate'
+    assert meshco.contype == None
+    assert np.allclose(meshco['translation vector'], [1., 0, 0.])
+
 # def test_unmarked():
 #     cube = simplemesh.Cube(2, 2, 2)
 #     rmesh = cube.export_mesh()
