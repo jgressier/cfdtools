@@ -375,14 +375,14 @@ class reader(binreader):
         sys.stdout.flush()
 
     def _ReadInformativeValues(self):
-        '''
+        """
         Method reading all the values also stored in a restart file,
         i.e. the step number, the time, the timestep.
         input:  handle on an open restart file, [type file identifier]
                 endianness flag [boolean]
         output: simulation state structure containing informations about the current state
                 of the simulation
-        '''
+        """
 
         # Initialize the state dictionary
         self.simulation_state = {"step": 0, "dt": 0, "time": 0, "wgt": {}}
@@ -391,8 +391,8 @@ class reader(binreader):
 
         # removed as not used at the moment
         # h = restartSectionHeader()
-        # if(not readVar(self.fid, self.byte_swap,"UGP_IO_DAT)A")
-        # if (not varfound): exit()
+        # if(not readVar(self.fid, self.byte_swap,"UGP_IO_DATA")
+        # if (not varfound): raise ("UGP_IO_DATA not found")
 
         reset_offset = True
         while True:

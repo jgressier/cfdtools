@@ -357,8 +357,7 @@ class binreader(api._files):
         api.io.print('std', "READER RESTART IC3 - only headers")
 
         if not self.exists():
-            print("Fatal error. File %s cannot be found." % (self.filename))
-            exit()
+            raise FileNotFoundError("Fatal error. File %s cannot be found." % (self.filename))
 
         # Open the file for binary reading
         api.io.print('debug', 'opening ', self.filename)

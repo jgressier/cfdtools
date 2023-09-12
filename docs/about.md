@@ -24,7 +24,13 @@ Development workflow is helpfully made with
 
 ### Code Style
 
-[Black](https://github.com/psf/black) is used to format the code
+[Black](https://github.com/psf/black) is used to format the code.
+
+#### PEP 257 – Docstring Conventions
+
+see [conventions](https://peps.python.org/pep-0257).
+
+The docstrings follow the [numpydoc style](https://numpydoc.readthedocs.io/en/latest/format.html).
 #### f-strings
 
 Use " " for messages and ' ' for keywords.
