@@ -70,9 +70,14 @@ class meshconnection:
         }.get(rottype)
         self._properties['angle'] = angle
 
+    def is_rotation(self):
+        return self.transform in ('rot', 'rotx', 'roty', 'rotz')
+
     def apply(self, nodes: Nodes):
         if self.transform == 'translate':
             nodes += self._properties['translation vector']
+        elif self.is_rotation():
+            nodes.rotate(axis=self['axis'], angle=self['angle'])
         else:
             api.error_stop(f"meshconnection.apply() not yet implemented with {self.transform}")
         return nodes
@@ -406,9 +411,9 @@ class Mesh:
         if connection is None:
             api.io.printstd("  build automatic periodic connection:")
             meshco = meshconnection()
-            meshco.set_translation(node2.center()-node1.center())
+            meshco.set_translation(node2.center-node1.center)
         else:
-            api.io.printstd("  build periodic connection using prescribed:")
+            api.io.printstd(f"  build periodic connection using prescribed: {connection}")
             meshco = connection
         node1 = meshco.apply(node1)
         d, index  = node2.kdtree_query(node1)

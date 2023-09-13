@@ -1,7 +1,7 @@
 import numpy as np
 import cfdtools.meshbase._mesh as mesh
 import cfdtools.meshbase.simple as simplemesh
-#import pytest
+import pytest
 
 
 def test_meshconnection_translate():
@@ -28,13 +28,26 @@ def test_submeshmark():
     assert mark.facebased()
 
 
-def test_perio_translation():
+def test_perio_translation_auto():
     cube = simplemesh.Cube(5, 5, 5)
     rmesh = cube.export_mesh()
     meshco = rmesh.build_perio(mark1="imin", mark2='imax')
     assert meshco.transform == 'translate'
     assert meshco.contype == None
     assert np.allclose(meshco['translation vector'], [1., 0, 0.])
+
+def test_perio_rotation():
+    cube = simplemesh.Cube(5, 5, 5)
+    rmesh = cube.export_mesh()
+    # map y, z to r, theta ; rotation is along x
+    rmesh.morph(lambda x, y, z: (x, (1+y)*np.cos(np.pi/2*z), (1+y)*np.sin(np.pi/2*z)))
+    con = mesh.meshconnection()
+    con.set_rotation('rotx', angle=90.0)
+    meshco = rmesh.build_perio(mark1="kmin", mark2='kmax', connection=con)
+    assert meshco.is_rotation()
+    assert meshco.contype == None
+    assert np.allclose(meshco['axis'], [1., 0, 0.])
+    assert meshco['angle'] == pytest.approx(90.)
 
 # def test_unmarked():
 #     cube = simplemesh.Cube(2, 2, 2)
