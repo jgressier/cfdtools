@@ -46,7 +46,10 @@ order of sections is arbitrary
 - header with number of nodes, faces and cells
 
 ## parameters
-## variables and fieds
+
+may be `TIME`
+
+## variables and fields
 
 Though the format can be read in any order. The current (v2 and v3) order in IC3 code is
 
@@ -57,3 +60,13 @@ Though the format can be read in any order. The current (v2 and v3) order in IC3
   - double float: nodes, faces, and cells
 - tensors
   - double float: cells only
+
+## boundary conditions
+
+## periodic connections
+
+periodic connections are defined as boundary conditions
+
+- periodic_transform: `perio_cart`
+- 16 floats
+- slicing for connected faces

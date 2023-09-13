@@ -1,10 +1,5 @@
 # import pytest
 import cfdtools.meshbase.simple as simplemesh
-from pathlib import Path
-# import filecmp
-
-# _datadir = Path("./tests/data")
-# _builddir = Path("./tests/build")
 
 
 def test_cube_mini():
@@ -19,3 +14,5 @@ def test_cube_large():
     rmesh = cube.export_mesh()
     rmesh.printinfo()
     assert rmesh.check()
+    for mark in ("imin", "imax", "jmin", "jmax"):
+        assert rmesh.get_mark(mark) is not None
