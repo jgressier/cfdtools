@@ -81,10 +81,10 @@ class meshconnection:
         else:
             api.error_stop(f"meshconnection.apply() not yet implemented with {self.transform}")
         return nodes
-    
+
     def __str__(self):
         return f"meshconnection({self.contype}:{self.transform}): {self._properties}"
-    
+
 
 class submeshmark:
     # authorized geomdim type and actual dimension
@@ -220,7 +220,7 @@ class Mesh:
         """generates numpy array of coordinates (index,3)
 
         Args:
-            index (list of int): index for extraction 
+            index (list of int): index for extraction
 
         Returns:
             np.ndarray: extracted coordinates
@@ -315,7 +315,7 @@ class Mesh:
     def list_boco_index(self):
         """concatenate all index of boco (without checking consistency)"""
         return list(itertools.chain(*[boco.index.list() for boco in self._bocos.values()]))
-    
+
     def make_unmarked_BC(self, name="unmarked_faces"):
         """check all boundaring faces are marked and create a specific boco if not"""
         if 'boundary' in self._faces.keys():
@@ -399,7 +399,9 @@ class Mesh:
         newmesh.add_boco(newboco)
         return newmesh
 
-    def build_perio(self, mark1: str, mark2: str, connection: meshconnection=None, tol=1.e-10) -> meshconnection:
+    def build_perio(
+        self, mark1: str, mark2: str, connection: meshconnection = None, tol=1.0e-10
+    ) -> meshconnection:
         boco1 = self.get_mark(mark1)
         boco2 = self.get_mark(mark2)
         if (boco1 is None) or (boco2 is None):
@@ -411,12 +413,12 @@ class Mesh:
         if connection is None:
             api.io.printstd("  build automatic periodic connection:")
             meshco = meshconnection()
-            meshco.set_translation(node2.center-node1.center)
+            meshco.set_translation(node2.center - node1.center)
         else:
             api.io.printstd(f"  build periodic connection using prescribed: {connection}")
             meshco = connection
         node1 = meshco.apply(node1)
-        d, index  = node2.kdtree_query(node1)
+        d, index = node2.kdtree_query(node1)
         api.io.printstd("  computed distance is (min:avg:max) {:.3f} : {:.3f} : {:.3f}".format(*minavgmax(d)))
         if np.max(d) > tol:
             api.error_stop(f"periodic connection does not match tolerance ({tol})")
