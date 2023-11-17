@@ -479,6 +479,7 @@ class reader(binreader):
             if h.idata[0] == no_count:
                 s = BinaryRead(self.fid, "%d" % no_count + typechar, self.byte_swap, typesize * no_count)
                 scalar = self.variables["nodes"][h.name] = np.asarray(s).astype(nptype)
+                self.nodedata.add_data(h.name, scalar)
             elif h.idata[0] == fa_count:
                 s = BinaryRead(self.fid, "%d" % fa_count + typechar, self.byte_swap, typesize * fa_count)
                 scalar = self.variables["faces"][h.name] = np.asarray(s).astype(nptype)
