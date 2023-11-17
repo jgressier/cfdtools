@@ -1,6 +1,9 @@
-from cfdtools import __version__
-from cfdtools.api import io, _files, error_stop
+import logging
+
 import numpy as np
+
+from cfdtools import __version__
+from cfdtools.api import _files, error_stop
 
 try:
     import h5py
@@ -11,6 +14,8 @@ except ImportError:  # pragma: no cover
     import_h5py = False
 
 _available_types = ('external', 'dataset', 'datalist', 'probes', 'cfdmesh')
+
+log = logging.getLogger(__name__)
 
 
 def h5_str(obj):
@@ -76,13 +81,13 @@ class h5File(_files):
         super().printinfo()
         if self._openedmode:
             if self._h5ver:
-                io.printstd(f"         hdf5 version: {h5_str(self._h5ver)}")
+                log.info(f"         hdf5 version: {h5_str(self._h5ver)}")
             if self._cfdtools_version:
-                io.printstd(f"     cfdtools version: {self._cfdtools_version}")
+                log.info(f"     cfdtools version: {self._cfdtools_version}")
             if self._datatype:
-                io.printstd(f"        cfdtools type: {self._datatype}")
+                log.info(f"        cfdtools type: {self._datatype}")
             if self._version:
-                io.printstd(f"cfdtools data version: {self._version}")
+                log.info(f"cfdtools data version: {self._version}")
 
 
 # if __name__ == "__main__":

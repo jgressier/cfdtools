@@ -1,5 +1,8 @@
 import argparse
+import logging
 from pathlib import Path
+
+import numpy as np
 
 # Command-Line Interface
 
@@ -15,7 +18,8 @@ import cfdtools.vtk as vtk
 import cfdtools.meshbase.simple as simplemesh
 import cfdtools.probes.plot as probeplot
 import cfdtools.probes.data as probedata
-import numpy as np
+
+log = logging.getLogger(__name__)
 
 # To add a command line tool, just add the function pyproject.toml in section
 # [project.scripts]
@@ -39,7 +43,7 @@ def cli_header(prefix=None, altfname=None):
             if prefix is not None:
                 fname = prefix + fname
             func.__globals__['__fname__'] = fname  # need noqa: F821 for flake8 if using __fname__
-            api.io.printstd(f"CFDTOOLS - {fname}")
+            log.info(f"CFDTOOLS - {fname}")
             return func(*args, **kwargs)
 
         return decorator
@@ -128,7 +132,6 @@ def info(argv=None):
     Args:
         argv (_type_, optional): _description_. Defaults to None.
     """
-    # api.io.set_modes(api.io._available)
     parser = cli_argparser(prog=__fname__)  # noqa: F821
     parser.addarg_filenameformat()
     parser.parse_cli_args(argv)
@@ -173,15 +176,15 @@ def vtkpack(argv=None):
     parser.addarg_filelist()
     parser.parse_cli_args(argv)
     #
-    api.io.printstd(f"> number of files: {len(parser.args().filelist)}")
+    log.info(f"> number of files: {len(parser.args().filelist)}")
     vtklist = vtk.vtkList(parser.args().filelist, verbose=True)
     if vtklist.allexist():
-        api.io.printstd("  all files exist")
+        log.info("  all files exist")
     else:
         api.error_stop("some files are missing")
     vtklist.read()
     outfilename = vtklist.dumphdf("dumped.h5")
-    api.io.printstd(f"> mesh and data dumped to {outfilename}")
+    log.info(f"> mesh and data dumped to {outfilename}")
     return outfilename  # needed for pytest
 
 
@@ -194,22 +197,22 @@ def write_generic(argv, ext, writer, fname=None):
     parser.parse_filenameformat()
     #
     file = api._files(parser.args().filename)
-    api.io.printstd(f"> read mesh file {file.filename}")
+    log.info(f"> read mesh file {file.filename}")
     timer = api.Timer()
     timer.start()
     r = parser._reader(file.filename)
     r.read_data()
     ncell = r.ncell
     timer.stop(nelem=ncell)
-    api.io.printstd("> export mesh ")
+    log.info("> export mesh ")
     cfdmesh = r.export_mesh()
     #
     if parser.args().remove_cell_data:
         for var in parser.args().remove_cell_data:
             if cfdmesh.pop_celldata(var) is None:
-                api.io.printstd(f"  cannot find cell data {var}")
+                log.info(f"  cannot find cell data {var}")
             else:
-                api.io.printstd(f"  pop cell data {var}")
+                log.info(f"  pop cell data {var}")
     #
     if parser.args().outpath is None:
         file.remove_dir()
@@ -217,11 +220,11 @@ def write_generic(argv, ext, writer, fname=None):
         file.change_dir(parser.args().outpath)
     file.change_suffix(ext)
     if file.find_safe_newfile() > 0:
-        api.io.printstd("change output to safe new name " + file.filename)
+        log.info("change output to safe new name " + file.filename)
     if parser.args().extrude:
         timer.start()
         nz = parser.args().extrude
-        api.io.printstd(f"> extrusion along nz={nz} cells, {nz*ncell} total cells")
+        log.info(f"> extrusion along nz={nz} cells, {nz*ncell} total cells")
         cfdmesh = cfdmesh.export_extruded(extrude=np.linspace(0.0, 1.0, nz + 1, endpoint=True))
         timer.stop(nelem=nz * ncell)
     if parser.args().scale:
@@ -230,7 +233,7 @@ def write_generic(argv, ext, writer, fname=None):
         cfdmesh.printinfo()
     output = writer(cfdmesh)
     output.write_data(file.filename)
-    api.io.printstd(f"file {file.filename} written")
+    log.info(f"file {file.filename} written")
     return file.filename  # filename needed for pytest (for eventual rm)
 
 
@@ -256,7 +259,6 @@ def writecube(argv=None):
     Args:
         argv (_type_, optional): _description_. Defaults to None.
     """
-    # api.io.set_modes(api.io._available)
     parser = cli_argparser(prog=__fname__)  # noqa: F821
     parser.addarg_filenameformat()
     parser.add_argument(
@@ -287,7 +289,7 @@ def writecube(argv=None):
     parser.parse_filenameformat()
     nx, ny, nz = parser.args().nx, parser.args().ny, parser.args().nz
     #
-    api.io.printstd(f"> create Cube {nx}x{ny}x{nz}")
+    log.info(f"> create Cube {nx}x{ny}x{nz}")
     cube = simplemesh.Cube(nx, ny, nz)
     mesh = cube.export_mesh()
     #
@@ -364,12 +366,12 @@ def ic3probe_plotline(argv=None):
     # check files and read data
     data = probedata.phydata(basename, verbose=parser.args().verbose)
 
-    api.io.printstd(f"> read data in {basename}")
+    log.info(f"> read data in {basename}")
     for ivar in expected_data:
         data.check_data(ivar, prefix=basename)
 
     # --- read all expected data ---
-    api.io.printstd(f"> processing {parser.args().map} map of {var}")
+    log.info(f"> processing {parser.args().map} map of {var}")
     run_plot = {
         "time": probeplot.plot_timemap,
         "freq": probeplot.plot_freqmap,

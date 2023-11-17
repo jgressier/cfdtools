@@ -1,4 +1,5 @@
 # cgns.py
+import logging
 from pathlib import Path
 
 try:
@@ -8,11 +9,13 @@ except ImportError:
 
     cache = lru_cache(maxsize=None)
     del lru_cache
-from cfdtools.api import io, error_stop, fileformat_reader  # , memoize
+from cfdtools.api import error_stop, fileformat_reader  # , memoize
 from cfdtools.hdf5 import h5File, h5_str
 from cfdtools.meshbase._mesh import Mesh, submeshmark
 import cfdtools.meshbase._connectivity as _conn
 import cfdtools.meshbase._elements as _elem
+
+log = logging.getLogger(__name__)
 
 cgtype = {}
 ele_cgns2local = {2: 'node1', 3: 'bar2', 5: 'tri3', 7: 'quad4', 17: 'hexa8'}
@@ -152,7 +155,7 @@ class cgnsMesh:
         return self._ncell
 
     def read_data(self, zone=None):
-        io.printstd(f"> CGNS reader: starts reading {self._filename}")
+        log.info(f"> CGNS reader: starts reading {self._filename}")
         # Check file exists
         if not Path(self._filename).exists():
             error_stop(f"File not found: {self._filename!r}")
@@ -176,18 +179,18 @@ class cgnsMesh:
     def printinfo(self):
         # super().printinfo()
         self._file.printinfo()
-        io.printstd('CGNS version:', self._file._cgnsver)
-        io.printstd('bases:', self._bases)
-        io.printstd('zones:', list(self._zones.keys()))
-        for zn, _ in self._zones.items():
-            io.printstd(f"  Zone {zn}")
+        log.info(f"CGNS version: {self._file._cgnsver}")
+        log.info(f"bases: {self._bases}")
+        log.info(f"zones: {list(self._zones.keys())}")
+        for zn in self._zones.keys():
+            log.info(f"  Zone {zn}")
             # for bcn, bc in
 
     def export_mesh(self):
-        # io.printstd(f"> export mesh ") # printed by parent
+        # log.info(f"> export mesh ") # printed by parent
         cgzone = self._zone
-        io.printstd(
-            f"Parse zone {self._zonename} ({self._geodim}D) ncell: {cgzone.ncell}, nnode: {cgzone.nnode}",
+        log.info(
+            f"Parse zone {self._zonename} ({self._geodim}D) ncell: {cgzone.ncell}, nnode: {cgzone.nnode}"
         )
         meshdata = Mesh(ncell=cgzone.ncell, nnode=cgzone.nnode)
         # get coordinates
@@ -199,9 +202,9 @@ class cgnsMesh:
             boco = cgzone.export_BC(bc)
             # filter full domain
             if boco.type in ['internal']:
-                io.printstd(f"  filter internal mark {boco.name}")
+                log.info(f"  filter internal mark {boco.name}")
             else:
-                io.printstd(f"  add boco {boco}")
+                log.info(f"  add boco {boco}")
                 meshdata.add_boco(boco)
         # meshdata.check()
         # meshdata.printinfo()

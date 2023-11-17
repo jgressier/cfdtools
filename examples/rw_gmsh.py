@@ -1,14 +1,15 @@
+import logging
+
 import cfdtools._cli as cli
 
 import cfdtools.gmsh as gmsh
 import cfdtools.ic3.writerV3 as ic3writer
 import cfdtools.api as api
 
+log = logging.getLogger(__name__)
+
 _datadir = "./tests/data/"
 _builddir = "./tests/build/"
-
-api.io.set_modes(api.io._available)  # all outputs
-api.io.set_modes(api.io._available.remove("debug"))  # all outputs but debug
 
 filename = "box3d-v41.msh"  # 4.1
 filename = "box2x2.msh"  # 4.1
@@ -23,13 +24,13 @@ reader = gmsh.reader(_datadir + filename)
 reader.read_data()
 rmesh = reader.export_mesh()
 # reader.printinfo()
-# api.io.print('std','PRINT INFO')
+# log.info('PRINT INFO')
 rmesh.check()
 rmesh.printinfo()
-api.io.print('std', 'CHECK')
+log.info('CHECK')
 rmesh.check()
 
-api.io.print('std', 'EXPORT TO IC3')
+log.info('EXPORT TO IC3')
 ic3write = ic3writer.writer(rmesh)
 outfile = api._files(_builddir + filename)
 outfile.change_suffix('.ic3')
