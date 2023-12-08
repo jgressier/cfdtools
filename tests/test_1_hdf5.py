@@ -5,8 +5,26 @@ import numpy as np
 import pytest
 
 import cfdtools.cgns as cgns
+import cfdtools.ic3.readerV4 as ic3reader
 import cfdtools.ic3.writerV4 as ic3writer
 import cfdtools.data as _data
+
+
+def create_data(datadir: pathlib.Path, builddir: pathlib.Path, filename: str):
+    """Create data for tests."""
+    cgmesh = cgns.cgnsMesh(datadir / filename)
+    cgmesh.read_data()
+    rmesh = cgmesh.export_mesh()
+
+    celldata = _data.DataSet('cellaverage')
+    celldata.add_data('RHO', np.ones(rmesh.ncell))
+    celldata.add_data('RHOU', np.empty((3 * rmesh.ncell)).reshape(-1, 3))
+    celldata.add_data('RHOE', 5 * np.ones(rmesh.ncell))
+    celldata.add_data('H_AVG', np.ones(rmesh.ncell))
+    rmesh.set_celldata(celldata)
+    assert rmesh.check()
+
+    return rmesh
 
 
 @pytest.mark.parametrize(
@@ -17,21 +35,12 @@ import cfdtools.data as _data
     ],
 )
 def test_convert_ic3(datadir: pathlib.Path, builddir: pathlib.Path, filename: str):
-    cgmesh = cgns.cgnsMesh(datadir / filename)
-    cgmesh.read_data()
-    rmesh = cgmesh.export_mesh()
+    rmesh = create_data(datadir, builddir, filename)
 
-    celldata = _data.DataSet('cellaverage')
-    celldata.add_data('RHO', np.ones(rmesh.ncell))
-    celldata.add_data('RHOU', np.empty((3 * rmesh.ncell)).reshape(-1, 3))
-    celldata.add_data('RHOE', 5 * np.ones(rmesh.ncell))
-    rmesh.set_celldata(celldata)
-    assert rmesh.check()
-
-    ic3write = ic3writer.writer(rmesh)
     outmesh = builddir / filename
     outmesh = outmesh.with_suffix('.h5')
     outsol = pathlib.Path(str(outmesh.with_suffix('')) + '_solution.h5')
+    ic3write = ic3writer.writer(rmesh)
     ic3write.write_data(str(outmesh), str(outsol))
 
     with h5py.File(outmesh, 'r') as fid:
@@ -51,6 +60,32 @@ def test_convert_ic3(datadir: pathlib.Path, builddir: pathlib.Path, filename: st
         assert fid['rho'].shape[0] == 16
         assert fid['rhou'].shape[0] == 48
         assert all(fid['rhoe'][()] == [5.0] * 16)
+
+    outmesh.unlink()
+    outsol.unlink()
+
+
+@pytest.mark.parametrize(
+    'filename',
+    [
+        'cavity-degen.hdf',
+        'cavity-degen-facebc.hdf',
+    ],
+)
+def test_read_ic3v4_mesh(datadir: pathlib.Path, builddir: pathlib.Path, filename: str):
+    rmesh = create_data(datadir, builddir, filename)
+
+    outmesh = builddir / filename
+    outmesh = outmesh.with_suffix('.h5')
+    outsol = pathlib.Path(str(outmesh.with_suffix('')) + '_solution.h5')
+    ic3write = ic3writer.writer(rmesh)
+    ic3write.write_data(str(outmesh), str(outsol))
+
+    ic3read = ic3reader.reader(str(outmesh), str(outsol))
+    ic3read.read_data()
+    ic3read.printinfo()
+    rmesh = ic3read.export_mesh()
+    assert rmesh.check()
 
     outmesh.unlink()
     outsol.unlink()
