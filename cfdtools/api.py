@@ -1,10 +1,14 @@
-from functools import wraps
 from collections import namedtuple
+from functools import wraps
+import logging
 from pathlib import Path
-import numpy as np
 import time
 
+import numpy as np
+
 _fileformat_map = {}
+
+log = logging.getLogger(__name__)
 
 
 def fileformat_reader(name, extension):
@@ -56,74 +60,7 @@ def _printreadable(string, value):
         print(string + ': ' + str(type(value)))
 
 
-class api_output:
-    """class to handle library outputs"""
-
-    _contd = False
-    _prefix = {
-        'internal': 'int:',
-        'error': 'ERROR:',
-        'warning': 'WARNING:',
-        'std': '',
-        'debug': 'debug:',
-    }
-    _available = list(_prefix.keys())
-    _default = ['internal', 'error', 'warning', 'std']
-
-    def __init__(self, iolist=None):
-        self._api_output = []
-        if iolist is None:
-            self.set_default()
-        else:
-            self.set_modes(iolist)
-
-    def set_modes(self, modes):
-        modelist = modes if type(modes) is list else [modes]
-        check = all([mode in self._available for mode in modelist])
-        if check:
-            self._api_output = modelist
-        else:
-            self.print('internal', 'some output modes are unknown')
-        return check
-
-    def get_modes(self):
-        return self._api_output
-
-    def set_default(self):
-        self.set_modes(self._default)
-
-    def print(self, mode, *args, **kwargs):
-        if self._contd:
-            # if timed, pass the line to be continued...
-            print()
-            # ...and tell the timer stop printer
-            self._contd = False
-        if mode in self._api_output:
-            prefix = self._prefix[mode]
-            if len(prefix) == 0:
-                # avoid leading space if prefix is empty
-                print(*args, **kwargs)
-            else:
-                spcpfx = (len(prefix) + 1) * ' '
-                # add space-replaced prefix for additional lines
-                print(prefix, *([s.replace('\n', '\n' + spcpfx) for s in args]), **kwargs)
-
-    def printstd(self, *args, **kwargs):
-        self.print('std', *args, **kwargs)
-
-    def printdebug(self, *args, **kwargs):
-        self.print('debug', *args, **kwargs)
-
-    def warning(self, *args, **kwargs):
-        self.print('warning', *args, **kwargs)
-
-
-io = api_output()
-# print(io.get_modes())
-
-
 def error_stop(msg):
-    # io.print('error', msg)
     raise RuntimeError(msg)
 
 
@@ -219,18 +156,16 @@ class Timer:  # from https://realpython.com/python-timer/
             self._nelem = nelem
         self.pause()
         normalized_time_ms = 0.0 if self._nelem is None else 1e6 * self._elapsed / self._nelem
-        if io._contd:
-            # There was no print, line can be continued
-            io._contd = False
-        else:
-            # There was a print, line is restarted
-            self._ncol = 0
+
+        # There was a print, line is restarted
+        self._ncol = 0
+
         nspc = (self._ltab - self._ncol) * ' '
-        io.printstd(nspc + f"wtime: {self._elapsed:0.4f}s", end='')
+        log.info(nspc + f"wtime: {self._elapsed:0.4f}s")
         if self._nelem is None:
-            io.printstd("")
+            log.info("")
         else:
-            io.printstd(
+            log.info(
                 f" | {normalized_time_ms:0.4f}µs/elem",
             )
         # reset
@@ -238,16 +173,15 @@ class Timer:  # from https://realpython.com/python-timer/
 
     def __enter__(self):
         # Print line to be continued
-        io.printstd(self._task, end='')
+        log.info(self._task)
         self._ncol = len(self._task)
         # If line is too long...
         if self._ncol >= self._ltab:
             self._ncol = 0
             # ...then line is restarted...
-            io.printstd('')
+            log.info('')
         # ...else line is continued
-        else:
-            io._contd = True
+
         self.start()
 
     def __exit__(self, *exitoptions):

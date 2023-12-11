@@ -1,9 +1,14 @@
+import logging
+
 import numpy as np
 import numpy.fft as fftm
 import matplotlib.pyplot as plt
+
 import cfdtools.api as api
 import cfdtools.hdf5 as hdf5
 import cfdtools.meshbase as meshbase
+
+log = logging.getLogger(__name__)
 
 
 class DataSetBase:
@@ -111,7 +116,7 @@ class DataSet(DataSetBase):
     def dataSet_spectrum(self, datafilter=None, imin=None, imax=None):
         dtavg, dtdev, n = self.dtstats(imin, imax)  # check 'timeevol'
         if dtdev / dtavg > 1.0e-6:
-            api.io.warning(f"dt standard deviation is significant: {dtdev / dtavg}")
+            log.warning(f"dt standard deviation is significant: {dtdev / dtavg}")
         f = fftm.fftfreq(n, dtavg)
         newdataset = DataSet(self.Xrep, self.ndof, Trep='spectrum')
         newdataset.add_data('freq', f)
@@ -127,7 +132,7 @@ class DataSet(DataSetBase):
         datalist.remove('time')
         dtavg, dtdev, ntot = self.dtstats()  # check 'timeevol'
         if dtdev / dtavg > 1.0e-6:
-            api.io.warning(f"dt standard deviation is significant: {100*dtdev / dtavg:.4f}%")
+            log.warning(f"dt standard deviation is significant: {100*dtdev / dtavg:.4f}%")
         newdataset = DataSet(self.Xrep, self.ndof, Trep='spectrogram')
         nwind = window if window else int(ntot / 100)
         hwin = int(nwind / 2)
@@ -175,7 +180,7 @@ class DataSetList(DataSetBase):
         datalist.remove('time')
         dtavg, dtdev, ntot = self.dtstats()  # check 'timeevol'
         if dtdev / dtavg > 1.0e-6:
-            api.io.warning(f"dt standard deviation is significant: {100*dtdev / dtavg:.4f}%")
+            log.warning(f"dt standard deviation is significant: {100*dtdev / dtavg:.4f}%")
         newdataset = DataSet(self.Xrep, self.ndof, Trep='spectrogram')
         return newdataset
 

@@ -1,4 +1,6 @@
 # Import modules
+import logging
+
 # import numpy as np
 import cfdtools.api as api
 
@@ -10,6 +12,8 @@ from cfdtools.ic3._ic3 import (
     restartSectionHeader,
 )
 from cfdtools.ic3 import writerV2
+
+log = logging.getLogger(__name__)
 
 ###################################################################################################
 
@@ -61,7 +65,7 @@ class writer(writerV2.writer):
             # Scalar
             if nddata.size == nddata.shape[0]:
                 # Header
-                api.io.printstd(f"  write node scalar data {ndname}")
+                log.info(f"  write node scalar data {ndname}")
                 header = restartSectionHeader()
                 header.name = ndname
                 header.id = {
@@ -83,7 +87,7 @@ class writer(writerV2.writer):
         for ndname, nddata in self.vars["nodes"].items():
             # Vector
             if len(nddata.shape) == 2:
-                api.io.printstd(f"  write node vector data {ndname}")
+                log.info(f"  write node vector data {ndname}")
                 # Header
                 header = restartSectionHeader()
                 header.name = ndname
@@ -116,7 +120,7 @@ class writer(writerV2.writer):
             # Scalar
             if cvdata.size == cvdata.shape[0]:
                 # Header
-                api.io.printstd(f"  write cell scalar data {cvname}")
+                log.info(f"  write cell scalar data {cvname}")
                 header = restartSectionHeader()
                 header.name = cvname
                 header.id = {
@@ -140,7 +144,7 @@ class writer(writerV2.writer):
             # Vector
             if len(cvdata.shape) == 2:
                 # Header
-                api.io.printstd(f"  write cell vector data {cvname}")
+                log.info(f"  write cell vector data {cvname}")
                 header = restartSectionHeader()
                 header.name = cvname
                 header.id = ic3_restart_codes["UGP_IO_CV_D3"]
@@ -161,7 +165,7 @@ class writer(writerV2.writer):
             # Tensor
             if len(cvdata.shape) == 3:
                 # Header
-                api.io.printstd(f"  write cell tensor data {cvname}")
+                log.info(f"  write cell tensor data {cvname}")
                 header = restartSectionHeader()
                 header.name = cvname
                 header.id = ic3_restart_codes["UGP_IO_CV_D33"]

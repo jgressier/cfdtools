@@ -1,22 +1,25 @@
+import logging
+
 import matplotlib.pyplot as plt
-import cfdtools.api as api
-import cfdtools.plot as cfdplt
-from cfdtools.utils.maths import minavgmax
 import numpy as np
 import numpy.fft as fftm
+
+import cfdtools.plot as cfdplt
+from cfdtools.utils.maths import minavgmax
+
+log = logging.getLogger(__name__)
 
 
 def check_axis(axisdata):
     if axisdata.ndim > 1:
         axis = np.mean(axisdata, axis=0)
         # print(axis.shape)
-        err = np.mean(axisdata ** 2, axis=0) - axis ** 2
-        api.io.print('std', f"min:avg:max change of several axis {err.shape}:", *minavgmax(err))
-        api.io.print(
-            'warning',
+        err = np.mean(axisdata**2, axis=0) - axis**2
+        log.info(f"min:avg:max change of several axis {err.shape}: {list(*minavgmax(err))}")
+        log.warning(
             "several lines for axis: they are merged (average change is {:.2e})".format(
                 np.sqrt(np.mean(np.abs(err)))
-            ),
+            )
         )
     else:
         axis = axisdata
@@ -40,9 +43,8 @@ def plot_timemap(data, **kwargs):
     plt.ylabel("time", fontsize=10)
     colmap = cfdplt.normalizeCmap(cmap, nlevels)
     if kwargs['verbose']:
-        api.io.print(
-            'std',
-            "- fields sizes are (axis, time, data)",
+        log.info(
+            "- fields sizes are (axis, time, data) %r %r %r",
             data.alldata[axis].shape,
             data.alldata["time"].shape,
             data.alldata[var].shape,
@@ -53,7 +55,7 @@ def plot_timemap(data, **kwargs):
     # plt.minorticks_on()
     # plt.grid(which='major', linestyle='-', alpha=0.8)
     # plt.grid(which='minor', linestyle=':', alpha=0.5)
-    api.io.print('std', "> saving figure " + figname)
+    log.info("> saving figure " + figname)
     fig.savefig(figname, bbox_inches="tight")
     fig.clf()
 
@@ -66,10 +68,10 @@ def plot_freqmap(data, **kwargs):
     figname = basename + "." + var + ".freq.png"
     t = data.alldata["time"]
     dtmin, dtavg, dtmax = minavgmax(t[1:] - t[:-1])
-    api.io.print('std', "- dt min:avg:max = {:.3f}:{:.3f}:{:.3f}".format(dtmin, dtavg, dtmax))
+    log.info("- dt min:avg:max = {:.3f}:{:.3f}:{:.3f}".format(dtmin, dtavg, dtmax))
     if kwargs['check']:
-        api.io.print('std', "    t min:max = {:.3f}:{:.3f}".format(t.min(), t.max()))
-        api.io.print('std', "    dt < 0    = ", np.where(t[1:] - t[:-1] < 0.0))
+        log.info("    t min:max = {:.3f}:{:.3f}".format(t.min(), t.max()))
+        log.info("    dt < 0    = %r", np.where(t[1:] - t[:-1] < 0.0))
     # fig.suptitle('', fontsize=12, y=0.93)
     # labels = []
     # plt.plot(x[0], qdata[0])
@@ -83,7 +85,7 @@ def plot_freqmap(data, **kwargs):
     f = fftm.fftfreq(n, dtavg)
     psdmap = np.abs(fftm.fft(data.alldata[var] - np.average(data.alldata[var]), axis=0))
     if kwargs['verbose']:
-        api.io.print('std', data.alldata[var].shape, n, psdmap.shape, f.shape)
+        log.info(data.alldata[var].shape, n, psdmap.shape, f.shape)
     colmap = cfdplt.normalizeCmap(cmap, nlevels)
     axis = check_axis(data.alldata[axis])
     plt.contourf(
@@ -97,6 +99,6 @@ def plot_freqmap(data, **kwargs):
     # plt.minorticks_on()
     # plt.grid(which='major', linestyle='-', alpha=0.8)
     # plt.grid(which='minor', linestyle=':', alpha=0.5)
-    api.io.print('std', "> saving figure " + figname)
+    log.info("> saving figure " + figname)
     fig.savefig(figname, bbox_inches="tight")
     fig.clf()

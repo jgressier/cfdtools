@@ -1,7 +1,10 @@
+import logging
 import os
 from shutil import Error
+
 import numpy as np
-import cfdtools.api as api
+
+log = logging.getLogger(__name__)
 
 # options definition
 
@@ -64,7 +67,7 @@ class phydata:
 
     def check_data(self, varname, prefix=""):
         if self.verbose:
-            api.io.printstd("- request " + varname)
+            log.info("- request " + varname)
         success = varname in self.alldata
         if not success:
             # try to directly read data
@@ -74,13 +77,12 @@ class phydata:
                 success = np.all([self.check_data(depvar) for depvar in self.dependency_vars[varname]])
             if success:
                 if self.verbose:
-                    api.io.printstd("- compute " + varname)
+                    log.info("- compute " + varname)
                 self.compute_varname[varname]()
             else:
                 raise NameError(varname + " missing or unable to compute")
         if success:
-            api.io.print(
-                'std',
+            log.info(
                 "- "
                 + varname
                 + " min:avg:max = {:.3f} : {:.3f} : {:.3f}".format(*minavgmax(self.alldata[varname])),
@@ -91,7 +93,7 @@ class phydata:
         fname = prefix + "." + varname
         if os.path.exists(fname):
             if self.verbose:
-                api.io.printstd("- read " + varname + " in " + fname)
+                log.info("- read " + varname + " in " + fname)
             rdata = np.genfromtxt(fname, delimiter=" ")
             if rdata.ndim == 1:  # supposed to be coordinate
                 # extract only coordinate (remove time and it)
@@ -102,7 +104,7 @@ class phydata:
                 if "time" not in self.alldata:
                     # if time missing, get it from current data, no consistency test with other data
                     if self.verbose:
-                        api.io.printstd(" . define 'time'")
+                        log.info(" . define 'time'")
                     self.alldata["time"] = rdata[:, 1]
             else:
                 raise Error("unexpected data size " + varname)

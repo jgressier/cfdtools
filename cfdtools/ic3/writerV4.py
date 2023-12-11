@@ -9,6 +9,7 @@ Todo:
 
 """
 # Standard library imports
+import logging
 
 # Third party imports
 import h5py
@@ -20,6 +21,8 @@ import cfdtools.meshbase._mesh as _mesh
 
 from cfdtools.ic3._ic3 import type2zonekind
 from cfdtools.ic3 import writerV2
+
+log = logging.getLogger(__name__)
 
 
 @api.fileformat_writer('IC3V4', '.h5')
@@ -34,46 +37,46 @@ class writer(writerV2.writer):
 
     def write_data(self, mesh_filename: str, solution_filename: str = None):
         """Write the ic3 restart file in the HDF5 format."""
-        api.io.printstd(f"> Writing file {mesh_filename!r}")
+        log.info(f"> Writing file {mesh_filename!r}")
         # Open the mesh file
         with h5py.File(mesh_filename, "w") as fid:
-            api.io.printstd("> Writing mesh attributes")
+            log.info("> Writing mesh attributes")
             self._write_root_attributes(fid)
 
-            api.io.printstd("> Writing coordinates")
+            log.info("> Writing coordinates")
             self._write_coordinates(fid)
 
-            api.io.printstd("> Writing connectivities")
+            log.info("> Writing connectivities")
             self._write_connectivities(fid)
 
-            api.io.printstd("> Writing boundaries")
+            log.info("> Writing boundaries")
             self._write_boundaries(fid)
 
-            api.io.printstd("> Writing informative values")
+            log.info("> Writing informative values")
             self._write_mesh_parameters()
 
             # Not needed up to now
-            # api.io.printstd("> Writing variables")
+            # log.info("> Writing variables")
             # self._write_mesh_vars(fid)
 
-            api.io.printstd("> End of Mesh File")
+            log.info("> End of Mesh File")
 
         if solution_filename is None:
             return
 
         # Open the solution file
-        api.io.printstd(f"> Writing file {solution_filename!r}")
+        log.info(f"> Writing file {solution_filename!r}")
         with h5py.File(solution_filename, "w") as fid:
-            api.io.printstd("> Writing solution attributes")
+            log.info("> Writing solution attributes")
             self._write_root_solution_attributes(fid)
 
-            api.io.printstd("> Writing variables")
+            log.info("> Writing variables")
             self._write_solution_vars(fid)
 
-            api.io.printstd("> Writing statistics")
+            log.info("> Writing statistics")
             self._write_solution_stats(fid)
 
-            api.io.printstd("> End of Solution File")
+            log.info("> End of Solution File")
 
     def _write_root_attributes(self, fid: h5py.File):
         """Write the root attributes of a mesh file."""
@@ -88,33 +91,33 @@ class writer(writerV2.writer):
                 "cv_count": self._mesh.ncell,
             }
         )
-        api.io.printdebug("  " + ', '.join(f'{key}:{value}' for key, value in fid.attrs.items()))
+        log.debug("  " + ', '.join(f'{key}:{value}' for key, value in fid.attrs.items()))
 
     def _write_coordinates(self, fid: h5py.File):
         """Write the coordinates of a mesh file."""
         coordinates = self._mesh.nodescoord(ndarray=True)
-        api.io.printdebug('  Coordinates (IC3 UGP_IO_X_NO)')
+        log.debug('  Coordinates (IC3 UGP_IO_X_NO)')
         fid.create_dataset("coordinates", data=coordinates.ravel())
         fid["coordinates"].attrs['system'] = 'cartesian'
 
     def _write_connectivities(self, fid: h5py.File):
         """Write the connectivities of a mesh file."""
-        api.io.printdebug('  Group Connectivities')
+        log.debug('  Group Connectivities')
         conn_group = fid.create_group("/Connectivities")
 
         if self._mesh._cell2node is not None:
-            api.io.printdebug('  Element-Node Connectivity')
+            log.debug('  Element-Node Connectivity')
             cell_group = conn_group.create_group("Cell")
             for ctype, cellco in dict(self._mesh._cell2node).items():
                 cell_group.create_dataset(ctype, data=cellco)
 
-        api.io.printdebug('  Face-Node Connectivity')
+        log.debug('  Face-Node Connectivity')
         face_group = conn_group.create_group("Face")
-        api.io.printdebug('  Face-Element Connectivity (CGNS ParentElements, IC3 CVOFA)')
+        log.debug('  Face-Element Connectivity (CGNS ParentElements, IC3 CVOFA)')
         face_group.create_dataset('cvofa', data=self.f2e.ravel().tolist(), dtype='i4')
         face_group["cvofa"].attrs['synonyms'] = 'CGNS NFACE_n ParentElements'
 
-        api.io.printdebug('  Face-Node Connectivity (CGNS NGON_n, IC3 NOOFA_I_AND_V)')
+        log.debug('  Face-Node Connectivity (CGNS NGON_n, IC3 NOOFA_I_AND_V)')
         # Node count per face
         # ElementStartOffset to be computed?
         face_group.create_dataset('noofa_i', data=self.f2v["noofa"], dtype='i4')
@@ -127,7 +130,7 @@ class writer(writerV2.writer):
     def _write_boundaries(self, fid: h5py.File):
         """Write the boundaries of a mesh file."""
         # Face zones, a.k.a boundary condition patches
-        api.io.printdebug("  Markers of faces / Face zones / boundary condition patches")
+        log.debug("  Markers of faces / Face zones / boundary condition patches")
         bnd_group = fid.create_group("Boundaries")
         last_boco = 0
         labels = []
@@ -144,7 +147,7 @@ class writer(writerV2.writer):
             ifmin, ifmax = boco.index.range()
             min_range.append(ifmin)
             max_range.append(ifmax)
-            api.io.printdebug(f"  - ({boco.type}) {boco.name}: {ifmin}-{ifmax}")
+            log.debug(f"  - ({boco.type}) {boco.name}: {ifmin}-{ifmax}")
             kinds.append(type2zonekind[boco.type])
 
             last_boco = max(last_boco, ifmax)
@@ -161,7 +164,7 @@ class writer(writerV2.writer):
         labels.append('internal-domain')
         kinds.append(type2zonekind['internal'])
         ifmin, ifmax = last_boco + 1, self.params['fa_count']
-        api.io.printdebug(f"   - additional mark (FA_ZONE) for internal faces: {ifmin}-{ifmax}")
+        log.debug(f"   - additional mark (FA_ZONE) for internal faces: {ifmin}-{ifmax}")
         min_range.append(ifmin)
         max_range.append(ifmax)
 
@@ -191,9 +194,9 @@ class writer(writerV2.writer):
         nd_group = fid.create_group("NodeData")
         for ndname, nddata in self.vars["nodes"].items():
             # Scalar
-            api.io.printdebug('  Node Data')
+            log.debug('  Node Data')
             if len(nddata.shape) == 1:
-                api.io.printdebug('  ' + ndname)
+                log.debug('  ' + ndname)
                 nd_group.create_dataset('node_gb_index', data=nddata, dtype='i8')
 
         # Start with the cell variables Scalar Vector Tensor
@@ -207,7 +210,7 @@ class writer(writerV2.writer):
                 "time": self._mesh._params.get('time', 0),
             }
         )
-        api.io.printdebug("  " + ', '.join(f'{key}:{value}' for key, value in fid.attrs.items()))
+        log.debug("  " + ', '.join(f'{key}:{value}' for key, value in fid.attrs.items()))
 
     def _write_solution_vars(self, fid: h5py.File):
         """Write all the variables into a solution file.
@@ -218,10 +221,10 @@ class writer(writerV2.writer):
 
         # Start with the cell variables Scalar Vector Tensor
         if all(x in self.vars["cells"].keys() for x in ['RHO', 'RHOU', 'RHOE']):
-            api.io.printdebug('  Cell Data')
+            log.debug('  Cell Data')
             for cvname in ['RHO', 'RHOU', 'RHOE']:
                 cvdata = self.vars["cells"][cvname]
-                api.io.printdebug('  ' + cvname)
+                log.debug('  ' + cvname)
                 fid.create_dataset(cvname.lower(), data=cvdata.ravel(order='C'), dtype='f8')
         return
 
@@ -246,7 +249,7 @@ class writer(writerV2.writer):
 
         for cvname in stats_var:
             cvdata = self.vars["cells"][cvname]
-            api.io.printdebug('  ' + cvname)
+            log.debug('  ' + cvname)
             volume_group.create_dataset(cvname.lower(), data=cvdata.ravel(order='C'), dtype='f8')
 
         return

@@ -1,10 +1,13 @@
+import itertools
+import logging
+
+import numpy as np
+
 import cfdtools.api as api
 import cfdtools.meshbase._connectivity as _conn
-
-# import cfdtools.meshbase._elements as _elem
 from cfdtools.utils.maths import minavgmax
-import itertools
-import numpy as np
+
+log = logging.getLogger(__name__)
 
 
 class submeshmark:
@@ -94,7 +97,6 @@ class Mesh:
         - `mixed` internal and boundaries, with mixed index
         - separated `internal` and `boundary` with separated index
 
-
     """
 
     __available_facetypes = ('mixed', 'internal', 'boundary')
@@ -163,7 +165,7 @@ class Mesh:
         if facetype in self.__available_facetypes:
             self._faces[facetype] = {'face2node': face2node, 'face2cell': face2cell}
         else:
-            api.io.error_stop(f"bad face type: {facetype} since {self.__available_facetypes} expected")
+            api.error_stop(f"bad face type: {facetype} since {self.__available_facetypes} expected")
         self.nface = np.sum([fcon['face2node'].nelem for _, fcon in self._faces.items()])
 
     def pop_faces(self, facetype: str):
@@ -238,9 +240,7 @@ class Mesh:
                 self.add_boco(boco)
         else:
             list_missing = []
-            api.io.print(
-                'warning', "can only reindex faces according to boco if separated in 'boundary' list"
-            )
+            log.warning("can only reindex faces according to boco if separated in 'boundary' list")
         return list_missing
 
     def seekmark(self, name: str) -> submeshmark:  # What is this method ??
@@ -336,23 +336,21 @@ class Mesh:
         # checks
         c_unique = np.all(np.unique(oldindex) == sorted(oldindex))
         if not c_unique:  # pragma: no cover
-            api.io.print('error', "  some faces are marked by several boundary marks")
+            log.error("  some faces are marked by several boundary marks")
         c_min0 = min(oldindex) == 0
         if not c_min0:  # pragma: no cover
-            api.io.print(
-                'error',
+            log.error(
                 "  first face index (0) is not marked as a boundary\n" "  some boundary faces may be missing",
             )
         c_max = max(oldindex) <= len(oldindex) - 1
         if not c_max:  # pragma: no cover
-            api.io.print(
-                'error',
+            log.error(
                 "  max face reference is greater than the number of found faces\n"
                 "  boundary faces must be indexed first before reindexing",
             )
         c_lengths = len(oldindex) == nbdface
         if not c_lengths:
-            api.io.print('error', f"  some boundary faces are not marked: {nbdface-len(oldindex)}")
+            log.error(f"  some boundary faces are not marked: {nbdface-len(oldindex)}")
         if not (c_unique and c_min0 and c_max):
             api.error_stop("inconsistent face marks when reordering")
         newindex = np.full_like(oldindex, -1)
@@ -370,29 +368,28 @@ class Mesh:
             self._faces['boundary']['face2cell'].conn = self._faces['boundary']['face2cell'].conn[oldindex, :]
 
     def printinfo(self, detailed=False):
-        api.io.printstd(f"nnode: {self.nnode}")
+        log.info(f"nnode: {self.nnode}")
         for c in ('x', 'y', 'z'):
-            api.io.printstd(
+            log.info(
                 f"  {c} min:avg:max =" + " {:.3f}:{:.3f}:{:.3f}".format(*minavgmax(self._nodes[c])),
             )
 
-        api.io.printstd(f"ncell: {self.ncell}")
+        log.info(f"ncell: {self.ncell}")
         if self._cell2node:
             self._cell2node.print()
         else:
-            api.io.printstd("  no cell/node connectivity")
-        api.io.printstd("nnode:", self.nnode)
-        api.io.printstd("nface:", self.nface)
+            log.info("  no cell/node connectivity")
+        log.info(f"nface: {self.nface}")
         if self._faces:
             for t, facedict in self._faces.items():
-                api.io.printstd(f"  type {t}: {' '.join(facedict['face2node'].elems())}")
+                log.info(f"  type {t}: {' '.join(facedict['face2node'].elems())}")
                 facedict['face2node'].print(prefix='  . ', detailed=detailed)
         else:
-            api.io.printstd("  no face/node connectivity")
-        api.io.printstd(f"bocos: {' '.join(self._bocos.keys())}")
+            log.info("  no face/node connectivity")
+        log.info(f"bocos: {' '.join(self._bocos.keys())}")
         for name, boco in self._bocos.items():
-            api.io.printstd(f"  BC {boco}")
-        api.io.printstd("params:", self._params)
+            log.info(f"  BC {boco}")
+        log.info(f"params: {self._params}")
 
     def _check_cell2node(self):
         if self._cell2node is not None:
@@ -423,7 +420,7 @@ class Mesh:
         assert self.ncell > 0
         assert self.nnode > 0
         self._check_cell2node()
-        # api.io.printstd('ckeck: at least cell/node or face/node face/cell connectivity')
+        # log.info('ckeck: at least cell/node or face/node face/cell connectivity')
         # assert(not self._cell2node or (not self._face2node and not self._face2cell))
         # assert self._check_cell2node() # not compulsory
         assert not self.make_unmarked_BC()
