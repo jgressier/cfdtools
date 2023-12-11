@@ -22,7 +22,7 @@ from cfdtools.ic3._ic3 import type2zonekind
 from cfdtools.ic3 import writerV2
 
 
-@api.fileformat_writer('IC3', '.h5')
+@api.fileformat_writer('IC3V4', '.h5')
 class writer(writerV2.writer):
     """Writer of ic3 restart files in HDF5 format."""
 
@@ -62,6 +62,7 @@ class writer(writerV2.writer):
             return
 
         # Open the solution file
+        api.io.printstd(f"> Writing file {solution_filename!r}")
         with h5py.File(solution_filename, "w") as fid:
             api.io.printstd("> Writing solution attributes")
             self._write_root_solution_attributes(fid)
@@ -202,8 +203,8 @@ class writer(writerV2.writer):
         """Write the root attributes of a solution file."""
         fid.attrs.update(
             {
-                "step": self._mesh._params["step"],
-                "time": self._mesh._params["time"],
+                "step": self._mesh._params.get('step', 0),
+                "time": self._mesh._params.get('time', 0),
             }
         )
         api.io.printdebug("  " + ', '.join(f'{key}:{value}' for key, value in fid.attrs.items()))
