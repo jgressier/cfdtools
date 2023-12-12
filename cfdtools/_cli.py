@@ -67,6 +67,9 @@ class cli_argparser:
         self.add_argument('--outpath', help="output folder path")
         self.add_argument('--check', action="store_true", dest="check", help="process some checks")
         self.add_argument('--info', action="store_true", dest="info", help="print information")
+        self.add_argument(
+            '--log', default='info', help=("provide logging level. Default: info. Example: --log debug.")
+        )
 
     def addarg_prefix(self):
         self.add_argument('prefix', help="prefix of files")
