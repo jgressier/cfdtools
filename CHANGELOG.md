@@ -16,6 +16,18 @@ pip show cfdtools
 
 ## Versions
 
+### [0.5.3](https://pypi.org/project/cfdtools/) (2024-01-15)
+
+#### new
+
+- new log info
+- experimental: new hdf5 based IC3 format
+
+#### fix
+
+- probes.data: propagation of prefix to read data when computing new variable
+- ic3probe_plotline: data parameter was only reading one letter
+
 ### [0.5.2](https://pypi.org/project/cfdtools/) (2023-08-30)
 
 #### new
