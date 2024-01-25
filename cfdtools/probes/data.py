@@ -74,7 +74,7 @@ class phydata:
             success = self.read_data(varname, prefix)
         if not success:  # try to compute it
             if varname in self.dependency_vars:
-                success = np.all([self.check_data(depvar) for depvar in self.dependency_vars[varname]])
+                success = np.all([self.check_data(depvar, prefix) for depvar in self.dependency_vars[varname]])
             if success:
                 if self.verbose:
                     log.info("- compute " + varname)
