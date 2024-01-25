@@ -359,7 +359,7 @@ def ic3probe_plotline(argv=None):
     parser.parse_cli_args(argv)
     # parser.parse_filenameformat()
     # basename, ext = os.path.splitext(parser.args().filenames[0])
-    var = parser.args('datalist')[0]  # ext[1:]
+    var = parser.args('datalist')  # ext[1:]
     basename = parser.args('prefix')
     # axis must be the last to get right time size
     expected_data = [
