@@ -5,19 +5,20 @@
 # Required
 version: 2
 
+# Set the version of Python and other tools you might need
+build:
+  os: ubuntu-22.04
+  tools:
+    python: "3.10"
+
 mkdocs:
   configuration: mkdocs.yml
-
-build:
-  apt_packages:
-    - xvfb
 
 # Optionally build your docs in additional formats such as PDF
 formats:
    - pdf
 
-# Optionally set the version of Python and requirements required to build your docs
+# Optionally declare the Python requirements required to build your docs
 python:
-   version: 3.8
-   install:
-   - requirements: docs/requirements.txt
+  install:
+  - requirements: docs/requirements.txt
