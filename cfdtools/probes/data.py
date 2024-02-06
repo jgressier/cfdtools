@@ -66,12 +66,13 @@ class phydata:
         self.alldata['S'] = 1.0 / 0.4 * np.log(self.alldata['P'] / self.alldata['RHO'] ** 1.4)
 
     def check_data(self, varname, prefix=""):
+        coordinates_set = { 'X', 'Y', 'Z'}
         if self.verbose:
             log.info("- request " + varname)
         success = varname in self.alldata
         if not success:
             # try to directly read data
-            success = self.read_data(varname, prefix)
+            success = self.read_data(varname, prefix, force_coordinate=(varname in coordinates_set))
         if not success:  # try to compute it
             if varname in self.dependency_vars:
                 success = np.all([self.check_data(depvar, prefix) for depvar in self.dependency_vars[varname]])
@@ -89,7 +90,7 @@ class phydata:
             )
         return success
 
-    def read_data(self, varname, prefix=""):
+    def read_data(self, varname, prefix="", force_coordinate=False):
         fname = prefix + "." + varname
         if os.path.exists(fname):
             if self.verbose:
@@ -100,12 +101,16 @@ class phydata:
                 self.alldata[varname] = rdata[3:]
             elif rdata.ndim == 2:  # supposed to be data
                 # extract data  (remove time and it)
-                self.alldata[varname] = rdata[:, 3:]
-                if "time" not in self.alldata:
-                    # if time missing, get it from current data, no consistency test with other data
-                    if self.verbose:
-                        log.info(" . define 'time'")
-                    self.alldata["time"] = rdata[:, 1]
+                if force_coordinate:
+                    self.alldata[varname] = rdata[0, 3:]
+                    assert np.allclose(self.alldata[varname], np.average(rdata[:, 3:], axis=0))
+                else:
+                    self.alldata[varname] = rdata[:, 3:]
+                    if "time" not in self.alldata:
+                        # if time missing, get it from current data, no consistency test with other data
+                        if self.verbose:
+                            log.info(" . define 'time'")
+                        self.alldata["time"] = rdata[:, 1]
             else:
                 raise Error("unexpected data size " + varname)
             return True  # success

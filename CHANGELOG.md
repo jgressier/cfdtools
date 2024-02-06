@@ -16,6 +16,13 @@ pip show cfdtools
 
 ## Versions
 
+### [0.5.4](https://pypi.org/project/cfdtools/) (2024-02-06)
+
+#### fix
+
+- avoid failure if pyvista missing (when not necessary)
+- `probes.data`: handle non expected multiple lines in coordinate files
+
 ### [0.5.3](https://pypi.org/project/cfdtools/) (2024-01-15)
 
 #### new
