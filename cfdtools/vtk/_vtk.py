@@ -5,7 +5,6 @@ import numpy as np
 try:
     import pyvista as pv
     from pyvista import CellType
-
     importpyvista = True
 except ImportError:
     importpyvista = False
@@ -17,7 +16,7 @@ import cfdtools.hdf5 as hdf5
 
 log = logging.getLogger(__name__)
 
-try:
+if importpyvista:
     vtktype_ele = {
         'bar2': CellType.LINE,
         'quad4': CellType.QUAD,
@@ -28,9 +27,8 @@ try:
         CellType.HEXAHEDRON: "Hexahedron",
         CellType.QUAD: "Quadrilateral",
     }
-except NameError:
-    api.error_stop("pyvista (with CellType) could not be imported")
-    raise
+else:
+    api.warning("pyvista missing or failing at import: some features will miss")
 
 
 @api.fileformat_writer("VTK", '.vtu')
