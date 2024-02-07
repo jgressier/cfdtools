@@ -91,6 +91,23 @@ class phydata:
         return success
 
     def read_data(self, varname, prefix="", force_coordinate=False):
+        """Get data from a CSV file
+
+        The CSV file is supposed to have at least 4 columns (it, time, size, data[size])
+        `force_coordinate` is used to get only the first line
+        The file is name `prefix.varname` 
+
+        Args:
+            varname (str): variable name in self.alldata[]
+            prefix (str, optional): prefix of the file 'prefix.varname'
+            force_coordinate (bool, optional): _description_. Defaults to False.
+
+        Raises:
+            Error: _description_
+
+        Returns:
+            Bool: success in reading file
+        """
         fname = prefix + "." + varname
         if os.path.exists(fname):
             if self.verbose:
