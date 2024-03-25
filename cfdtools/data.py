@@ -89,8 +89,12 @@ class DataSet(DataSetBase):
         self._data[name] = data
 
     @property
-    def data(self, key=None):
-        return self._data[key] if key else self._data
+    def data(self):
+        return self._data
+
+    @data.setter
+    def data(self, value):
+        self._data = value
 
     def keys(self):
         return self._data.keys()

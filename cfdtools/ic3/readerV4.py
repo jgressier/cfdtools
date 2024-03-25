@@ -224,15 +224,19 @@ class reader:
             labels = fid['Boundaries']['labels'][()]
             kinds = fid['Boundaries']['kinds'][()]
             for label, kind, mini, maxi in zip(labels, kinds, min_range, max_range):
+                log.info("%s %d %d", label, mini, maxi)
                 # 3 ints: kind, face range (begin, start)
                 self.mesh["params"]["nboco"] += 1
                 boco = _mesh.submeshmark(label.decode())
                 boco.type = zonekind2type[kind]
                 boco.geodim = 'intface' if boco.type == 'internal' else 'bdface'
                 boco.index = _conn.indexlist(irange=[mini, maxi])
-                if 'periodic_transform' in fid['Boundaries']:
-                    boco.properties["periodic_transform"] = fid['Boundaries']['periodic_transform'][()]
-
+                if label in fid['Boundaries']:
+                    if 'periodic_transform' in fid['Boundaries'][label]:
+                        boco.properties["periodic_transform"] = fid['Boundaries'][label][
+                            'periodic_transform'
+                        ][()]
+                        log.info("  periodic transformation: %s", boco.properties["periodic_transform"])
                 famin, famax = boco.index.range()
                 sta = face2node_index[famin]
                 try:

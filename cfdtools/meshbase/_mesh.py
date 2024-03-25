@@ -4,6 +4,7 @@ import logging
 import numpy as np
 
 import cfdtools.api as api
+import cfdtools.data as _data
 import cfdtools.meshbase._connectivity as _conn
 from cfdtools.utils.maths import minavgmax
 
@@ -112,7 +113,7 @@ class Mesh:
         self._bocos = {}
         self._celldata = {}
         self._nodedata = {}
-        self._facedata = {}
+        self._facedata = None
         self._cellprop = {}
 
     @property
@@ -306,7 +307,7 @@ class Mesh:
     def update_params(self, params):
         self._params.update(params)
 
-    def set_celldata(self, celldata):
+    def set_celldata(self, celldata: _data.DataSet):
         self._celldata = celldata
 
     def set_facedata(self, facedata):
@@ -322,7 +323,7 @@ class Mesh:
         return self._nodedata.pop(name) if name in self._nodedata.keys() else None
 
     def pop_celldata(self, name):
-        return self._celldata.pop(name) if name in self._celldata.keys() else None
+        return self._celldata.data[name] if self._celldata else None
 
     def reindex_boundaryfaces(self):
         assert (
