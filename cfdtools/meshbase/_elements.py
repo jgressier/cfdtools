@@ -9,10 +9,12 @@ elem_properties = [
     (0, '    bar2', 2, 1, '   quad4'),
     (0, '    tri3', 3, 2, '  penta6'),
     (0, '   quad4', 4, 2, '   hexa8'),
+    (0, '   quad9', 9, 2, '  hexa27'),
     (0, '  tetra4', 4, 3, '    none'),
     (0, '   pyra5', 5, 3, '    none'),
     (0, '  prism6', 6, 3, '    none'),
     (0, '   hexa8', 8, 3, '    none'),
+    (0, '  hexa27', 27, 3, '    none'),
 ]
 # remove leading spaces of strings
 elem_properties = [tuple(i.lstrip() if isinstance(i, str) else i for i in u) for u in elem_properties]

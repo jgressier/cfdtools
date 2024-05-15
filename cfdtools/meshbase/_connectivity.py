@@ -75,6 +75,7 @@ class indexlist:
         self._delete()
         self._type = 'list'
         self._list = self._listof(ilist)
+        # print("setlist: ", self._list)
 
     def append(self, ilist: list):
         # assert self._type == 'list'
@@ -90,6 +91,7 @@ class indexlist:
     def compress(self):
         """try to make it a range"""
         if self._type == 'list':
+            # print('compress: ', self._list)
             if np.all(self._list == np.arange(self._list[0], self._list[0] + len(self._list))):
                 self.set_range([self._list[0], self._list[-1]])
         # else no error, keep list
@@ -113,11 +115,10 @@ class indexindirection:
     """class for a genuine connectivity, regular which size = nelem x 2"""
 
     def __init__(self, array: np.ndarray = None):
-        if array is None:
-            self._nelem = 0
-            self._conn = None
-        else:
-            self.conn = array  # setter
+        self.conn = array  # setter
+
+    def __str__(self):
+        return str(self.conn)
 
     @property
     def conn(self):
@@ -125,9 +126,13 @@ class indexindirection:
 
     @conn.setter
     def conn(self, array: np.ndarray):
-        assert array.shape[1] == 2
-        self._conn = array
-        self._nelem = array.shape[0]
+        if array is None:
+            self._nelem = 0
+            self._conn = None
+        else:
+            assert array.shape[1] == 2
+            self._conn = array
+            self._nelem = array.shape[0]
 
     @property
     def nelem(self):
@@ -138,7 +143,7 @@ class indexindirection:
         return self._conn.__getitem__(indices)
 
     def append(self, array: np.ndarray):
-        if self._conn is None:
+        if self.conn is None:
             self.conn = array
         else:
             assert array.shape[1] == 2
@@ -175,6 +180,9 @@ class elem_connectivity:
     def __init__(self):
         self._nelem = 0
         self._elem2node = OrderedDict()
+
+    def __str__(self) -> str:
+        return str(self._elem2node)
 
     def add_elems(self, etype: str, elem2node: np.ndarray, index: indexlist = None):
         dim = elem2node.shape[0]
@@ -249,6 +257,7 @@ class elem_connectivity:
             ind = e2n['index'].list()
             f2n = e2n['elem2node']
             list_of_tuples.extend([(ind[i], f2n[i, :].ravel().tolist()) for i in range(f2n.shape[0])])
+
         return list_of_tuples
 
     def nodes_of_indexlist(self, elemlist):
@@ -310,7 +319,7 @@ class elem_connectivity:
     def create_faces_from_elems(self):
         # @profile
         def __build_face_and_neighbour():
-            """build a dict of face type to a list of tuples of each (oriented) face and its neighbor
+            """build a dict of face type to a list of tuples of each (oriented) face and its neighbors
 
             Args:
                 elems (dict): dict of elements with node definition
@@ -319,12 +328,12 @@ class elem_connectivity:
                 _type_: dict of face type
             """
             faces_neighbour = defaultdict(list)
-            for (
-                elemtype,
-                elemsdict,
-            ) in self._elem2node.items():  # elemtype: 'hexa8', elemsarray: ndarray[nelem,8]
+            # elemtype: 'hexa8', elemsarray: ndarray[nelem,8]
+            for elemtype, elemsdict in self._elem2node.items():
+                print(elemtype, type(elemsdict['index']))
                 index = elemsdict['index'].list()  # call export to list now
                 elemsarray = elemsdict['elem2node']
+                # print(elemsarray)
                 # V0
                 # for ielem in range(elemsarray.shape[0]):
                 #     for ftype, listfaces in _elem.elem2faces[elemtype].items():
@@ -340,67 +349,91 @@ class elem_connectivity:
                 # V2 (-30%)
                 # NODE ORDER of face IS REVERSED
                 for ftype, face_of_elem in _elem.elem2faces[elemtype].items():
+                    # for ftype, face_of_elem in _elem.gmsh_elem2faces[elemtype].items():
+                    # print("build_face: ", ftype, face_of_elem, _elem.nnode_elem[ftype])
                     for eface in face_of_elem:
-                        reindex_f = elemsarray[:, list(reversed(eface))].tolist()
+                        reindex_f = elemsarray[:, eface]
                         faces_neighbour[ftype].extend(
                             [(tuple(fnodes), ind) for fnodes, ind in zip(reindex_f, index)]
                         )
+                        # print(elemsarray[:, list(eface)].tolist(), index)
+                        # print(reindex_f, index)
+                        # print(faces_neighbour[ftype])
+
             return faces_neighbour
 
         # @profile
         def __find_duplicates(faces_neighbour: dict):
-            """find duplicated faces and build unique face/node face/cell connectivity
+            """Find duplicated faces and build unique face/node face/cell connectivity.
 
-            Args:
-                faces_neighbour (dict): _description_
+            Parameters
+            ----------
+            faces_neighbour: `dict`
+                 description
+
+            Returns
+            -------
+            internalfaces: `elem_connectivity`
+                Connectivity of internal faces.
+            iface2cell: `indexindirection`
+                Cells of each internal face.
+            boundaryfaces: `elem_connectivity`
+                Connectivity of boundary faces.
+            bface2cell: `indexindirection`
+                Cells of each boundary face.
             """
             internalfaces = elem_connectivity()
             boundaryfaces = elem_connectivity()
             iface2cell = indexindirection()  #
-            bface2cell = indexindirection()  #
+            # give the two cells attached to a face
+            bface2cell = indexindirection()
 
             def face_from_ufacedict(uface_dict):
-                return np.array(list(map(lambda flist: flist[0][0], uface_dict.values())))
+                """Get the tuple of node indices for all first face."""
+                return np.array([flist[0][0] for flist in uface_dict.values()])
 
             # find pairs for a given face type
             for ftype, listfaces in faces_neighbour.items():
                 nf_all = len(listfaces)
+                print(ftype, " number of faces: ", nf_all)
+                # quad interface only, could be adapted to other ftype
+                nb_linear_face_pts = 4
                 # build a dict of "sorted node" face with list of tuple (face, elem)
                 # face_pairs = dict()
                 # for uface, facepair in groupby(listfaces, lambda tup: tuple(sorted(tup[0]))):
                 #     face_pairs[uface] = list(facepair)
                 face_pairs = defaultdict(list)
                 for tface in listfaces:
-                    face_pairs[tuple(sorted(tface[0]))].append(tface)  # 50% COST
+                    # print("face: ", tface)
+                    # print(tface[0])
+                    # print(tface[0][:nb_linear_face_pts])
+                    # nodes of faces are sorted to get a dict key
+                    face_pairs[tuple(sorted(tface[0][:nb_linear_face_pts]))].append(tface)  # 50% COST
                 nf_unique = len(face_pairs)
+                print(ftype, " number of unique faces: ", nf_unique)
                 assert nf_unique < nf_all
                 assert 2 * nf_unique >= nf_all
-                # extract all unique face
+
+                # extract all unique faces: boundary faces
                 #   since reversed when created, boco faces are pointing outward
-                uniqueface_dict = dict(
-                    filter(lambda tup: len(tup[1]) == 1, face_pairs.items())
-                )  # tup[1] is the value of key
-                boundaryfaces.add_elems(ftype, face_from_ufacedict(uniqueface_dict))
-                f2c = np.full((len(uniqueface_dict), 2), -1)
+                print("reverse undone warning not implemented")
+                unique_faces = {key: pair for key, pair in face_pairs.items() if len(pair) == 1}
+                boundaryfaces.add_elems(ftype, face_from_ufacedict(unique_faces))
+                # get cells of each boundary face. Left cell is always defined.
+                # Right cell is -1.
                 # get index of connected cells
-                f2c[:, 0] = list(map(lambda flist: flist[0][1], uniqueface_dict.values()))
+                f2c = np.array([[flist[0][1], -1] for flist in unique_faces.values()])
                 bface2cell.append(f2c)
-                # remove these faces
-                for uface in uniqueface_dict.keys():
-                    face_pairs.pop(uface)
+
+                # extract all double faces: internal faces
+                face_pairs = {key: pair for key, pair in face_pairs.items() if len(pair) == 2}
                 # get all first face of each pair of tuple (face,ielem)
                 intfaces = face_from_ufacedict(face_pairs)  # 10% COST
                 internalfaces.add_elems(ftype, intfaces)
+                # get cells of each internal face.
                 # get all elements connections via faces
                 # get index of connected cells # 25% COST
-                f2c = np.array(
-                    list(
-                        map(
-                            lambda flist: [flist[0][1], flist[1][1]],
-                            face_pairs.values(),
-                        )
-                    )
-                )
+                f2c = np.array([[flist[0][1], flist[1][1]] for flist in face_pairs.values()])
                 iface2cell.append(f2c)
 
             return internalfaces, iface2cell, boundaryfaces, bface2cell

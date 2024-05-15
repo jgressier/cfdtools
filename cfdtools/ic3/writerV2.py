@@ -30,7 +30,7 @@ class writer:
         Initialization of a ic3 restart file writer.
         """
         log.info("> Initialization of IC3 writer V" + self.__version__)
-        if not endian in struct_endian.keys():
+        if endian not in struct_endian.keys():
             raise ValueError("unknown endian key")
         else:
             self.endian = endian
@@ -48,14 +48,13 @@ class writer:
         Store the coordinates of the nodes and the
         element-to-vertex connectivity. Also triggers the creation
         of a face-to-element and face-to-vertex connectivity
-        as per CharlesX implementation.
+        as per IC3 implementation.
         """
-        timer = api.Timer()
         log.info("> Check connectivity and compute mandatory")
         if not self._mesh._faces:  # empty dict of faces
             with api.Timer(task="  generate all faces"):
                 self._mesh.make_face_connectivity()
-        if any([boco.nodebased() for _, boco in self._mesh._bocos.items()]):
+        if any([boco.nodebased() for boco in self._mesh._bocos.values()]):
             with api.Timer(task="  change boco marks (node to face)"):
                 self._mesh.bocomarks_set_node_to_face()
         if 'boundary' in self._mesh._faces.keys():
