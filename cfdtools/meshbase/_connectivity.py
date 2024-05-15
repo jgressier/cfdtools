@@ -416,7 +416,7 @@ class elem_connectivity:
 
                 # extract all unique faces: boundary faces
                 #   since reversed when created, boco faces are pointing outward
-                print("reverse undone warning not implemented")
+                # print("reverse undone warning not implemented")
                 unique_faces = {key: pair for key, pair in face_pairs.items() if len(pair) == 1}
                 boundaryfaces.add_elems(ftype, face_from_ufacedict(unique_faces))
                 # get cells of each boundary face. Left cell is always defined.

@@ -64,6 +64,7 @@ def group_faces_by_type(connectivity):
 # see https://cgns.github.io/CGNS_docs_current/sids/conv.html#unst_quad
 # QUAD 4 2D
 cgns_elem2faces = {
+    # https://cgns.github.io/CGNS_docs_current/sids/conv.html#unst_quad
     'quad4': {'bar2': [[0, 1], [1, 2], [2, 3], [3, 0]]},
 }
 
@@ -82,7 +83,7 @@ face_corners = {
 }
 
 connectivity_hexa8 = set_starting_index_to_zero(face_corners)
-connectivity_hexa8 = set_inward_normal(connectivity_hexa8)
+# connectivity_hexa8 = set_inward_normal(connectivity_hexa8)
 
 # List of quad4 faces for a hexa8 element.
 cgns_elem2faces['hexa8'] = group_faces_by_type(connectivity_hexa8)
