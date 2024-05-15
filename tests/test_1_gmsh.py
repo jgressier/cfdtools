@@ -1,6 +1,8 @@
-import cfdtools.gmsh as gmsh
 from pathlib import Path
+
 import pytest
+
+import cfdtools.gmsh as gmsh
 
 _datadir = Path("./tests/data")
 _builddir = Path("./tests/build")
@@ -11,12 +13,15 @@ _builddir = Path("./tests/build")
     [
         "box3d-v22.msh",
         "box3d-v41.msh",
-        "test_2d.msh",
+        "test_3d.msh",
+        "mesh3_o2.msh",
         "test_2d_small.msh",
         "test_3d.msh",
+        "mesh3_o2.msh",
     ],
 )
 def test_reader(filename):
+    """Test Gmsh reader."""
     gmesh = gmsh.reader(_datadir / filename)
     gmesh.read_data()
     rmesh = gmesh.export_mesh()
