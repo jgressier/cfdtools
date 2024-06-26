@@ -20,6 +20,14 @@ log = logging.getLogger(__name__)
 class reader(api._files):
     """Implementation of the reader to read Gmsh meshes."""
 
+    def __init__(self, filename, cIntegrity=False):
+        """Initialization of a GMSH reader.
+
+        param: filename: file name [type string]
+        """
+        super().__init__(filename)
+        self.check_integrity = cIntegrity
+
     @property
     def ncell(self):
         return self._ncell
