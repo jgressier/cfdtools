@@ -302,6 +302,7 @@ class elem_connectivity:
                 else:
                     mergedict[key]['index'] = elemtype['index'].shift(shift)
                     mergedict[key]['elem2node'] = elemtype['elem2node']
+
         for elem, elemtype in mergedict.items():
             self.add_elems(elem, elemtype['elem2node'], elemtype['index'])
 

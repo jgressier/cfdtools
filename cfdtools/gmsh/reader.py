@@ -38,28 +38,27 @@ class reader(api._files):
         if not self.exists():
             api.error_stop(f"File not found: {self.filename!r}")
 
+        # Set the node ordering convention
+        _elem.elem2faces = _elem.gmsh_elem2faces
+
         # Read file.
         filename = self.filename
         fam, bctype, x, y, z, elts = self.__read_sections(filename)
+
         # fam: dict with index: family name
         # bctype: dict with name: type
         # elts: list of list[index, element type, x, x, x, nodes index ]
         log.info("Analyze...")
 
         # Check for 3D
-        self._maxdim = np.amax([_elem.elem_dim[gmshtype_elem[e[1]]] for e in elts])
-
-        # Define list of element
-        if self._maxdim == 3:
-            log.info("3D mesh")
-            mesh_elt = ["tet", "hexa8", "pri", "pyr", "tet2", "hex2", "pri2", "pyr2"]
-            bc_elt = ["tri3", "quad4"]
-        elif self._maxdim == 2:
-            log.info("2D mesh")
-            mesh_elt = ["tri3", "quad4"]
-            bc_elt = ["bar2", "bar3"]
-        else:
+        self._maxdim = np.amax([_elem.dim_elem[gmshtype_elem[e[1]]] for e in elts])
+        # Define list of elements
+        if self._maxdim < 2 or self._maxdim > 3:
             api.error_stop(f"unexpected max element dimension: {self._maxdim}")
+
+        log.info("%dD mesh", self._maxdim)
+        mesh_elt = [etype for etype, dim in _elem.dim_elem.items() if dim == self._maxdim]
+        bc_elt = [etype for etype, dim in _elem.dim_elem.items() if dim == self._maxdim - 1]
 
         # Initialize returned variables
         boundaries = {}
@@ -81,6 +80,11 @@ class reader(api._files):
                     ntag = elt[2]  # expected to be 2
                     connectivity[elt_type].append(elt[3 + ntag :])
                     bnd_connect += 1
+                else:
+                    if elt_type not in bc_elt:
+                        log.warning("%s not in available types %r.", elt_type, mesh_elt)
+            else:
+                log.warning("%d not in available types %r.", elt[1], gmshtype_elem.keys())
 
         # Boundary Connectivity
         log.info("  extract boundaries connectivity")
@@ -168,7 +172,7 @@ class reader(api._files):
         cellconn = _conn.elem_connectivity()
         # extract cell connectivity only
         for etype, econn in self._cellconnectivity.items():
-            if _elem.elem_dim[etype] == self._maxdim:
+            if _elem.dim_elem[etype] == self._maxdim:
                 cellconn.add_elems(etype, econn)
         meshdata.set_cell2node(cellconn)
         for name, bc_dict in self._boundaries.items():

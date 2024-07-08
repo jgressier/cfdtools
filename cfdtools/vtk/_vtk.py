@@ -5,6 +5,7 @@ import numpy as np
 try:
     import pyvista as pv
     from pyvista import CellType
+
     importpyvista = True
 except ImportError:
     importpyvista = False
@@ -19,16 +20,24 @@ log = logging.getLogger(__name__)
 if importpyvista:
     vtktype_ele = {
         'bar2': CellType.LINE,
+        'tri3': CellType.TRIANGLE,
         'quad4': CellType.QUAD,
+        'tetra4': CellType.TETRA,
+        'pyra5': CellType.PYRAMID,
+        'prism6': CellType.WEDGE,
         'hexa8': CellType.HEXAHEDRON,
     }
     ele_vtktype = {i: etype for etype, i in vtktype_ele.items()}
     PYVISTA2XDMF = {
-        CellType.HEXAHEDRON: "Hexahedron",
+        CellType.TRIANGLE: "Triangle",
         CellType.QUAD: "Quadrilateral",
+        CellType.HEXAHEDRON: "Hexahedron",
+        CellType.TETRA: "Tetrahedron",
+        CellType.PYRAMID: "Pyramid",
+        CellType.WEDGE: "Prism",
     }
 else:
-    api.warning("pyvista missing or failing at import: some features will miss")
+    log.warning("pyvista missing or failing at import: some features will be missing.")
 
 
 @api.fileformat_writer("VTK", '.vtu')
