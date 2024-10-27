@@ -126,7 +126,7 @@ class vtkMesh:
             log.warning("  no pyvista mesh available")
 
     def plot(self, background='white', show_edges=True, *args, **kwargs):
-        self.pyvista_grid().plot(background=background, show_edges=show_edges, *args, **kwargs)
+        self.pyvista_grid.plot(background=background, show_edges=show_edges, *args, **kwargs)
 
     def importhdfgroup(self, hgroup: hdf5.Group, verbose=False):
         assert hgroup.attrs['meshtype'] in ('unsmesh',)
