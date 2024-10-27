@@ -13,6 +13,10 @@ cfdtools
 
 ### Features
 
+A sum up of features follows. The documentation including examples is available there 
+[master](https://cfdtools.readthedocs.io/en/stable/)
+/[develop](https://cfdtools.readthedocs.io/en/develop/)
+
 - readers: IC3, VTK, GMSH, CGNS
 - writers: IC3, VTK
 - generic options for command line writers: extrusion
