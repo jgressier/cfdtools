@@ -1,6 +1,6 @@
 [run]
   source = cfdtools
-  omit=
+  omit =
     *.nogit/*.py
     */__init__.py
 
