@@ -16,9 +16,16 @@ pip show cfdtools
 
 ## Versions
 
-### [0.5.x](https://pypi.org/project/cfdtools/) (2024-xx-xx)
+### [0.6.x](https://pypi.org/project/cfdtools/) (2024-xx-xx)
+
+#### new
+
+- new IC3 v4 format based on hdf5
+- add tetra, prism and pyra to GMSH format reader
 
 #### fix
+
+- vtk.plot() function
 
 ### [0.5.4](https://pypi.org/project/cfdtools/) (2024-02-06)
 
