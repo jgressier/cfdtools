@@ -22,6 +22,6 @@ ic3write.write_data("mesh.h5", "solution.000000.h5")
 
 ## Transformation
 
-- [morphing/deformation](examples/morph-sphere): internal generation of cube,morphed to a sphere and displayed as vtk
+- [morphing/deformation](morph-sphere): internal generation of cube,morphed to a sphere and displayed as vtk
 
 ## Data
