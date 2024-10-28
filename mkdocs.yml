@@ -21,16 +21,17 @@ nav:
   - Home: index.md
   - User Guide:
     - command line tools: cli.md
+    - format detection: format-detection.md
     #- Models: userguide/models.md
     #- Numerical methods: userguide/num.md
-  - Examples: 
+  - Examples:
     - Examples: examples.md
     - Cube to Sphere: examples/morph-sphere.ipynb
-    # - Nozzle: examples/nozzle-2-convdiv.ipynb
   - Code reference:
     - internal structures: cfdtools-format.md
-    - IC3 format: ic3-format.md
-  - About: 
+    - IC3 V2 and V3 format: ic3-format.md
+    - IC3 V4 format: ic3-v4-format.md
+  - About:
     - About: about.md
     - Change log: changelog.md
 
@@ -46,3 +47,17 @@ plugins:
         # - "examples/*"
         # - "*/*.ipynb"
         - ".ipynb_checkpoints"
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          # rendering:
+          #   show_root_heading: false
+          #   show_source: true
+          #   show_category_heading: true
+          options:
+            #docstring_style: "restructured-text" # default is "google"
+            filters:
+              - "!^_"  # exclude all members starting with _
+      # watch:
+      #   - cfdtools

@@ -1,8 +1,13 @@
-import cfdtools.api as api
-import cfdtools.meshbase._elements as _elem
 from collections import defaultdict, OrderedDict
 from itertools import chain
+import logging
+
 import numpy as np
+
+import cfdtools.api as api
+import cfdtools.meshbase._elements as _elem
+
+log = logging.getLogger(__name__)
 
 
 class indexlist:
@@ -62,7 +67,7 @@ class indexlist:
         elif isinstance(ilist, np.ndarray):
             rlist = self._list = ilist.tolist()
         else:
-            api.io.print('error', f"{type(ilist)}")
+            log.error(f"{type(ilist)}")
             api.error_stop("unknow type in indexlist class")
         return rlist
 
@@ -220,12 +225,12 @@ class elem_connectivity:
 
     def print(self, prefix="", detailed=False):
         for elemtype, elemco in self._elem2node.items():
-            api.io.printstd(
+            log.info(
                 prefix + f"{elemtype}: {elemco['elem2node'].shape} with index {elemco['index']}",
             )
             if detailed:
-                api.io.printstd(prefix + f"  index: {elemco['index'].list()}")
-                api.io.printstd(prefix + f"  faces: {elemco['elem2node']}")
+                log.info(prefix + f"  index: {elemco['index'].list()}")
+                log.info(prefix + f"  faces: {elemco['elem2node']}")
 
     def all_index(self):
         return list(sum([econ['index'].list() for _, econ in self.items()], []))
@@ -297,6 +302,7 @@ class elem_connectivity:
                 else:
                     mergedict[key]['index'] = elemtype['index'].shift(shift)
                     mergedict[key]['elem2node'] = elemtype['elem2node']
+
         for elem, elemtype in mergedict.items():
             self.add_elems(elem, elemtype['elem2node'], elemtype['index'])
 

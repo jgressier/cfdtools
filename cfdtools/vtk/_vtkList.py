@@ -1,5 +1,9 @@
+import logging
 import os
 from pathlib import Path
+
+import numpy as np
+import scipy.spatial as spspa
 
 try:
     import pyvista as pv
@@ -7,14 +11,15 @@ try:
     importpyvista = True
 except ImportError:  # pragma: no cover
     importpyvista = False
+
 import cfdtools.api as api
 import cfdtools.utils.maths as maths
 from cfdtools.vtk import vtkMesh
 from cfdtools.data import DataSetList
 
 # import cfdtools.hdf5 as hdf5
-import numpy as np
-import scipy.spatial as spspa
+
+log = logging.getLogger(__name__)
 
 
 class vtkList:
@@ -43,9 +48,9 @@ class vtkList:
             if d > tol:
                 count += 1
                 if self._verbose:
-                    api.io.printstd(f"  . {name}: {d}")
+                    log.info(f"  . {name}: {d}")
         if self._verbose:
-            api.io.printstd(f"  {count}/{self.nfile} grids are not {pos}-coincident")
+            log.info(f"  {count}/{self.nfile} grids are not {pos}-coincident")
         return count == 0
 
     def read(self, filterdata=None, reorder=False, tol=1e-10):
@@ -60,7 +65,7 @@ class vtkList:
         ctrRef = self._mesh.cell_centers().points
         Tread.pause()
         if self._verbose:
-            api.io.printstd("> build kd-tree")
+            log.info("> build kd-tree")
         Tsort.start()
         tree = spspa.KDTree(ctrRef)
         Tsort.pause()
@@ -68,12 +73,12 @@ class vtkList:
         self._data = DataSetList(self.nfile, Xrep='cellaverage', Trep='instant')
         # may add alive-progress or other
         if self._verbose:
-            api.io.printstd("> read all files, get only CELL data")
+            log.info("> read all files, get only CELL data")
             if filterdata:
-                api.io.printstd(f"  select only {', '.join(filterdata)}")
+                log.info(f"  select only {', '.join(filterdata)}")
         for name in self._list:
             if self._verbose:
-                api.io.printstd(f"  - {name}")
+                log.info(f"  - {name}")
             Tread.start()
             vtk = pv.read(name)
             Tread.pause()
@@ -82,10 +87,10 @@ class vtkList:
             ctr = vtk.cell_centers().points
             d = np.max(maths.distance(ctrRef, ctr))
             Tcomp.pause()
-            if d > tol: # should be sized by domain size
+            if d > tol:  # should be sized by domain size
                 count += 1
                 # if self._verbose:
-                #     api.io.printstd(f"  . {name}: {d}")
+                #     log.info(f"  . {name}: {d}")
                 Tsort.start()
                 dfinal, index = tree.query(ctr, p=2)
                 # reverse indexing to sort new arrays
@@ -100,10 +105,10 @@ class vtkList:
             time = vtk.field_data.get("TimeValue", None)
             self._data.add_datalist(datalist, time=time)
         if self._verbose:
-            api.io.printstd(f"  {count}/{self.nfile} grids were not coincident")
-            api.io.printstd(f"       file reading: {Tread.elapsed:.2f}s")
-            api.io.printstd(f"    grid comparison: {Tcomp.elapsed:.2f}s")
-            api.io.printstd(f"    data reordering: {Tsort.elapsed:.2f}s")
+            log.info(f"  {count}/{self.nfile} grids were not coincident")
+            log.info(f"       file reading: {Tread.elapsed:.2f}s")
+            log.info(f"    grid comparison: {Tcomp.elapsed:.2f}s")
+            log.info(f"    data reordering: {Tsort.elapsed:.2f}s")
 
     def dumphdf(self, filename: str, overwrite: bool = False, xdmf: bool = False, **options):
         """Convert a list of VTK files into a single HDF5 file.

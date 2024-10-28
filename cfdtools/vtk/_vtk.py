@@ -1,4 +1,6 @@
-import os
+import logging
+
+import numpy as np
 
 try:
     import pyvista as pv
@@ -7,26 +9,35 @@ try:
     importpyvista = True
 except ImportError:
     importpyvista = False
+
 import cfdtools.api as api
 import cfdtools.meshbase._connectivity as _conn
 import cfdtools.meshbase._mesh as cfdmesh
 import cfdtools.hdf5 as hdf5
-import numpy as np
 
-try:
+log = logging.getLogger(__name__)
+
+if importpyvista:
     vtktype_ele = {
         'bar2': CellType.LINE,
+        'tri3': CellType.TRIANGLE,
         'quad4': CellType.QUAD,
+        'tetra4': CellType.TETRA,
+        'pyra5': CellType.PYRAMID,
+        'prism6': CellType.WEDGE,
         'hexa8': CellType.HEXAHEDRON,
     }
     ele_vtktype = {i: etype for etype, i in vtktype_ele.items()}
     PYVISTA2XDMF = {
-        CellType.HEXAHEDRON: "Hexahedron",
+        CellType.TRIANGLE: "Triangle",
         CellType.QUAD: "Quadrilateral",
+        CellType.HEXAHEDRON: "Hexahedron",
+        CellType.TETRA: "Tetrahedron",
+        CellType.PYRAMID: "Pyramid",
+        CellType.WEDGE: "Prism",
     }
-except NameError:
-    api.error_stop("pyvista (with CellType) could not be imported")
-    raise
+else:
+    log.warning("pyvista missing or failing at import: some features will be missing.")
 
 
 @api.fileformat_writer("VTK", '.vtu')
@@ -101,21 +112,21 @@ class vtkMesh:
     def brief(self):
         if self._grid:
             m = self._grid
-            api.io.printstd(f"pyvista object: {m}")
-            api.io.printstd("> mesh")
-            api.io.printstd(f"  bounds : {m.bounds}")
-            api.io.printstd(f"  ncells : {m.n_cells}")
-            api.io.printstd(f"  npoints: {m.n_points}")
-            api.io.printstd("> data")
-            api.io.printstd(f"  cell  data names: {m.cell_data.keys()}")
-            api.io.printstd(f"  point data names: {m.point_data.keys()}")
-            api.io.printstd(f"  field data names: {m.field_data.keys()}")
-            # api.io.printstd("> properties")
+            log.info(f"pyvista object: {m}")
+            log.info("> mesh")
+            log.info(f"  bounds : {m.bounds}")
+            log.info(f"  ncells : {m.n_cells}")
+            log.info(f"  npoints: {m.n_points}")
+            log.info("> data")
+            log.info(f"  cell  data names: {m.cell_data.keys()}")
+            log.info(f"  point data names: {m.point_data.keys()}")
+            log.info(f"  field data names: {m.field_data.keys()}")
+            # log.info("> properties")
         else:
-            api.io.warning("  no pyvista mesh available")
+            log.warning("  no pyvista mesh available")
 
     def plot(self, background='white', show_edges=True, *args, **kwargs):
-        self.pyvista_grid().plot(background=background, show_edges=show_edges, *args, **kwargs)
+        self.pyvista_grid.plot(background=background, show_edges=show_edges, *args, **kwargs)
 
     def importhdfgroup(self, hgroup: hdf5.Group, verbose=False):
         assert hgroup.attrs['meshtype'] in ('unsmesh',)

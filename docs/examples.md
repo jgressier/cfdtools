@@ -1,13 +1,27 @@
 # Examples
 
-## readers
+## Readers
 
-## writers
+### From Legacy v3 IC3 Format to v4 IC3 (HDF5) Format
 
-## diagnosis
+```python
+import cfdtools.ic3.writerV4 as ic3writer
+import cfdtools.ic3.reader_legacy as ic3reader
 
-## transformation
+reader = ic3reader.reader("restart.000500.out")
+reader.read_data()
+rmesh = reader.export_mesh()
 
-- [morphing/deformation](examples/morph-sphere): internal generation of cube,morphed to a sphere and displayed as vtk
+ic3write = ic3writer.writer(rmesh)
+ic3write.write_data("mesh.h5", "solution.000000.h5")
+```
 
-## data
+## Writers
+
+## Diagnosis
+
+## Transformation
+
+- [morphing/deformation](morph-sphere): internal generation of cube,morphed to a sphere and displayed as vtk
+
+## Data

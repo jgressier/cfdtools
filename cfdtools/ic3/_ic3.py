@@ -1,7 +1,12 @@
+import logging
 import struct
 import os
+
 import numpy as np
+
 import cfdtools.api as api
+
+log = logging.getLogger(__name__)
 
 # Copy the restart codes from CharlesX to match its restart routine
 ic3_restart_codes = {
@@ -158,8 +163,7 @@ def BinaryRead(bfile, form, byte_swap, size):
         while True:
             record = bfile.read(size)
             if len(record) != size:
-                api.io.print(
-                    'error',
+                log.error(
                     "mismatched record ({}) and expected ({}) sizes".format(
                         len(record),
                         size,
@@ -251,7 +255,7 @@ class restartSectionHeader:
             self.idata = np.zeros((8,), dtype=np.int64)
             self.rdata = np.zeros((16,), dtype=np.float64)
 
-            api.io.print('debug', "skipping data %d" % self.skip())
+            log.debug("skipping data %d", self.skip())
             if self.skip() > 0:
                 bfile.seek(self.skip() - 256, os.SEEK_CUR)
 
@@ -354,16 +358,15 @@ class binreader(api._files):
         Main method of the IC3 restart reader.
         Parses in order the file using sub-methods described below.
         """
-        api.io.print('std', "READER RESTART IC3 - only headers")
+        log.info("READER RESTART IC3 - only headers")
 
         if not self.exists():
-            print("Fatal error. File %s cannot be found." % (self.filename))
-            exit()
+            raise FileNotFoundError("Fatal error. File %s cannot be found." % (self.filename))
 
         # Open the file for binary reading
-        api.io.print('debug', 'opening ', self.filename)
+        log.debug('opening %s', self.filename)
         with open(self.filename, "rb") as self.fid:
-            api.io.print('std', "reading header (first section)")
+            log.info("reading header (first section)")
             self._ReadRestartHeader()
             #
             reset_offset = True
@@ -381,9 +384,9 @@ class binreader(api._files):
                 skip = h.skip()
                 print(h)
                 if h.id[0] == ic3_restart_codes['UGP_IO_EOF']:
-                    api.io.print('std', 'UGP EOF reached')
+                    log.info('UGP EOF reached')
                     break
-        api.io.print('debug', self.filename, ' closed')
+        log.debug('%s closed', self.filename)
         del self.fid
 
         return
@@ -414,7 +417,7 @@ class binreader(api._files):
 
         # Some info for the user
         self.ic3_version = s[1]
-        api.io.print(
-            'std',
+
+        log.info(
             f"  version: {self.ic3_version} " + ("little-endian" if self.byte_swap else "big-endian"),
         )

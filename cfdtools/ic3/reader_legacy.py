@@ -1,9 +1,9 @@
 # coding: utf8
 
-# Import modules
-# import struct
+import logging
 import numpy as np
 import sys
+
 import cfdtools.api as api
 import cfdtools.meshbase._mesh as _mesh
 import cfdtools.data as _data
@@ -19,6 +19,7 @@ from cfdtools.ic3._ic3 import (
     properties_ugpcode,
 )
 
+log = logging.getLogger(__name__)
 ###################################################################################################
 
 
@@ -30,7 +31,7 @@ def print_stats_scalar(name, dnp):
     :param dnp: numpy array of the scalar variable.
     :type dnp: ndarray
     '''
-    api.io.printstd(
+    log.info(
         "  %s%s:  %+.5e / %+.5e / %+.5e (min/mean/max)."
         % (name, ' ' * (20 - len(name)), dnp.min(), np.mean(dnp), dnp.max())
     )
@@ -45,7 +46,7 @@ def print_stats_vector(name, dnp):
     :type dnp: ndarray
     '''
     for component in range(dnp.shape[1]):
-        api.io.printstd(
+        log.info(
             "  %s%s%s:  %+.5e / %+.5e / %+.5e (min/mean/max)."
             % (name, "-%d" % component, ' ' * (20 - len(name)), dnp.min(), np.mean(dnp), dnp.max())
         )
@@ -79,7 +80,7 @@ class reader(binreader):
 
     def printinfo(self):
         print(self)
-        api.io.printstd("- mesh properties")
+        log.info("- mesh properties")
         for key, item in self.mesh.items():
             if isinstance(item, dict):
                 for key2, item2 in item.items():
@@ -90,7 +91,7 @@ class reader(binreader):
                         api._printreadable('  mesh.' + key + '.' + key2, item2)
             else:
                 api._printreadable('  mesh.' + key, item)
-        api.io.printstd("- variable properties")
+        log.info("- variable properties")
         for key, item in self.variables.items():
             for key2, value in item.items():
                 api._printreadable('variables.' + key + '.' + key2, value)
@@ -105,25 +106,25 @@ class reader(binreader):
                 a lot of variables stored in the restart file
                 information on the state of the simulation
         '''
-        api.io.printstd("READER RESTART IC3")
+        log.info("READER RESTART IC3")
 
         if not self.exists():  # pragma: no cover
             api.error_stop("Fatal error. File %s cannot be found." % (self.filename))
 
         # Open the file for binary reading
-        api.io.print('debug', f"Opening file {self.filename!r}")
+        log.debug(f"Opening file {self.filename!r}")
         with open(self.filename, "rb") as self.fid:
             #
-            api.io.printstd("Reading binary file header")
+            log.info("Reading binary file header")
             self._ReadRestartHeader()
             #
-            api.io.printstd("Reading connectivity...")
+            log.info("Reading connectivity...")
             self._ReadRestartConnectivity()
             #
-            api.io.printstd("Reading informative values...")
+            log.info("Reading informative values...")
             self._ReadInformativeValues()
             #
-            api.io.printstd("Reading variables...")
+            log.info("Reading variables...")
             self.celldata = _data.DataSet('cellaverage')
             self.nodedata = _data.DataSet('nodal')
             self.facedata = _data.DataSet('nodal')
@@ -197,14 +198,14 @@ class reader(binreader):
         cv_count = self.mesh["params"]["cv_count"] = h.idata[2]
         # number of nodes from faces
         noofa_count = self.mesh["params"]["noofa_count"] = h.idata[3]
-        api.io.printstd(
+        log.info(
             f"mesh with {cv_count} cells, {fa_count} faces and {no_count} nodes",
         )
         # Integrity check
         if self.check_integrity:
             # Check the restart is whole by counting the global ids of no, fa and cv
             # For nodes
-            api.io.printstd("  Checking nodes integrity ..")
+            log.info("  Checking nodes integrity ..")
             sys.stdout.flush()
             h = restartSectionHeader()
             if h.readVar(self.fid, self.byte_swap, ["UGP_IO_NO_CHECK"]):
@@ -213,22 +214,22 @@ class reader(binreader):
                 s = BinaryRead(self.fid, "%di" % no_count, self.byte_swap, type2nbytes["int32"] * no_count)
                 nodes_id = np.asarray(s)
                 assert np.allclose(nodes_id, np.arange(no_count))
-                api.io.printstd("end of node integrity")
+                log.info("end of node integrity")
                 sys.stdout.flush()
                 del nodes_id
                 # For faces
-                api.io.printstd("  Checking faces integrity ..")
+                log.info("  Checking faces integrity ..")
                 sys.stdout.flush()
                 h = restartSectionHeader()
                 h.readReqVar(self.fid, self.byte_swap, ["UGP_IO_FA_CHECK"])
                 s = BinaryRead(self.fid, "%di" % fa_count, self.byte_swap, type2nbytes["int32"] * fa_count)
                 faces_id = np.asarray(s)
                 assert np.allclose(faces_id, np.arange(fa_count))
-                api.io.printstd("end of face integrity")
+                log.info("end of face integrity")
                 sys.stdout.flush()
                 del faces_id
                 # For cells
-                api.io.printstd("  Checking cells integrity ..")
+                log.info("  Checking cells integrity ..")
                 sys.stdout.flush()
                 h = restartSectionHeader()
                 h.readReqVar(self.fid, self.byte_swap, ["UGP_IO_CV_CHECK"])
@@ -237,17 +238,17 @@ class reader(binreader):
                 s = BinaryRead(self.fid, "%di" % cv_count, self.byte_swap, type2nbytes["int32"] * cv_count)
                 cells_id = np.asarray(s)
                 assert np.allclose(cells_id, np.arange(cv_count))
-                api.io.printstd("end of cell integrity")
+                log.info("end of cell integrity")
                 sys.stdout.flush()
                 del cells_id
             else:
-                api.io.warning("check integrity: no check, UGP_IO_NO_CHECK missing")
+                log.warning("check integrity: no check, UGP_IO_NO_CHECK missing")
 
         # The two connectivities now
         #
         # - First, NOOFA
         #
-        api.io.printstd("  Parsing face to node connectivity...")
+        log.info("  Parsing face to node connectivity...")
         sys.stdout.flush()
         h = restartSectionHeader()
         h.readReqVar(self.fid, self.byte_swap, ["UGP_IO_NOOFA_I_AND_V"])
@@ -259,7 +260,7 @@ class reader(binreader):
         nno_per_face = np.asarray(s)
         uniq, counts = np.unique(nno_per_face, return_counts=True)
         for facesize, nfacesize in zip(uniq, counts):
-            api.io.printstd(f"  {nfacesize} faces of {facesize} nodes")
+            log.info(f"  {nfacesize} faces of {facesize} nodes")
         # Initialize the proper connectivity arrays in self.mesh
         face2node_index = np.concatenate(([0], np.cumsum(nno_per_face)))
         # np.sum(nno_per_face) == noofa_count
@@ -272,13 +273,13 @@ class reader(binreader):
         zface2node = _conn.compressed_listofindex(face2node_index, face2node_value)
         zface2node.check()
         self.mesh["connectivity"]["noofa"] = zface2node
-        api.io.printstd("end of face/vertex connectivity")
+        log.info("end of face/vertex connectivity")
         sys.stdout.flush()
         del nno_per_face, uniq, counts
         #
         # - Second, CVOFA
         #
-        api.io.printstd("  Parsing face to cell connectivity...")
+        log.info("  Parsing face to cell connectivity...")
         sys.stdout.flush()
         h = restartSectionHeader()
         h.readReqVar(self.fid, self.byte_swap, ["UGP_IO_CVOFA"])
@@ -290,7 +291,7 @@ class reader(binreader):
         # store in 8 bytes
         self.mesh["connectivity"]["cvofa"]["cvofa"] = np.asarray(s).astype(np.int64).reshape((fa_count, 2))
 
-        api.io.printstd("end of face/cell connectivity")
+        log.info("end of face/cell connectivity")
         sys.stdout.flush()
 
         # Checks and a few associations
@@ -315,7 +316,7 @@ class reader(binreader):
         # print("RC",self.mesh["connectivity"]["cvofa"]["cvofa"])
         #
         # The boundary conditions now
-        api.io.printstd("  Parsing boundary conditions...")
+        log.info("  Parsing boundary conditions...")
         sys.stdout.flush()
         self.mesh['bocos'] = []  # init list of bocos
         while True:
@@ -342,11 +343,11 @@ class reader(binreader):
             self.mesh['bocos'].append(boco)
             if h.idata[0] == 6:
                 break
-        api.io.printstd("end of boundary conditions")
+        log.info("end of boundary conditions")
         sys.stdout.flush()
 
         # Parse the header of the partition information
-        api.io.printstd("  Parsing partitioning information...")
+        log.info("  Parsing partitioning information...")
         sys.stdout.flush()
         h = restartSectionHeader()
         h.readReqVar(self.fid, self.byte_swap, ["UGP_IO_CV_PART"])
@@ -356,11 +357,11 @@ class reader(binreader):
         self.mesh["partition"]['icvpart'] = np.zeros((cv_count,), dtype=np.int32)
         s = BinaryRead(self.fid, "%di" % cv_count, self.byte_swap, type2nbytes["int32"] * cv_count)
         self.mesh["partition"]['icvpart'] = np.asarray(s)
-        api.io.printstd("end of partition")
+        log.info("end of partition")
         sys.stdout.flush()
 
         # The coordinates of the vertices finally
-        api.io.printstd("  Parsing vertices coordinates...")
+        log.info("  Parsing vertices coordinates...")
         sys.stdout.flush()
         h = restartSectionHeader()
         h.readReqVar(self.fid, self.byte_swap, ["UGP_IO_X_NO"])
@@ -371,18 +372,18 @@ class reader(binreader):
             self.fid, "%dd" % (no_count * 3), self.byte_swap, type2nbytes["float64"] * no_count * 3
         )
         self.mesh["coordinates"] = np.ascontiguousarray(np.asarray(s).reshape(no_count, 3))
-        api.io.printstd("end of node coordinates")
+        log.info("end of node coordinates")
         sys.stdout.flush()
 
     def _ReadInformativeValues(self):
-        '''
+        """
         Method reading all the values also stored in a restart file,
         i.e. the step number, the time, the timestep.
         input:  handle on an open restart file, [type file identifier]
                 endianness flag [boolean]
         output: simulation state structure containing informations about the current state
                 of the simulation
-        '''
+        """
 
         # Initialize the state dictionary
         self.simulation_state = {"step": 0, "dt": 0, "time": 0, "wgt": {}}
@@ -391,8 +392,8 @@ class reader(binreader):
 
         # removed as not used at the moment
         # h = restartSectionHeader()
-        # if(not readVar(self.fid, self.byte_swap,"UGP_IO_DAT)A")
-        # if (not varfound): exit()
+        # if(not readVar(self.fid, self.byte_swap,"UGP_IO_DATA")
+        # if (not varfound): raise ("UGP_IO_DATA not found")
 
         reset_offset = True
         while True:
@@ -419,10 +420,10 @@ class reader(binreader):
             pass
             # ignore ints
             # if intndof != 0: # 0 is expected value for version 1 and 2
-            #     api.io.print('warning', "unexpected non zero value for ndof in IC3 version 1 and 2")
+            #     log.warning("unexpected non zero value for ndof in IC3 version 1 and 2")
         else:  # version >= 3
             if intndof == 0:  # 0 is NOT expected
-                api.io.warning(
+                log.warning(
                     "unexpected zero value for ndof in IC3 version 3; set to 1 !",
                 )
                 ndof = 1
@@ -453,7 +454,7 @@ class reader(binreader):
         cv_count = self.mesh["params"]["cv_count"]
 
         # First come the scalars
-        api.io.printstd("  First the scalars...")
+        log.info("  First the scalars...")
         reset_offset = True
         while True:
             h = restartSectionHeader()
@@ -479,6 +480,7 @@ class reader(binreader):
             if h.idata[0] == no_count:
                 s = BinaryRead(self.fid, "%d" % no_count + typechar, self.byte_swap, typesize * no_count)
                 scalar = self.variables["nodes"][h.name] = np.asarray(s).astype(nptype)
+                self.nodedata.add_data(h.name, scalar)
             elif h.idata[0] == fa_count:
                 s = BinaryRead(self.fid, "%d" % fa_count + typechar, self.byte_swap, typesize * fa_count)
                 scalar = self.variables["faces"][h.name] = np.asarray(s).astype(nptype)
@@ -487,8 +489,7 @@ class reader(binreader):
                 if ndof > 1:
                     self.celldata.Xrep = 'spectralcell'
                     self.celldata.ndof = ndof
-                api.io.print(
-                    'internal',
+                log.info(
                     "cell variable section of size ncells * ndofs {}x{}".format(cv_count, ndof),
                 )
                 s = BinaryRead(
@@ -505,10 +506,10 @@ class reader(binreader):
             else:
                 api.error_stop(f"Fatal error. Incoherence in dataset {h.name}. Exiting.")
             print_stats_scalar(h.name, scalar)
-        api.io.printstd("  end of scalars")
+        log.info("  end of scalars")
 
         # Then the vectors
-        api.io.printstd("  Then the vectors...")
+        log.info("  Then the vectors...")
         reset_offset = True
         while True:
             h = restartSectionHeader()
@@ -558,10 +559,10 @@ class reader(binreader):
             else:
                 api.error_stop(f"Fatal error. Incoherence in dataset {h.name}. Exiting.")
             print_stats_vector(h.name, vector)
-        api.io.printstd("  end of vectors")
+        log.info("  end of vectors")
 
         # Then the tensors
-        api.io.printstd("  Then the tensors...")
+        log.info("  Then the tensors...")
         reset_offset = True
         while True:
             h = restartSectionHeader()
@@ -591,7 +592,7 @@ class reader(binreader):
                 print_stats_scalar(h.name, tensor)
             else:
                 api.error_stop(f"Fatal error. Incoherence in dataset {h.name}. Exiting.")
-        api.io.printstd("  end of tensors")
+        log.info("  end of tensors")
 
     # def __reachedEOF(self):
     #     '''

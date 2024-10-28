@@ -2,55 +2,63 @@
 
 # Import modules
 import collections
+import logging
+
+import numpy as np
+
 import cfdtools.meshbase._mesh as _mesh
 import cfdtools.meshbase._connectivity as _conn
 import cfdtools.meshbase._elements as _elem
 from cfdtools.gmsh._gmsh import gmshtype_elem  # , nodes_per_cell
 
-# import os
-
 import cfdtools.api as api
-import numpy as np
 
-# from operator import itemgetter
+log = logging.getLogger(__name__)
 
 
 @api.fileformat_reader('GMSH', '.msh')
 class reader(api._files):
     """Implementation of the reader to read Gmsh meshes."""
 
+    def __init__(self, filename, cIntegrity=False):
+        """Initialization of a GMSH reader.
+
+        param: filename: file name [type string]
+        """
+        super().__init__(filename)
+        self.check_integrity = cIntegrity
+
     @property
     def ncell(self):
         return self._ncell
 
     def read_data(self):
-        api.io.printstd(f"> GMSH reader: starts reading {self.filename}")
+        log.info(f"> GMSH reader: starts reading {self.filename}")
         # Check file exists
         if not self.exists():
             api.error_stop(f"File not found: {self.filename!r}")
 
+        # Set the node ordering convention
+        _elem.elem2faces = _elem.gmsh_elem2faces
+
         # Read file.
         filename = self.filename
         fam, bctype, x, y, z, elts = self.__read_sections(filename)
+
         # fam: dict with index: family name
         # bctype: dict with name: type
         # elts: list of list[index, element type, x, x, x, nodes index ]
-        api.io.printstd("Analyze...", end='')
+        log.info("Analyze...")
 
         # Check for 3D
-        self._maxdim = np.amax([_elem.elem_dim[gmshtype_elem[e[1]]] for e in elts])
-
-        # Define list of element
-        if self._maxdim == 3:
-            api.io.printstd("3D mesh")
-            mesh_elt = ["tet", "hexa8", "pri", "pyr", "tet2", "hex2", "pri2", "pyr2"]
-            bc_elt = ["tri3", "quad4"]
-        elif self._maxdim == 2:
-            api.io.printstd("2D mesh")
-            mesh_elt = ["tri3", "quad4"]
-            bc_elt = ["bar2", "bar3"]
-        else:
+        self._maxdim = np.amax([_elem.dim_elem[gmshtype_elem[e[1]]] for e in elts])
+        # Define list of elements
+        if self._maxdim < 2 or self._maxdim > 3:
             api.error_stop(f"unexpected max element dimension: {self._maxdim}")
+
+        log.info("%dD mesh", self._maxdim)
+        mesh_elt = [etype for etype, dim in _elem.dim_elem.items() if dim == self._maxdim]
+        bc_elt = [etype for etype, dim in _elem.dim_elem.items() if dim == self._maxdim - 1]
 
         # Initialize returned variables
         boundaries = {}
@@ -60,7 +68,7 @@ class reader(api._files):
 
         # Volume Connectivity
         self._ncell = 0
-        api.io.printstd("  extract volume connectivity")
+        log.info("  extract volume connectivity")
         bnd_connect = 1
         for elt in elts:
             if elt[1] in gmshtype_elem.keys():
@@ -72,9 +80,14 @@ class reader(api._files):
                     ntag = elt[2]  # expected to be 2
                     connectivity[elt_type].append(elt[3 + ntag :])
                     bnd_connect += 1
+                else:
+                    if elt_type not in bc_elt:
+                        log.warning("%s not in available types %r.", elt_type, mesh_elt)
+            else:
+                log.warning("%d not in available types %r.", elt[1], gmshtype_elem.keys())
 
         # Boundary Connectivity
-        api.io.printstd("  extract boundaries connectivity")
+        log.info("  extract boundaries connectivity")
         connect_bc = {}
         for elt in elts:
             if elt[1] in gmshtype_elem.keys():
@@ -98,7 +111,7 @@ class reader(api._files):
                     # if bnd_fam not in bnd2fam:
                     bnd2fam[bnd_tag] = bnd_fam
                     bnd_connect += 1
-        api.io.printstd(f"    tags are {bnd2fam}")
+        log.info(f"    tags are {bnd2fam}")
         # Reindex connectivities
         # Element-to-vertex
         for elt_type in connectivity.keys():
@@ -152,14 +165,14 @@ class reader(api._files):
         self._boundaries = boundaries
 
     def export_mesh(self):
-        api.io.printstd("> export gmsh mesh to cfdtools mesh data")
+        log.info("> export gmsh mesh to cfdtools mesh data")
         meshdata = _mesh.Mesh(nnode=len(self._coords[0]))
         meshdata.set_nodescoord_xyz(*self._coords)
         # meshdata.set_face2node(self.mesh['connectivity']['noofa'])
         cellconn = _conn.elem_connectivity()
         # extract cell connectivity only
         for etype, econn in self._cellconnectivity.items():
-            if _elem.elem_dim[etype] == self._maxdim:
+            if _elem.dim_elem[etype] == self._maxdim:
                 cellconn.add_elems(etype, econn)
         meshdata.set_cell2node(cellconn)
         for name, bc_dict in self._boundaries.items():
@@ -177,7 +190,6 @@ class reader(api._files):
         return meshdata
 
     def __create_bnd(self, boundaries, window, family, bctype, connectivity):
-
         fff = family
         self._nboco += 1
 
@@ -195,7 +207,7 @@ class reader(api._files):
             for elt_type in connectivity.keys():
                 raveled = np.unique(connectivity[elt_type].ravel())
                 bc2["slicing"] += raveled.tolist()
-            # api.io.printstd(bc["slicing"])
+            # log.info(bc["slicing"])
             bc["slicing"] += bc2["slicing"]
             bc["slicing"] = np.unique(bc["slicing"])
             bc["type"] = "boundary"
@@ -219,22 +231,20 @@ class reader(api._files):
             self._famm.append(fff)
 
     def __get_section_from_name(self, msh, sectionName):
-
         assert sectionName.startswith('$')
         ibeg = msh.index(["$" + sectionName[1:]])
         iend = msh.index(["$End" + sectionName[1:]])
         return msh[ibeg + 1 : iend]
 
     def __read_sections_V2(self, msh):
-
         # ------------------------------------------
         # Reading msh file for version 2.0 and below
         # ------------------------------------------
 
-        api.io.printstd("Running version 2.0 reader")
+        log.info("Running version 2.0 reader")
 
         # Find the families.
-        api.io.printstd("  parse Physical Names")
+        log.info("  parse Physical Names")
         if ["$PhysicalNames"] in msh:
             families = self.__get_section_from_name(msh, "$PhysicalNames")
             fam = {}
@@ -242,14 +252,14 @@ class reader(api._files):
             for i in range(1, int(families[0][0]) + 1):
                 fam[families[i][1]] = families[i][2][1:-1]
                 bctype[families[i][2][1:-1]] = families[i][0]
-            api.io.printstd(f"    found Physical names {fam}")
-            api.io.printstd(f"    found Entities {bctype}")
+            log.info(f"    found Physical names {fam}")
+            log.info(f"    found Entities {bctype}")
         else:
             fam = None
             bctype = None
 
         # Find the coordinates.
-        api.io.printstd("  parse Nodes")
+        log.info("  parse Nodes")
         coords = self.__get_section_from_name(msh, "$Nodes")
         nnodes = int(coords[0][0])
         x = [float(coords[i][1]) for i in range(1, nnodes + 1)]
@@ -257,7 +267,7 @@ class reader(api._files):
         z = [float(coords[i][3]) for i in range(1, nnodes + 1)]
 
         # Find the elements.
-        api.io.printstd("  parse Elements")
+        log.info("  parse Elements")
         elements = self.__get_section_from_name(msh, "$Elements")
         elts = []
         nelems = int(elements[0][0])
@@ -267,15 +277,14 @@ class reader(api._files):
         return fam, bctype, x, y, z, elts
 
     def __read_sections_V4(self, msh):
-
         # ------------------------------------------
         # Reading msh file for version 4.0 and above
         # ------------------------------------------
 
-        api.io.printstd("Running version 4.x reader")
+        log.info("Running version 4.x reader")
 
         # Find the families.
-        api.io.printstd("  parse Physical Names")
+        log.info("  parse Physical Names")
         if ["$PhysicalNames"] in msh:
             families = self.__get_section_from_name(msh, "$PhysicalNames")
             fam = {}
@@ -283,8 +292,8 @@ class reader(api._files):
             for i in range(1, int(families[0][0]) + 1):
                 fam[families[i][1]] = families[i][2][1:-1]
                 bctype[families[i][2][1:-1]] = families[i][0]
-            api.io.printstd(f"    found Physical names {fam}")
-            api.io.printstd(f"    found Entities {bctype}")
+            log.info(f"    found Physical names {fam}")
+            log.info(f"    found Entities {bctype}")
         else:
             fam = None
             bctype = None
@@ -303,7 +312,7 @@ class reader(api._files):
             return addd
 
         # Find the coordinates.
-        api.io.printstd("  parse Nodes")
+        log.info("  parse Nodes")
         coords = self.__get_section_from_name(msh, "$Nodes")
         nnodes = int(coords[0][3])
         nodes = 1
@@ -323,7 +332,7 @@ class reader(api._files):
             counter = counter + 2 * cnt + 1
 
         # Find the elements.
-        api.io.printstd("  parse Elements")
+        log.info("  parse Elements")
         elements = self.__get_section_from_name(msh, "$Elements")
         # header is: numEntityBlocks, numElements, minIndex, maxIndex
         elts = []
@@ -352,11 +361,11 @@ class reader(api._files):
     def __read_sections(self, filename):
         # Read the entire mesh.
         msh = []
-        api.io.printstd(f"Reading file {filename!r}...", end='')
+        log.info(f"Reading file {filename!r}...")
         with open(filename) as fid:
             for l in fid:
                 msh.append(l.split())
-        api.io.printstd(" done")
+        log.info(" done")
 
         # Find version of the GMSH used
         version = self.__get_section_from_name(msh, "$MeshFormat")

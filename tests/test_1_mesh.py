@@ -43,6 +43,7 @@ def test_perio_rotation():
     rmesh.morph(lambda x, y, z: (x, (1+y)*np.cos(np.pi/2*z), (1+y)*np.sin(np.pi/2*z)))
     con = mesh.meshconnection()
     con.set_rotation('rotx', angle=90.0)
+    # build_perio uses con:meshconnection and returns a meshconnection filled with index
     meshco = rmesh.build_perio(mark1="kmin", mark2='kmax', connection=con)
     assert meshco.is_rotation()
     assert meshco.contype == None

@@ -1,8 +1,12 @@
+import logging
 import os
 from shutil import Error
+
 import numpy as np
 import cfdtools.api as api
 from cfdtools.utils.maths import minavgmax
+
+log = logging.getLogger(__name__)
 
 # options definition
 
@@ -60,47 +64,68 @@ class phydata:
         self.alldata['S'] = 1.0 / 0.4 * np.log(self.alldata['P'] / self.alldata['RHO'] ** 1.4)
 
     def check_data(self, varname, prefix=""):
+        coordinates_set = { 'X', 'Y', 'Z'}
         if self.verbose:
-            api.io.printstd("- request " + varname)
+            log.info("- request " + varname)
         success = varname in self.alldata
         if not success:
             # try to directly read data
-            success = self.read_data(varname, prefix)
+            success = self.read_data(varname, prefix, force_coordinate=(varname in coordinates_set))
         if not success:  # try to compute it
             if varname in self.dependency_vars:
-                success = np.all([self.check_data(depvar) for depvar in self.dependency_vars[varname]])
+                success = np.all([self.check_data(depvar, prefix) for depvar in self.dependency_vars[varname]])
             if success:
                 if self.verbose:
-                    api.io.printstd("- compute " + varname)
+                    log.info("- compute " + varname)
                 self.compute_varname[varname]()
             else:
                 raise NameError(varname + " missing or unable to compute")
         if success:
-            api.io.print(
-                'std',
+            log.info(
                 "- "
                 + varname
                 + " min:avg:max = {:.3f} : {:.3f} : {:.3f}".format(*minavgmax(self.alldata[varname])),
             )
         return success
 
-    def read_data(self, varname, prefix=""):
+    def read_data(self, varname, prefix="", force_coordinate=False):
+        """Get data from a CSV file
+
+        The CSV file is supposed to have at least 4 columns (it, time, size, data[size])
+        `force_coordinate` is used to get only the first line
+        The file is name `prefix.varname` 
+
+        Args:
+            varname (str): variable name in self.alldata[]
+            prefix (str, optional): prefix of the file 'prefix.varname'
+            force_coordinate (bool, optional): _description_. Defaults to False.
+
+        Raises:
+            Error: _description_
+
+        Returns:
+            Bool: success in reading file
+        """
         fname = prefix + "." + varname
         if os.path.exists(fname):
             if self.verbose:
-                api.io.printstd("- read " + varname + " in " + fname)
+                log.info("- read " + varname + " in " + fname)
             rdata = np.genfromtxt(fname, delimiter=" ")
             if rdata.ndim == 1:  # supposed to be coordinate
                 # extract only coordinate (remove time and it)
                 self.alldata[varname] = rdata[3:]
             elif rdata.ndim == 2:  # supposed to be data
                 # extract data  (remove time and it)
-                self.alldata[varname] = rdata[:, 3:]
-                if "time" not in self.alldata:
-                    # if time missing, get it from current data, no consistency test with other data
-                    if self.verbose:
-                        api.io.printstd(" . define 'time'")
-                    self.alldata["time"] = rdata[:, 1]
+                if force_coordinate:
+                    self.alldata[varname] = rdata[0, 3:]
+                    assert np.allclose(self.alldata[varname], np.average(rdata[:, 3:], axis=0))
+                else:
+                    self.alldata[varname] = rdata[:, 3:]
+                    if "time" not in self.alldata:
+                        # if time missing, get it from current data, no consistency test with other data
+                        if self.verbose:
+                            log.info(" . define 'time'")
+                        self.alldata["time"] = rdata[:, 1]
             else:
                 raise Error("unexpected data size " + varname)
             return True  # success
