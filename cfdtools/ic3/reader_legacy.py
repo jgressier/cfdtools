@@ -331,6 +331,15 @@ class reader(binreader):
             boco.geodim = 'intface' if boco.type == 'internal' else 'bdface'
             boco.index = _conn.indexlist(irange=[h.idata[1], h.idata[2]])
             boco.properties["periodic_transform"] = h.rdata
+            if boco.type in ('perio_cart',):
+                meshco = _mesh.meshconnection()
+                meshco.set_translation(h.rdata[0:2])
+                boco.connection = meshco
+            elif boco.type in ('perio_cylx', 'perio_cyly', 'perio_cylz'):
+                meshco = _mesh.meshconnection()
+                rottype = {'perio_cylx': 'rotx', 'perio_cyly': 'roty', 'perio_cylz': 'rotz'}[boco.type]
+                meshco.set_rotation(rottype=rottype, angle=np.atan2(*h.rdata[0:1]))
+                boco.connection = meshco
             #
             famin, famax = boco.index.range()
             sta = face2node_index[famin]
@@ -339,15 +348,16 @@ class reader(binreader):
             except IndexError:
                 sto = face2node_value.size
             #
+            # slicing is kept but not used
             boco.properties["slicing"] = np.unique(face2node_value[sta:sto])
             self.mesh['bocos'].append(boco)
-            if h.idata[0] == 6:
+            if h.idata[0] == 6: # 'internal' faces, supposed to be last
                 break
-        log.info("end of boundary conditions")
+        log.info("end of face marks (boundary conditions and internal)")
         sys.stdout.flush()
 
         # Parse the header of the partition information
-        log.info("  Parsing partitioning information...")
+        log.info("> Parsing partitioning information")
         sys.stdout.flush()
         h = restartSectionHeader()
         h.readReqVar(self.fid, self.byte_swap, ["UGP_IO_CV_PART"])

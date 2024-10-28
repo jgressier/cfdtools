@@ -1,5 +1,6 @@
 import cfdtools.ic3.reader_legacy as ic3reader
 import cfdtools.ic3.writerV2 as ic3wv2
+
 # import cfdtools.ic3.writerV3 as ic3wv3
 from pathlib import Path
 import pytest
@@ -20,6 +21,8 @@ def test_reader(datadir, filename):
     ic3mesh.printinfo()
     rmesh = ic3mesh.export_mesh()
     assert rmesh.check()
+    # currently, ic3 based mesh is exported to cfdtools.Mesh with face description
+    # 
 
 
 @pytest.mark.parametrize(
@@ -39,7 +42,7 @@ def test_writer_v2_litend(datadir, builddir, filename):
     builddir.mkdir(exist_ok=True)
     outpath = builddir / filename
     ic3write.write_data(outpath)
-    assert filecmp.cmp(refpath, outpath) # shallow=True by default, only size is compared
+    assert filecmp.cmp(refpath, outpath)  # shallow=True by default, only size is compared
     outpath.unlink()
 
 

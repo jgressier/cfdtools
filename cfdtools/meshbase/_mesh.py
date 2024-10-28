@@ -147,6 +147,16 @@ class submeshmark:
         assert mtype in self._available_types
         self._properties['type'] = mtype
 
+    @property
+    def connection(self):
+        return self._properties.get('connection', None)
+
+    @connection.setter
+    def connection(self, conn: meshconnection):
+        assert isinstance(conn, meshconnection)
+        # other assertions ?
+        self._properties['connection'] = conn
+
     def nodebased(self):
         return self._geodim in {'node', 'bdnode', 'intnode'}
 
@@ -405,6 +415,17 @@ class Mesh:
     def build_perio(
         self, mark1: str, mark2: str, connection: meshconnection = None, tol=1.0e-10
     ) -> meshconnection:
+        """build periodic connection using transformation (connection) between 2 marks
+
+        Args:
+            mark1 (str): _description_
+            mark2 (str): _description_
+            connection (meshconnection, optional): _description_. Defaults to None.
+            tol (_type_, optional): _description_. Defaults to 1.0e-10.
+
+        Returns:
+            meshconnection: _description_
+        """
         boco1 = self.get_mark(mark1)
         boco2 = self.get_mark(mark2)
         if (boco1 is None) or (boco2 is None):

@@ -66,7 +66,7 @@ class writer:
             with api.Timer(task="  reindex boundary faces with boco marks and compress"):
                 self._mesh.reindex_boundaryfaces()
 
-        log.info("Setting coordinates and connectivity arrays")
+        log.info("- Setting coordinates and connectivity arrays")
 
         # Nodes
         self.coordinates = np.stack([self._mesh._nodes[c] for c in 'xyz'], axis=1)
@@ -113,7 +113,7 @@ class writer:
         __WriteRestartConnectivity method.
         The bocos slicing is expressed in terms of faces.
         """
-        log.info("Setting boundary conditions")
+        log.info("- Setting boundary conditions and periodicity connections")
         self.bocos = {key: boco for key, boco in self._mesh._bocos.items() if not boco.type == 'internal'}
         # self.bocos.pop("nfa_b")
         # self.bocos.pop("nfa_bp")
@@ -141,7 +141,7 @@ class writer:
         They will be later written to the file using the
         __WriteRestartVar method.
         """
-        log.info("Setting variables")
+        log.info("- Setting variables")
         self.vars = {
             "nodes": self._mesh._nodedata,
             "cells": self._mesh._celldata,
@@ -167,7 +167,7 @@ class writer:
             #
             log.info("> check consistency before writing")
             if not self.check():
-                raise RuntimeError("Inconsistent data to write")
+                api.error_stop("check of IC3 writer class failed: inconsistent data to write")
             #
             log.info("> Writing header")
             self.__WriteRestartHeader()
@@ -268,9 +268,7 @@ class writer:
         """
         # First the header for counts
         nnode, nface, ncell = (self.params[key] for key in ('no_count', 'fa_count', 'cv_count'))
-        log.info(
-            f"  sizes: {nnode} nodes, {nface} faces and reference to {ncell} cells",
-        )
+        log.info(f"  sizes: {nnode} nodes, {nface} faces and reference to {ncell} cells")
         header = restartSectionHeader()
         header.name = "NO_FA_CV_NOOFA_COUNTS"
         header.id = ic3_restart_codes["UGP_IO_NO_FA_CV_NOOFA_COUNTS"]

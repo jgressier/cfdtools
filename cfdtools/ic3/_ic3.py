@@ -66,42 +66,6 @@ type2nbytes = {
 }
 
 
-# fatype2nno = {"line":2,
-#               "tri":3,
-#               "qua":4,}
-# Actual number of vertices for a given cell type
-nodes_per_cell = {
-    'bi': 2,
-    'tri': 3,
-    'qua': 4,
-    'tet': 4,
-    'hex': 8,
-    'pri': 6,
-    'pyr': 5,
-}
-
-# cell_from_nodes = {
-#     2:'bi',
-#     3:'tri',
-#     4:'qua',
-#     4:'tet',
-#     8:'hex',
-#     6:'pri',
-#     5:'pyr',
-# }
-
-# faces_per_cell = {
-#     'hex': 6,
-#     'pri': 5,
-#     'pyr': 5,
-#     'tet': 4,}
-
-# faces_of_cell = {
-#     'hex':['qua']*6,
-#     'pri':['tri', 'qua', 'qua', 'qua', 'tri'],
-#     'pyr':['qua'] + ['tri']*4,
-#     'tet':['tri']*4,}
-
 # ifaces_of_cell = {
 #     'hex':[[0,3,2,1], [0,1,5,4], [1,2,6,5], [2,3,7,6], [3,0,4,7], [4,5,6,7]],
 #     'pri':[[0,2,1], [0,1,4,3], [1,2,5,4], [2,0,3,5], [3,4,5]],
@@ -320,7 +284,7 @@ class restartSectionHeader:
         BinaryWrite(bfile, endian, self.binstr, varargs)
 
     def __str__(self):
-        mystring = "> Header:"
+        mystring = f"> Header (size:{self.hsize},skip:{self.skip()}): "
         mystring += "\n"
         mystring += "Name : %s" % self.name
         mystring += "\n"
@@ -328,10 +292,6 @@ class restartSectionHeader:
             self.id,
             list(dict(filter(lambda items: items[1] == self.id[0], ic3_restart_codes.items())).keys()),
         )
-        mystring += "\n"
-        mystring += "hsize: %i" % self.hsize
-        mystring += "\n"
-        mystring += "skip : %i" % self.skip()
         mystring += "\n"
         mystring += "idata: (" + ", ".join(str(i) for i in self.idata) + ")"
         mystring += "\n"
