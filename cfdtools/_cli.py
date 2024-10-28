@@ -128,12 +128,11 @@ class cli_argparser:
         self._writer = api._fileformat_map[self._fileformat].get('writer', None)
 
 
-@cli_header("cfd")
-def info(argv=None):
-    """call specific printinfo function from reader
-
-    Args:
-        argv (_type_, optional): _description_. Defaults to None.
+@cli_header()
+def cfdinfo(argv=None):
+    """ fully reads all supported formats, 
+    converts to an internal mesh and data structure 
+    and prints a sum up of available information.
     """
     parser = cli_argparser(prog=__fname__)  # noqa: F821
     parser.addarg_filenameformat()
@@ -150,6 +149,10 @@ def info(argv=None):
 
 @cli_header()
 def ic3brief(argv=None):
+    """reads IC3 related format (v2, v3 and soon v4)
+    and print information on headers (mesh and variables)
+    without reading data itself (faster)
+    """
     parser = cli_argparser(prog=__fname__)  # noqa: F821
     parser.addarg_filenameformat(format='IC3')
     parser.parse_cli_args(argv)
@@ -162,6 +165,8 @@ def ic3brief(argv=None):
 
 @cli_header()
 def vtkbrief(argv=None):
+    """reads all pyvista-available formats and prints information on mesh and data
+    """
     parser = cli_argparser()
     parser.addarg_filenameformat(format="VTK")
     parser.parse_cli_args(argv)
@@ -175,6 +180,10 @@ def vtkbrief(argv=None):
 
 @cli_header()
 def vtkpack(argv=None):
+    """reads a list of VTK-like files and 
+    packs it to an cfdtools hdf5 format
+    (mesh consistency will be checked and data reordered if necessary)
+    """
     parser = cli_argparser()
     parser.addarg_filelist()
     parser.parse_cli_args(argv)
@@ -240,27 +249,40 @@ def write_generic(argv, ext, writer, fname=None):
     return file.filename  # filename needed for pytest (for eventual rm)
 
 
-@cli_header("cfd")
-def write_ic3v2(argv=None):
+@cli_header()
+def cfdwrite_ic3v2(argv=None):
+    """reads all available formats and transform it to IC3.v2 format
+    if available
+    """
     return write_generic(argv, '.ic3', ic3.writerV2.writer, fname=__fname__)  # noqa: F821
 
 
-@cli_header("cfd")
-def write_ic3v3(argv=None):
+@cli_header()
+def cfdwrite_ic3v3(argv=None):
+    """reads all available formats and transform it to IC3.v3 format
+    if available
+    `cfdwrite_ic3` is a shortname for last current IC3 writer, namely `cfdwrite_ic3v3`.
+    """
     return write_generic(argv, '.ic3', ic3.writerV3.writer, fname=__fname__)  # noqa: F821
 
 
-@cli_header("cfd")
-def write_vtk(argv=None):
+@cli_header()
+def cfdwrite_vtk(argv=None):
+    """reads all available formats and transform it to VTU format
+    if available (IC3.v3 to VTK not yet available)
+    """
     return write_generic(argv, '.vtu', vtk.vtkMesh, fname=__fname__)  # noqa: F821
 
 
-@cli_header("cfd")
-def writecube(argv=None):
-    """call specific printinfo function from reader
+@cli_header()
+def cfdwritecube(argv=None):
+    """creates a cartesian mesh, converts it to an unstrutured hexa mesh
+    and save it to specific format
 
-    Args:
-        argv (_type_, optional): _description_. Defaults to None.
+        Options:
+
+            --nx --ny --nz : mesh sizes (default: 10)
+            --fmt : file format
     """
     parser = cli_argparser(prog=__fname__)  # noqa: F821
     parser.addarg_filenameformat()
@@ -304,6 +326,18 @@ def writecube(argv=None):
 
 @cli_header()
 def ic3probe_plotline(argv=None):
+    """parse an IC3 set of (csv files) probe line and a time or frequency map
+
+        Options:
+
+            --data: variable to analyze and plot
+            --axis: coordinate on x-axis of the map
+            --map: 'time' or 'frequency'
+            --cmap: matplotlib name of colormap
+            --cmaplevels: number of levels
+            --check: performs some verifications
+
+    """
     parser = cli_argparser(description="Process line probes from IC3")
     parser.addarg_prefix()
     # parser.add_argument("filenames", nargs="*", help="list of files")

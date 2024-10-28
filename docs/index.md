@@ -28,4 +28,4 @@ or clone and install `develop` branch
 
 ## first steps
 
-`cfdtools` provides direct and simple command line tools (see [CLI](cli)). A second stage may be to directly implement you needed workflow using either these embedded tools as examples (see [sources](https://github.com/jgressier/cfdtools/blob/master/cfdtools/_cli.py)) or the [examples on this site](examples).
+`cfdtools` provides direct and simple command line tools (see [CLI](cli.md)). A second stage may be to directly implement you needed workflow using either these embedded tools as examples (see [sources](https://github.com/jgressier/cfdtools/blob/master/cfdtools/_cli.py)) or the [examples on this site](examples.md).
