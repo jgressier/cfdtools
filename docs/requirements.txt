@@ -5,7 +5,7 @@ cfdtools
 ipykernel
 mkdocs-jupyter
 #mkdocstrings[python] <= 0.22
-mkdocstrings[python]
+mkdocstrings[python] >= 0.23
 pyvirtualdisplay
 trame
 pyvista

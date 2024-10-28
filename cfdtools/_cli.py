@@ -128,8 +128,8 @@ class cli_argparser:
         self._writer = api._fileformat_map[self._fileformat].get('writer', None)
 
 
-@cli_header("cfd")
-def info(argv=None):
+@cli_header()
+def cfdinfo(argv=None):
     """call specific printinfo function from reader
 
     Args:
@@ -175,6 +175,8 @@ def vtkbrief(argv=None):
 
 @cli_header()
 def vtkpack(argv=None):
+    """reads a list of file and packs it to an cfdtools hdf5 format
+    """
     parser = cli_argparser()
     parser.addarg_filelist()
     parser.parse_cli_args(argv)
@@ -240,23 +242,23 @@ def write_generic(argv, ext, writer, fname=None):
     return file.filename  # filename needed for pytest (for eventual rm)
 
 
-@cli_header("cfd")
-def write_ic3v2(argv=None):
+@cli_header()
+def cfdwrite_ic3v2(argv=None):
     return write_generic(argv, '.ic3', ic3.writerV2.writer, fname=__fname__)  # noqa: F821
 
 
-@cli_header("cfd")
-def write_ic3v3(argv=None):
+@cli_header()
+def cfdwrite_ic3v3(argv=None):
     return write_generic(argv, '.ic3', ic3.writerV3.writer, fname=__fname__)  # noqa: F821
 
 
-@cli_header("cfd")
-def write_vtk(argv=None):
+@cli_header()
+def cfdwrite_vtk(argv=None):
     return write_generic(argv, '.vtu', vtk.vtkMesh, fname=__fname__)  # noqa: F821
 
 
-@cli_header("cfd")
-def writecube(argv=None):
+@cli_header()
+def cfdwritecube(argv=None):
     """call specific printinfo function from reader
 
     Args:

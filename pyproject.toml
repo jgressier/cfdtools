@@ -34,14 +34,14 @@ Documentation = "https://cfdtools.readthedocs.io/en/latest/"
 include = ["cfdtools*"]
 
 [project.scripts]
-cfdinfo = 'cfdtools._cli:info'
-cfdwritecube = 'cfdtools._cli:writecube'
+cfdinfo = 'cfdtools._cli:cfdinfo'
+cfdwritecube = 'cfdtools._cli:cfdwritecube'
 ic3brief = 'cfdtools._cli:ic3brief'
 ic3probe_plotline = 'cfdtools._cli:ic3probe_plotline'
-cfdwrite_ic3v2 = 'cfdtools._cli:write_ic3v2'
-cfdwrite_ic3v3 = 'cfdtools._cli:write_ic3v3'
-cfdwrite_ic3 = 'cfdtools._cli:write_ic3v3'
-cfdwrite_vtk = 'cfdtools._cli:write_vtk'
+cfdwrite_ic3v2 = 'cfdtools._cli:cfdwrite_ic3v2'
+cfdwrite_ic3v3 = 'cfdtools._cli:cfdwrite_ic3v3'
+cfdwrite_ic3 = 'cfdtools._cli:cfdwrite_ic3v3'
+cfdwrite_vtk = 'cfdtools._cli:cfdwrite_vtk'
 vtkbrief = 'cfdtools._cli:vtkbrief'
 vtkpack = 'cfdtools._cli:vtkpack'
 

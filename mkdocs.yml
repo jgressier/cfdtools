@@ -55,7 +55,7 @@ plugins:
           #   show_root_heading: false
           #   show_source: true
           #   show_category_heading: true
-          selection:
+          options:
             #docstring_style: "restructured-text" # default is "google"
             filters:
               - "!^_"  # exclude all members starting with _

@@ -6,6 +6,17 @@ For every tool, use option `-h` to get help.
 <command> -h
 ```
 
+::: cfdtools._cli
+    options:
+        show_docstring_parameters: false
+        show_docstring_returns: false
+        show_source: false
+        heading_level: 2
+        parameter_headings: false
+        filters:
+            - "!.*cli.*"
+
+
 ## cfdinfo
 
 `cfdinfo` fully reads all supported formats, converts to an internal mesh and data structure and prints a sum up of available information.
