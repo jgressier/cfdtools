@@ -23,6 +23,10 @@ pip show cfdtools
 - new IC3 v4 format based on hdf5
 - add tetra, prism and pyra to GMSH format reader
 
+#### changes
+
+- `vtkList.read` with reorder has a new verbose tolerance
+
 #### fix
 
 - vtk.plot() function
