@@ -179,6 +179,20 @@ def vtkbrief(argv=None):
 
 
 @cli_header()
+def vtkdiag(argv=None):
+    """reads all pyvista-available formats and prints full information on mesh and data
+    """
+    parser = cli_argparser(prog=f"[temp] {__fname__}")  # noqa: F821
+    parser.addarg_filenameformat(format="VTK")
+    parser.parse_cli_args(argv)
+    parser.parse_filenameformat()
+    #
+    r = vtk.vtkMesh()
+    r.read(parser.args().filename)
+    r.diag()
+    return True  # needed for pytest
+
+@cli_header()
 def vtkpack(argv=None):
     """reads a list of VTK-like files and 
     packs it to an cfdtools hdf5 format

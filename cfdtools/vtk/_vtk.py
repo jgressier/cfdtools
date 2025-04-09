@@ -125,6 +125,40 @@ class vtkMesh:
         else:
             log.warning("  no pyvista mesh available")
 
+    def diag(self):
+        if self._grid:
+            m = self._grid
+        else:
+            log.warning("  no pyvista mesh available")
+            return
+        #self.brief()
+        volume = self.volumes()
+        volmin, volmax = min(volume), max(volume)
+        voltot, volava = sum(volume), np.mean(volume)
+        vol_nb, volavg = len(volume), np.exp(np.mean(np.log(volume)))
+        if True:
+            log.info("> volumes")
+            log.info(f"  vol nb / total vol : {vol_nb:12d} / {voltot:12.6e}")
+            log.info(f"  (arith / geom) avg : {volava:12.6e} / {volavg:12.6e}")
+            log.info(f"  min vol / max vol  : {volmin:12.6e} / {volmax:12.6e}")
+            log.info(f"  max ratio b/nghbs  : {'???'}")
+            #k = 'connectivity'
+            #log.info(f"  dir(m.{k}): {(m.__getattr__(k))}")
+            #k = 'cell_connectivity'
+            #log.info(f"  dir(m.{k}): {(m.__getattr__(k)).shape}")
+            #for i in range(4):
+            #    print(m.cell_connectivity[16*i:16*(i+1)])
+            #print("...")
+            #for i in range(-4, 0):
+            #    print(m.cell_connectivity[16*i:min(16*(i+1),-1)])
+            #lk = []
+            #for k in dir(self):
+            #    if k[:2] == k[-2:]:
+            #        lk += [k]
+            #    else:
+            #        print(k)
+            #print(lk)
+
     def plot(self, background='white', show_edges=True, *args, **kwargs):
         self.pyvista_grid.plot(background=background, show_edges=show_edges, *args, **kwargs)
 
