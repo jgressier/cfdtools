@@ -3,11 +3,10 @@ import os
 from pathlib import Path
 
 import numpy as np
-import scipy.spatial as spspa
+import scipy.spatial as spatial
 
 try:
     import pyvista as pv
-
     importpyvista = True
 except ImportError:  # pragma: no cover
     importpyvista = False
@@ -67,7 +66,7 @@ class vtkList:
         if self._verbose:
             log.info("> build kd-tree")
         Tsort.start()
-        tree = spspa.KDTree(ctrRef)
+        tree = spatial.KDTree(ctrRef)
         Tsort.pause()
         #
         self._data = DataSetList(self.nfile, Xrep='cellaverage', Trep='instant')

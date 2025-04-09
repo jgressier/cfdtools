@@ -1,6 +1,7 @@
 import logging
-
 import numpy as np
+import scipy.spatial as spatial
+from typing import Callable
 
 try:
     import pyvista as pv
@@ -13,6 +14,7 @@ except ImportError:
 import cfdtools.api as api
 import cfdtools.meshbase._connectivity as _conn
 import cfdtools.meshbase._mesh as cfdmesh
+import cfdtools.utils.maths as maths
 import cfdtools.hdf5 as hdf5
 
 log = logging.getLogger(__name__)
@@ -55,12 +57,15 @@ class vtkMesh:
         """
         if mesh and pvmesh:
             api.error_stop("vtkMesh cannot be initialized by both structures")
+        self._reset()
         if mesh:
             self.set_mesh(mesh)
         if pvmesh:
             self.set_pvmesh(pvmesh)
 
     def _reset(self):
+        self._mesh = None
+        self._grid = None
         self._volume = None
 
     def set_mesh(self, mesh: cfdmesh.Mesh):
@@ -82,6 +87,7 @@ class vtkMesh:
     def read(self, filename):
         self.__init__()
         self.set_pvmesh(pv.read(filename))
+        return self
 
     def export_mesh(self):
         """generates a cfdtools meshbase from vtk connectivity, boundary conditions are missing
@@ -112,11 +118,13 @@ class vtkMesh:
     def brief(self):
         if self._grid:
             m = self._grid
-            log.info(f"pyvista object: {m}")
+            log.info(f"pyvista object: {m.DATA_TYPE_NAME}")
             log.info("> mesh")
-            log.info(f"  bounds : {m.bounds}")
-            log.info(f"  ncells : {m.n_cells}")
-            log.info(f"  npoints: {m.n_points}")
+            log.info(f"    ncells : {m.n_cells}")
+            log.info(f"    npoints: {m.n_points}")
+            for i, c in enumerate(['X', 'Y', 'Z']):
+                cmin, cmax = m.bounds[i * 2 : i * 2 + 2]
+                log.info(f"  {c} bounds:  {cmin} - {cmax}")
             log.info("> data")
             log.info(f"  cell  data names: {m.cell_data.keys()}")
             log.info(f"  point data names: {m.point_data.keys()}")
@@ -186,3 +194,169 @@ class vtkMesh:
         file.write_unsmesh(celldict, self._grid.points, **options)
         file.close()
         return file.filename
+
+    def vtk_extract_cells(self, selected_cell_ids: list):
+        """re-implementation of extract_cell because vtk/pyvista does not keep the order"""
+        with api.Timer("vtu extract slice"):
+            mesh = self._grid
+
+            orig_cells = mesh.cells
+            celltypes = mesh.celltypes
+            offsets = mesh.offset
+            points = mesh.points
+
+            new_cells_flat = []
+            new_celltypes = []
+            used_point_ids = set()
+
+            # Gather cells and track used point IDs
+            for cid in selected_cell_ids:
+                start = offsets[cid]+cid
+                end = offsets[cid+1]+cid+1
+                point_ids = orig_cells[start+1:end]
+                used_point_ids.update(point_ids)
+                new_celltypes.append(celltypes[cid])
+
+            # Create mapping for point ID reindexing
+            #used_point_ids = sorted(used_point_ids)
+            used_point_ids = list(used_point_ids)
+            point_id_map = {old: new for new, old in enumerate(used_point_ids)}
+            #print(points.shape, used_point_ids)
+            new_points = points[used_point_ids,:]
+            # Rebuild VTK-style cell array
+            for cid in selected_cell_ids:
+                start = offsets[cid]+cid
+                end = offsets[cid+1]+cid+1
+                point_ids = orig_cells[start+1:end]
+                reindexed = [point_id_map[pid] for pid in point_ids]
+                new_cells_flat.append(len(reindexed))
+                new_cells_flat.extend(reindexed)
+            vtk_cells = np.array(new_cells_flat, dtype=np.int64)
+            new_celltypes = np.array(new_celltypes, dtype=np.uint8) # cell type is small
+            # create extracted unstructured grid
+            new_grid = pv.UnstructuredGrid(vtk_cells, new_celltypes, new_points)
+            new_mesh = vtkMesh()
+            new_mesh.set_pvmesh(new_grid)
+        return new_mesh
+
+    def vtk_zconvolution(self, splitcoords: Callable = None, tol = 1.e-6, nmode=0, snapshot=False, rms=False, phase=False, select: dict = None):
+        """average the mesh data along a splitcoords and return a new vtkMesh object
+
+        Options can be replaced by a dictionary of options which keys are celldata names
+        e.g. select = {'Q': 'avg', 'U': ['no_avg', 'rms', {'nmode': 2}, 'phase' ]} will compute the average of Q and the average, RMS, 2 fourier modes of U
+        (phase included), all other data will be ignored.
+
+        Args:
+            splitcoords (Callable, optional): function to split the coordinates. Defaults to None.
+            tol (float, optional): tolerance for distance between planes. Defaults to 1.e-6.
+            nmode (int, optional): number of modes to keep. Defaults to 0.
+            snapshot (bool, optional): keep the snapshot data. Defaults to False.
+            rms (bool, optional): compute the RMS of the data. Defaults to False.
+            select (dict, optional): dictionary of variables/options selection to apply. Defaults to None.
+        Returns:
+            vtkMesh: averaged mesh
+        """
+        # parse dict if necessary and apply general options
+        current_options = {'avg': True, 'rms': rms, 'phase': phase, 'nmode' : nmode, 'snapshot': snapshot }
+        if select is None:
+            directives = { keyname: current_options.deepcopy() for keyname in self._grid.cell_data.keys() }
+        else:
+            # dict value can be only one (string) key or a list of a dict
+            directives = {}
+            for key, value in select.items():
+                if key not in self._grid.cell_data.keys():
+                    log.error(f"  unknown name {key} in VTK cell data")
+                    raise ValueError(f"  unknown key {key} used in select option of vtk_zconvolution()")
+                directives[key] = {**current_options}
+                if isinstance(value, str):
+                    if value == 'no_avg':
+                        directives[key]['avg'] = False
+                    else:
+                        directives[key][value] = True
+                elif isinstance(value, list):
+                    for v in value:
+                        if isinstance(v, str):
+                            if value == 'no_avg':
+                                directives[key]['avg'] = False
+                            else:
+                                directives[key][v] = True
+                        elif isinstance(v, dict):
+                            directives[key].update(v)
+                        else:
+                            raise ValueError(f"unknown type {type(v)} for {key}")
+                else:
+                    raise ValueError(f"unknown type {type(value)} for {key}")
+        #
+        log.info("> computes coords and compute chunks for planes")
+        # splitcoords
+        if splitcoords is None:
+            splitcoords = lambda x: (x[:,0:2], x[:, 2]) # default to z splitcoords
+        if not callable(splitcoords):
+            raise ValueError("splitcoords must be a callable function")
+        # compute cell centers and positions in slice (default xy) and transverse (z)
+        cell_centers = self._grid.cell_centers().points
+        xypos, zpos = splitcoords(cell_centers)
+        # sort
+        isort = np.argsort(zpos)
+        ichunk = np.where(np.abs(np.diff(zpos[isort])) > tol)[0] + 1
+        # check chunk size
+        nchunk = len(ichunk)+1
+        if nchunk <= 1:
+            log.error("  no chunks found, please check the direction function")
+            raise ValueError("  no chunks found")
+        chunks = np.split(isort, ichunk)
+        lens = list(map(len, chunks))
+        log.info(f"  {len(chunks)} chunks found with min:max sizes {min(lens)}:{max(lens)}")
+        if min(lens) != max(lens):
+            log.error("  chunks have different sizes, please check the direction function")
+            raise ValueError("  chunks have different sizes")
+        chunksize = lens[0]
+        # check distance between planes
+        zavg = [np.average(zpos[chunk]) for chunk in chunks]
+        zdiff = np.diff(zavg)        
+        zdiffavg, zdiffstd = (func(zdiff) for func in (np.average, np.std))
+        log.info(f"  average distance (stddev) between planes: {zdiffavg:.2e} ({zdiffstd:.2e})")
+        if zdiffstd > tol:
+            log.error(f"  max distance between planes is above tolerance {zdiffstd:.2e}")
+            raise ValueError("  max distance between planes     is above tolerance")
+        # compute all index with kdtree localization
+        log.info("> sort and localize cells in planes")
+        ikplanes = np.zeros((nchunk, chunksize), dtype=np.int64)
+        tree = spatial.KDTree(xypos[chunks[0]])
+        for i, chunk in enumerate(chunks):
+            if i == 0:
+                ikplanes[0,:] = chunk
+            else:
+                dfinal, index = tree.query(xypos[chunk], p=2) # p=2 is the norm
+                dmin, davg, dmax = maths.minavgmax(dfinal)
+                if dmax > tol:
+                    log.error(f"  max distance is above tolerance {tol}: {np.count_nonzero(dfinal > tol)} cells incriminated")
+                    log.error(f"  min:avg:max = {dmin:.2e}:{davg:.2e}:{dmax:.2e}")
+                    raise ValueError("  max distance is above tolerance")
+                ikplanes[i, index] = chunk
+        # check
+        # shape of xypos[ikplanes] is (nchunk, chunksize, 2)
+        stddev = np.std(xypos[ikplanes], axis=0)
+        if np.any(stddev > tol):
+            log.error("  stddev of points in planes is above tolerance")
+            raise ValueError("  stddev of points in planes is above tolerance")
+        # create one slice of mesh
+        log.info("> create new sliced mesh with FFT data")
+        new_mesh = self.vtk_extract_cells(chunks[0])
+        # and copy/create data
+        for name, options in directives.items():
+            data = self._grid.cell_data[name][ikplanes]
+            var_nmode = options.get('nmode')
+            log.info(f"  {name:<12}: {var_nmode} mode(s) of {data.shape} + {', '.join([k for k, v in options.items() if v])} ")
+            if options['snapshot']:
+                new_mesh._grid.cell_data[name] = data[0,...]
+            new_mesh._grid.cell_data[f"{name}_avg"] = np.average(data, axis=0)
+            if var_nmode > 0:
+                datafft = np.fft.fft(data, axis=0)[:var_nmode+1]
+                for i in range(1, var_nmode+1):
+                    new_mesh._grid.cell_data[f"{name}_k{i}"] = np.abs(datafft[i,...])
+                    if options['phase']:
+                        new_mesh._grid.cell_data[f"{name}_k{i}_phase"] = np.angle(datafft[i,...])
+            if options['rms']:
+                new_mesh._grid.cell_data[f"{name}_rms"] = np.std(data, axis=0)
+        return new_mesh
