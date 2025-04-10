@@ -259,7 +259,7 @@ class vtkMesh:
         # parse dict if necessary and apply general options
         current_options = {'avg': True, 'rms': rms, 'phase': phase, 'nmode' : nmode, 'snapshot': snapshot }
         if select is None:
-            directives = { keyname: current_options.deepcopy() for keyname in self._grid.cell_data.keys() }
+            directives = { keyname: current_options.copy() for keyname in self._grid.cell_data.keys() }
         else:
             # dict value can be only one (string) key or a list of a dict
             directives = {}
@@ -313,7 +313,7 @@ class vtkMesh:
         chunksize = lens[0]
         # check distance between planes
         zavg = [np.average(zpos[chunk]) for chunk in chunks]
-        zdiff = np.diff(zavg)        
+        zdiff = np.diff(zavg)
         zdiffavg, zdiffstd = (func(zdiff) for func in (np.average, np.std))
         log.info(f"  average distance (stddev) between planes: {zdiffavg:.2e} ({zdiffstd:.2e})")
         if zdiffstd > tol:
@@ -321,19 +321,20 @@ class vtkMesh:
             raise ValueError("  max distance between planes     is above tolerance")
         # compute all index with kdtree localization
         log.info("> sort and localize cells in planes")
-        ikplanes = np.zeros((nchunk, chunksize), dtype=np.int64)
-        tree = spatial.KDTree(xypos[chunks[0]])
-        for i, chunk in enumerate(chunks):
-            if i == 0:
-                ikplanes[0,:] = chunk
-            else:
-                dfinal, index = tree.query(xypos[chunk], p=2) # p=2 is the norm
-                dmin, davg, dmax = maths.minavgmax(dfinal)
-                if dmax > tol:
-                    log.error(f"  max distance is above tolerance {tol}: {np.count_nonzero(dfinal > tol)} cells incriminated")
-                    log.error(f"  min:avg:max = {dmin:.2e}:{davg:.2e}:{dmax:.2e}")
-                    raise ValueError("  max distance is above tolerance")
-                ikplanes[i, index] = chunk
+        with api.Timer():
+            ikplanes = np.zeros((nchunk, chunksize), dtype=np.int64)
+            tree = spatial.KDTree(xypos[chunks[0]])
+            for i, chunk in enumerate(chunks):
+                if i == 0:
+                    ikplanes[0,:] = chunk
+                else:
+                    dfinal, index = tree.query(xypos[chunk], p=2) # p=2 is the norm
+                    dmin, davg, dmax = maths.minavgmax(dfinal)
+                    if dmax > tol:
+                        log.error(f"  max distance is above tolerance {tol}: {np.count_nonzero(dfinal > tol)} cells incriminated")
+                        log.error(f"  min:avg:max = {dmin:.2e}:{davg:.2e}:{dmax:.2e}")
+                        raise ValueError("  max distance is above tolerance")
+                    ikplanes[i, index] = chunk
         # check
         # shape of xypos[ikplanes] is (nchunk, chunksize, 2)
         stddev = np.std(xypos[ikplanes], axis=0)
@@ -350,7 +351,8 @@ class vtkMesh:
             log.info(f"  {name:<12}: {var_nmode} mode(s) of {data.shape} + {', '.join([k for k, v in options.items() if v])} ")
             if options['snapshot']:
                 new_mesh._grid.cell_data[name] = data[0,...]
-            new_mesh._grid.cell_data[f"{name}_avg"] = np.average(data, axis=0)
+            if options['avg']:
+                new_mesh._grid.cell_data[f"{name}_avg"] = np.average(data, axis=0)
             if var_nmode > 0:
                 datafft = np.fft.fft(data, axis=0)[:var_nmode+1]
                 for i in range(1, var_nmode+1):
