@@ -43,6 +43,7 @@ def test_vtkdump(datadir, builddir):
 
 class Test_vtk_zconvolution():
     """Test the vtk_zconvolution function."""
+    @pytest.fixture(autouse=True)
     def setup(self):
         cube = sm.Cube(10, 10, 10)
         mesh = cube.export_mesh()
