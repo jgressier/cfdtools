@@ -50,10 +50,10 @@ class Test_vtk_zconvolution():
         self.vtkmesh = vtkMesh(mesh)
         def var_u(xyz):
             dp = 2*np.pi
-            return 10+np.sin(dp*xyz[:,0])+np.sin(2*dp*xyz[:,0])  
+            return 10+np.sin(dp*xyz[:,0])+np.sin(2*dp*xyz[:,0])
         def var_p(xyz):
             dp = 2*np.pi
-            return 100+np.sin(4*dp*xyz[:,2])*np.sin(2*dp*xyz[:,2])  
+            return 100+np.sin(4*dp*xyz[:,2])*np.sin(2*dp*xyz[:,2])
         xyz = self.vtkmesh.pyvista_grid.cell_centers().points
         self.vtkmesh.pyvista_grid.cell_data['U'] = var_u(xyz)
         self.vtkmesh.pyvista_grid.cell_data['P'] = var_p(xyz)

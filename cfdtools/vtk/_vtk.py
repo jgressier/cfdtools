@@ -196,43 +196,36 @@ class vtkMesh:
         return file.filename
 
     def vtk_extract_cells(self, selected_cell_ids: list):
-        """re-implementation of extract_cell because vtk/pyvista does not keep the order"""
+        """re-implementation of extract_cell because vtk/pyvista does not keep the order
+        celltypes is the list a cell types codes (vtk based)
+        offsets is the list of offsets for each cell
+        cells is a coompound defintion of cells with concatenated (size, point ids)
+        points is the list of points, shape (:,3)
+        """
         with api.Timer("vtu extract slice"):
             mesh = self._grid
-
             orig_cells = mesh.cells
             celltypes = mesh.celltypes
             offsets = mesh.offset
             points = mesh.points
-
-            new_cells_flat = []
-            new_celltypes = []
-            used_point_ids = set()
-
-            # Gather cells and track used point IDs
-            for cid in selected_cell_ids:
-                start = offsets[cid]+cid
-                end = offsets[cid+1]+cid+1
-                point_ids = orig_cells[start+1:end]
-                used_point_ids.update(point_ids)
-                new_celltypes.append(celltypes[cid])
-
+            #
+            new_celltypes = [ celltypes[cid] for cid in selected_cell_ids ]
+            extract_vtex = np.concatenate([orig_cells[offsets[cid]+cid+1:offsets[cid+1]+cid+1] for cid in selected_cell_ids])
+            nvtex = np.array([orig_cells[offsets[cid]+cid] for cid in selected_cell_ids], dtype=np.uint8)
+            used_point_ids = list(set(extract_vtex))
             # Create mapping for point ID reindexing
-            #used_point_ids = sorted(used_point_ids)
-            used_point_ids = list(used_point_ids)
             point_id_map = {old: new for new, old in enumerate(used_point_ids)}
-            #print(points.shape, used_point_ids)
-            new_points = points[used_point_ids,:]
+            new_vtex = np.array(list(map(lambda x: point_id_map[x], extract_vtex)), dtype=np.int64)
             # Rebuild VTK-style cell array
-            for cid in selected_cell_ids:
-                start = offsets[cid]+cid
-                end = offsets[cid+1]+cid+1
-                point_ids = orig_cells[start+1:end]
-                reindexed = [point_id_map[pid] for pid in point_ids]
-                new_cells_flat.append(len(reindexed))
-                new_cells_flat.extend(reindexed)
-            vtk_cells = np.array(new_cells_flat, dtype=np.int64)
+            vtk_cells = np.empty(len(new_vtex)+len(new_celltypes), dtype=np.int64)
+            i = 0 ; j = 0
+            for size in nvtex:
+                vtk_cells[i] = size
+                vtk_cells[i+1:i+1+size] = new_vtex[j:j+size]
+                i += size + 1
+                j += size
             new_celltypes = np.array(new_celltypes, dtype=np.uint8) # cell type is small
+            new_points = points[used_point_ids, :]
             # create extracted unstructured grid
             new_grid = pv.UnstructuredGrid(vtk_cells, new_celltypes, new_points)
             new_mesh = vtkMesh()
@@ -268,15 +261,11 @@ class vtkMesh:
                     log.error(f"  unknown name {key} in VTK cell data")
                     raise ValueError(f"  unknown key {key} used in select option of vtk_zconvolution()")
                 directives[key] = {**current_options}
-                if isinstance(value, str):
-                    if value == 'no_avg':
-                        directives[key]['avg'] = False
-                    else:
-                        directives[key][value] = True
-                elif isinstance(value, list):
+                if isinstance(value, str): value = [value]
+                if isinstance(value, list):
                     for v in value:
                         if isinstance(v, str):
-                            if value == 'no_avg':
+                            if v == 'no_avg':
                                 directives[key]['avg'] = False
                             else:
                                 directives[key][v] = True
@@ -288,37 +277,38 @@ class vtkMesh:
                     raise ValueError(f"unknown type {type(value)} for {key}")
         #
         log.info("> computes coords and compute chunks for planes")
-        # splitcoords
-        if splitcoords is None:
-            splitcoords = lambda x: (x[:,0:2], x[:, 2]) # default to z splitcoords
-        if not callable(splitcoords):
-            raise ValueError("splitcoords must be a callable function")
-        # compute cell centers and positions in slice (default xy) and transverse (z)
-        cell_centers = self._grid.cell_centers().points
-        xypos, zpos = splitcoords(cell_centers)
-        # sort
-        isort = np.argsort(zpos)
-        ichunk = np.where(np.abs(np.diff(zpos[isort])) > tol)[0] + 1
-        # check chunk size
-        nchunk = len(ichunk)+1
-        if nchunk <= 1:
-            log.error("  no chunks found, please check the direction function")
-            raise ValueError("  no chunks found")
-        chunks = np.split(isort, ichunk)
-        lens = list(map(len, chunks))
-        log.info(f"  {len(chunks)} chunks found with min:max sizes {min(lens)}:{max(lens)}")
-        if min(lens) != max(lens):
-            log.error("  chunks have different sizes, please check the direction function")
-            raise ValueError("  chunks have different sizes")
-        chunksize = lens[0]
-        # check distance between planes
-        zavg = [np.average(zpos[chunk]) for chunk in chunks]
-        zdiff = np.diff(zavg)
-        zdiffavg, zdiffstd = (func(zdiff) for func in (np.average, np.std))
-        log.info(f"  average distance (stddev) between planes: {zdiffavg:.2e} ({zdiffstd:.2e})")
-        if zdiffstd > tol:
-            log.error(f"  max distance between planes is above tolerance {zdiffstd:.2e}")
-            raise ValueError("  max distance between planes     is above tolerance")
+        with api.Timer():
+            # splitcoords
+            if splitcoords is None:
+                splitcoords = lambda x: (x[:,0:2], x[:, 2]) # default to z splitcoords
+            if not callable(splitcoords):
+                raise ValueError("splitcoords must be a callable function")
+            # compute cell centers and positions in slice (default xy) and transverse (z)
+            cell_centers = self._grid.cell_centers().points
+            xypos, zpos = splitcoords(cell_centers)
+            # sort
+            isort = np.argsort(zpos)
+            ichunk = np.where(np.abs(np.diff(zpos[isort])) > tol)[0] + 1
+            # check chunk size
+            nchunk = len(ichunk)+1
+            if nchunk <= 1:
+                log.error("  no chunks found, please check the direction function")
+                raise ValueError("  no chunks found")
+            chunks = np.split(isort, ichunk)
+            lens = list(map(len, chunks))
+            log.info(f"  {len(chunks)} chunks found with min:max sizes {min(lens)}:{max(lens)}")
+            if min(lens) != max(lens):
+                log.error("  chunks have different sizes, please check the direction function")
+                raise ValueError("  chunks have different sizes")
+            chunksize = lens[0]
+            # check distance between planes
+            zavg = [np.average(zpos[chunk]) for chunk in chunks]
+            zdiff = np.diff(zavg)
+            zdiffavg, zdiffstd = (func(zdiff) for func in (np.average, np.std))
+            log.info(f"  average distance (stddev) between planes: {zdiffavg:.2e} ({zdiffstd:.2e})")
+            if zdiffstd > tol:
+                log.error(f"  max distance between planes is above tolerance {zdiffstd:.2e}")
+                raise ValueError("  max distance between planes is above tolerance")
         # compute all index with kdtree localization
         log.info("> sort and localize cells in planes")
         with api.Timer():
