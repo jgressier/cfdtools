@@ -50,7 +50,7 @@ class Test_vtk_zconvolution():
         self.vtkmesh = vtkMesh(mesh)
         def var_u(xyz):
             dp = 2*np.pi
-            return 10+np.sin(dp*xyz[:,0])+np.sin(2*dp*xyz[:,0])
+            return 10+2*np.sin(dp*xyz[:,2])+np.sin(2*dp*xyz[:,0])
         def var_p(xyz):
             dp = 2*np.pi
             return 100+np.sin(4*dp*xyz[:,2])*np.sin(2*dp*xyz[:,2])
@@ -93,6 +93,7 @@ class Test_vtk_zconvolution():
         assert len(slice.pyvista_grid.cell_data.keys()) == 10
         for name in ('U_avg', 'P_avg'):
             assert name in slice.pyvista_grid.cell_data.keys()
+        slice.write_data("test_fourier.vtu")
 
     def test_select(self):
         assert self.vtkmesh.ncell == 1000

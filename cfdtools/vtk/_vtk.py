@@ -218,12 +218,12 @@ class vtkMesh:
             new_vtex = np.array(list(map(lambda x: point_id_map[x], extract_vtex)), dtype=np.int64)
             # Rebuild VTK-style cell array
             vtk_cells = np.empty(len(new_vtex)+len(new_celltypes), dtype=np.int64)
-            i = 0 ; j = 0
+            i = int(0) ; j = 0
             for size in nvtex:
                 vtk_cells[i] = size
                 vtk_cells[i+1:i+1+size] = new_vtex[j:j+size]
-                i += size + 1
-                j += size
+                i += np.int64(size) + 1 # size + 1, size is uint8
+                j += np.int64(size)
             new_celltypes = np.array(new_celltypes, dtype=np.uint8) # cell type is small
             new_points = points[used_point_ids, :]
             # create extracted unstructured grid
@@ -271,9 +271,9 @@ class vtkMesh:
                                 directives[key][v] = True
                         elif isinstance(v, dict):
                             directives[key].update(v)
-                        else:
+                        else: # pragma: no cover
                             raise ValueError(f"unknown type {type(v)} for {key}")
-                else:
+                else: # pragma: no cover
                     raise ValueError(f"unknown type {type(value)} for {key}")
         #
         log.info("> computes coords and compute chunks for planes")
@@ -281,7 +281,7 @@ class vtkMesh:
             # splitcoords
             if splitcoords is None:
                 splitcoords = lambda x: (x[:,0:2], x[:, 2]) # default to z splitcoords
-            if not callable(splitcoords):
+            if not callable(splitcoords): # pragma: no cover
                 raise ValueError("splitcoords must be a callable function")
             # compute cell centers and positions in slice (default xy) and transverse (z)
             cell_centers = self._grid.cell_centers().points
@@ -291,13 +291,13 @@ class vtkMesh:
             ichunk = np.where(np.abs(np.diff(zpos[isort])) > tol)[0] + 1
             # check chunk size
             nchunk = len(ichunk)+1
-            if nchunk <= 1:
+            if nchunk <= 1: # pragma: no cover
                 log.error("  no chunks found, please check the direction function")
                 raise ValueError("  no chunks found")
             chunks = np.split(isort, ichunk)
             lens = list(map(len, chunks))
             log.info(f"  {len(chunks)} chunks found with min:max sizes {min(lens)}:{max(lens)}")
-            if min(lens) != max(lens):
+            if min(lens) != max(lens): # pragma: no cover
                 log.error("  chunks have different sizes, please check the direction function")
                 raise ValueError("  chunks have different sizes")
             chunksize = lens[0]
@@ -344,7 +344,7 @@ class vtkMesh:
             if options['avg']:
                 new_mesh._grid.cell_data[f"{name}_avg"] = np.average(data, axis=0)
             if var_nmode > 0:
-                datafft = np.fft.fft(data, axis=0)[:var_nmode+1]
+                datafft = np.fft.fft(data, norm='ortho', axis=0)[:var_nmode+1]
                 for i in range(1, var_nmode+1):
                     new_mesh._grid.cell_data[f"{name}_k{i}"] = np.abs(datafft[i,...])
                     if options['phase']:
