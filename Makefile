@@ -1,13 +1,25 @@
 SRC := .
-PKG := flowdyn
+VENV_DIR := $(SRC)/venv
+REQUIREMENTS_FILE := $(SRC)/requirements.txt
+PKG := cfdtools
 
 #env:
 #	mkvirtualenv --python=$(which python3.7) $(PKG)
 
-.PHONY: help
+.PHONY: help venv
+
 help: ## print this help
 	@echo "\n$$(poetry version): use target ; available Makefile following targets"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' Makefile | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-16s\033[0m %s\n", $$1, $$2}'
+
+venv: $(REQUIREMENTS_FILE)
+	@echo "Creating virtual environment in $(VENV_DIR)..."
+	$(PYTHON) -m venv $(VENV_DIR)
+	@echo "Installing dependencies from $(REQUIREMENTS_FILE)..."
+	$(VENV_DIR)/bin/pip install --upgrade pip
+	$(VENV_DIR)/bin/pip install -r $(REQUIREMENTS_FILE)
+	$(VENV_DIR)/bin/pip install -e .
+	@echo "Virtual environment is ready."
 
 .PHONY: install
 install: ## install minimum required packages and flowdyn to local
@@ -18,9 +30,6 @@ install_dev: install ## install package for development and testing
 	#<missing># pip install -r $(SRC)/requirements-dev.txt
 	#<missing># pip install -r $(SRC)/docs/requirements.txt
 
-poetry.lock: pyproject.toml
-	poetry update
-
 check_pyproject: ## check all requirements are defined in pyproject.toml
 	cat requirements.txt | grep -E '^[^# ]' | cut -d= -f1 | xargs -n 1 poetry add
 	cat requirements-dev.txt | grep -E '^[^# ]' | cut -d= -f1 | xargs -n 1 poetry add -D
@@ -28,19 +37,6 @@ check_pyproject: ## check all requirements are defined in pyproject.toml
 
 test: install_dev ## run tests with pytest
 	pytest
-
-poetry_test:  ## run tests with poetry run pytest
-	poetry update
-	poetry run pytest
-
-serve:
-	poetry run mkdocs serve
-
-build: ## build package
-	poetry build
-
-publish: build ## package publishing to pypi with poetry
-	poetry publish
 
 cov_run:
 	poetry run pytest --cov-report=xml

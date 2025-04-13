@@ -76,7 +76,7 @@ class cgnszone:
             etype = ele_cgns2local[cgnstype]
             nnode = _elem.nnode_elem[etype]
             # extract cell connectivity only
-            if _elem.elem_dim[etype] == geodim:
+            if _elem.dim_elem[etype] == geodim:
                 index = _conn.indexlist(irange=elements["ElementRange/ data"][:] - 1)
                 econ = elements["ElementConnectivity/ data"][:].reshape((-1, nnode))
                 econ -= 1  # shift node index (starts 0)

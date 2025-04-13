@@ -1,6 +1,6 @@
 [project]
 name = "cfdtools"
-version = "0.5.4"
+version = "0.6.0"
 description = "Tools for mesh and solution management in CFD"
 authors = [{name="J. Gressier", email="jeremie.gressier@isae-supaero.fr"}]
 readme = "README.md"
@@ -15,6 +15,8 @@ classifiers = [
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Physics",
     "Topic :: Software Development :: Libraries :: Python Modules" ]
@@ -32,14 +34,14 @@ Documentation = "https://cfdtools.readthedocs.io/en/latest/"
 include = ["cfdtools*"]
 
 [project.scripts]
-cfdinfo = 'cfdtools._cli:info'
-cfdwritecube = 'cfdtools._cli:writecube'
+cfdinfo = 'cfdtools._cli:cfdinfo'
+cfdwritecube = 'cfdtools._cli:cfdwritecube'
 ic3brief = 'cfdtools._cli:ic3brief'
 ic3probe_plotline = 'cfdtools._cli:ic3probe_plotline'
-cfdwrite_ic3v2 = 'cfdtools._cli:write_ic3v2'
-cfdwrite_ic3v3 = 'cfdtools._cli:write_ic3v3'
-cfdwrite_ic3 = 'cfdtools._cli:write_ic3v3'
-cfdwrite_vtk = 'cfdtools._cli:write_vtk'
+cfdwrite_ic3v2 = 'cfdtools._cli:cfdwrite_ic3v2'
+cfdwrite_ic3v3 = 'cfdtools._cli:cfdwrite_ic3v3'
+cfdwrite_ic3 = 'cfdtools._cli:cfdwrite_ic3v3'
+cfdwrite_vtk = 'cfdtools._cli:cfdwrite_vtk'
 vtkbrief = 'cfdtools._cli:vtkbrief'
 vtkpack = 'cfdtools._cli:vtkpack'
 
@@ -68,7 +70,7 @@ testpaths = [
 ]
 
 [tool.bumpver]
-current_version = "v0.5.4"
+current_version = "v0.6.0"
 version_pattern = "vMAJOR.MINOR.PATCH"
 commit_message = "bump version {old_version} to {new_version}"
 commit = true

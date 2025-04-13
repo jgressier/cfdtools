@@ -302,6 +302,7 @@ class elem_connectivity:
                 else:
                     mergedict[key]['index'] = elemtype['index'].shift(shift)
                     mergedict[key]['elem2node'] = elemtype['elem2node']
+
         for elem, elemtype in mergedict.items():
             self.add_elems(elem, elemtype['elem2node'], elemtype['index'])
 
@@ -408,7 +409,7 @@ class elem_connectivity:
         return __find_duplicates(faces_neighbour)
 
     def nodelist(self):
-        """create list of (unique) nodes from element connectivity"""
+        """create list of (unique) nodes from element connectivity""" 
         nodeset = set()
         for _, econ in self.items():
             nodeset.update(econ['elem2node'].ravel().tolist())

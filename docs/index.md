@@ -1,6 +1,6 @@
 # CFDTOOLS documentation
 
-`cfdtools` is python library dedicated to mesh pre-processing.
+`cfdtools` is python library dedicated to mesh pre- and post-processing.
 
 [![PyPi Version](https://img.shields.io/pypi/v/cfdtools.svg?style=flat)](https://pypi.org/project/cfdtools)
 [![PyPI pyversions](https://img.shields.io/pypi/pyversions/cfdtools.svg?style=flat)](https://pypi.org/pypi/cfdtools/)
@@ -26,3 +26,6 @@ or clone and install `develop` branch
     git checkout develop
     pip install [--user] .
 
+## first steps
+
+`cfdtools` provides direct and simple command line tools (see [CLI](cli.md)). A second stage may be to directly implement you needed workflow using either these embedded tools as examples (see [sources](https://github.com/jgressier/cfdtools/blob/master/cfdtools/_cli.py)) or the [examples on this site](examples.md).

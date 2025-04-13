@@ -16,12 +16,28 @@ pip show cfdtools
 
 ## Versions
 
+### [0.6.0](https://pypi.org/project/cfdtools/) (2024-04-14)
+
+#### new
+
+- new IC3 v4 format based on hdf5, additional command line writer
+- new `zconvolution`to vtkMesh object able to compute average or fourier modes of an extruded mesh
+- add tetra, prism and pyra to GMSH format reader
+
+#### changes
+
+- `vtkList.read` with reorder has a new verbose tolerance
+
+#### fix
+
+- vtk.plot() function
+
 ### [0.5.4](https://pypi.org/project/cfdtools/) (2024-02-06)
 
 #### fix
 
 - avoid failure if pyvista missing (when not necessary)
-- `probes.data`: handle non expected multiple lines in coordinate files
+- `probes.data`: handle unexpected multiple lines in coordinate files
 
 ### [0.5.3](https://pypi.org/project/cfdtools/) (2024-01-15)
 
