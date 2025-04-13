@@ -43,3 +43,6 @@ Untitled*.ipynb
 *.xdump
 *.log
 *.info
+
+# MacOS
+.DS_Store

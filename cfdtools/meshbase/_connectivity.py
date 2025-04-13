@@ -409,7 +409,7 @@ class elem_connectivity:
         return __find_duplicates(faces_neighbour)
 
     def nodelist(self):
-        """create list of (unique) nodes from element connectivity"""
+        """create list of (unique) nodes from element connectivity""" 
         nodeset = set()
         for _, econ in self.items():
             nodeset.update(econ['elem2node'].ravel().tolist())

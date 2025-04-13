@@ -27,6 +27,7 @@ nav:
   - Examples:
     - Examples: examples.md
     - Cube to Sphere: examples/morph-sphere.ipynb
+    - Z-convolution: examples/zconvolution.ipynb
   - Code reference:
     - internal structures: cfdtools-format.md
     - IC3 V2 and V3 format: ic3-format.md
