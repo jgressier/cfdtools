@@ -1,11 +1,18 @@
-mkdocs-material
+mkdocs>=1.5,<1.6
+mkdocs-material>=9.5,<10
+mkdocstrings>=0.24,<0.25
+mkdocstrings-python>=1.8,<1.9
+mkdocs-jupyter>=0.24,<0.25
 mkdocs-include-markdown-plugin
 mkdocs-exclude
-cfdtools
-ipykernel
-mkdocs-jupyter
-#mkdocstrings[python] <= 0.22
-mkdocstrings[python] >= 0.23
+# mkdocs-material
+# mkdocs-include-markdown-plugin
+# mkdocs-exclude
+# cfdtools
+# ipykernel
+# mkdocs-jupyter
+# #mkdocstrings[python] <= 0.22
+# mkdocstrings[python] >= 0.23
 pyvirtualdisplay
 trame
 pyvista
