@@ -16,11 +16,12 @@ pip show cfdtools
 
 ## Versions
 
-### [0.6.x](https://pypi.org/project/cfdtools/) (2024-xx-xx)
+### [0.6.0](https://pypi.org/project/cfdtools/) (2024-04-14)
 
 #### new
 
-- new IC3 v4 format based on hdf5
+- new IC3 v4 format based on hdf5, additional command line writer
+- new `zconvolution`to vtkMesh object able to compute average or fourier modes of an extruded mesh
 - add tetra, prism and pyra to GMSH format reader
 
 #### changes

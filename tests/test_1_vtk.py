@@ -60,50 +60,50 @@ class Test_vtk_zconvolution():
 
     def test_default(self):
         assert self.vtkmesh.ncell == 1000
-        slice = self.vtkmesh.vtk_zconvolution()
-        assert slice.ncell == 100
-        assert len(slice.pyvista_grid.point_data.keys()) == 0
-        assert len(slice.pyvista_grid.cell_data.keys()) == 2
+        vtkslice = self.vtkmesh.vtk_zconvolution()
+        assert vtkslice.ncell == 100
+        assert len(vtkslice.pyvista_grid.point_data.keys()) == 0
+        assert len(vtkslice.pyvista_grid.cell_data.keys()) == 2
         for name in ('U_avg', 'P_avg'):
-            assert name in slice.pyvista_grid.cell_data.keys()
+            assert name in vtkslice.pyvista_grid.cell_data.keys()
 
     def test_rms(self):
         assert self.vtkmesh.ncell == 1000
-        slice = self.vtkmesh.vtk_zconvolution(rms=True)
-        assert slice.ncell == 100
-        assert len(slice.pyvista_grid.point_data.keys()) == 0
-        assert len(slice.pyvista_grid.cell_data.keys()) == 4
+        vtkslice = self.vtkmesh.vtk_zconvolution(rms=True)
+        assert vtkslice.ncell == 100
+        assert len(vtkslice.pyvista_grid.point_data.keys()) == 0
+        assert len(vtkslice.pyvista_grid.cell_data.keys()) == 4
         for name in ('U_avg', 'U_rms', 'P_avg', 'P_rms'):
-            assert name in slice.pyvista_grid.cell_data.keys()
+            assert name in vtkslice.pyvista_grid.cell_data.keys()
 
     def test_snapshot(self):
         assert self.vtkmesh.ncell == 1000
-        slice = self.vtkmesh.vtk_zconvolution(snapshot=True)
-        assert slice.ncell == 100
-        assert len(slice.pyvista_grid.point_data.keys()) == 0
-        assert len(slice.pyvista_grid.cell_data.keys()) == 4
+        vtkslice = self.vtkmesh.vtk_zconvolution(snapshot=True)
+        assert vtkslice.ncell == 100
+        assert len(vtkslice.pyvista_grid.point_data.keys()) == 0
+        assert len(vtkslice.pyvista_grid.cell_data.keys()) == 4
         for name in ('U_avg', 'U', 'P_avg', 'P'):
-            assert name in slice.pyvista_grid.cell_data.keys()
+            assert name in vtkslice.pyvista_grid.cell_data.keys()
 
     def test_fourier(self):
         assert self.vtkmesh.ncell == 1000
-        slice = self.vtkmesh.vtk_zconvolution(nmode=2, phase=True)
-        assert slice.ncell == 100
-        assert len(slice.pyvista_grid.point_data.keys()) == 0
-        assert len(slice.pyvista_grid.cell_data.keys()) == 10
+        vtkslice = self.vtkmesh.vtk_zconvolution(nmode=2, phase=True)
+        assert vtkslice.ncell == 100
+        assert len(vtkslice.pyvista_grid.point_data.keys()) == 0
+        assert len(vtkslice.pyvista_grid.cell_data.keys()) == 10
         for name in ('U_avg', 'P_avg'):
-            assert name in slice.pyvista_grid.cell_data.keys()
-        slice.write_data("test_fourier.vtu")
+            assert name in vtkslice.pyvista_grid.cell_data.keys()
+        vtkslice.write_data("test_fourier.vtu")
 
     def test_select(self):
         assert self.vtkmesh.ncell == 1000
-        slice = self.vtkmesh.vtk_zconvolution(nmode=1, rms=True, snapshot=True,
+        vtkslice = self.vtkmesh.vtk_zconvolution(nmode=1, rms=True, snapshot=True,
                                               select={'U': 'no_avg', 'P': [{'nmode': 2}, 'phase'] })
-        assert slice.ncell == 100
-        assert len(slice.pyvista_grid.point_data.keys()) == 0
-        assert len(slice.pyvista_grid.cell_data.keys()) == 10
+        assert vtkslice.ncell == 100
+        assert len(vtkslice.pyvista_grid.point_data.keys()) == 0
+        assert len(vtkslice.pyvista_grid.cell_data.keys()) == 10
         for name in ('U', 'U_k1', 'U_rms', 'P', 'P_avg', 'P_rms', 'P_k1', 'P_k2', 'P_k1_phase', 'P_k2_phase'):
-            assert name in slice.pyvista_grid.cell_data.keys()
+            assert name in vtkslice.pyvista_grid.cell_data.keys()
 
 def test_vtkList(datadir):
     namelist = list(datadir.glob("cubemixed00*.vtu"))
