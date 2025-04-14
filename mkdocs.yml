@@ -8,8 +8,8 @@ theme:
   icon:
     repo: fontawesome/brands/github
   language: en
-  features:
-    #- navigation.tabs
+  # features: # to enable first level navigation as tabs
+  #   - navigation.tabs
   font:
     text: Helvetica
     code: Menlo
