@@ -1,5 +1,6 @@
-mkdocs>=1.5,<1.6
+mkdocs>=1.6
 mkdocs-material>=9.5,<10
+mkdocs-autorefs>=1.4  # ok à partir de mkdocs>=1.6
 mkdocstrings>=0.24,<0.25
 mkdocstrings-python>=1.8,<1.9
 mkdocs-jupyter>=0.24,<0.25

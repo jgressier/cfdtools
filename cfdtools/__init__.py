@@ -16,6 +16,7 @@ if not isinstance(numeric_level, int):
 
 log = logging.getLogger(__name__)
 handler = logging.StreamHandler()
-handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+#handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+handler.setFormatter(logging.Formatter("%(levelname)s %(message)s"))
 log.addHandler(handler)
 log.setLevel(level.upper())
