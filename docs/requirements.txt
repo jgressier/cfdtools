@@ -1,9 +1,10 @@
 mkdocs>=1.6
-mkdocs-material>=9.5,<10
+mkdocs-material>=9.5
 mkdocs-autorefs>=1.4  # ok à partir de mkdocs>=1.6
-mkdocstrings>=0.24,<0.25
-mkdocstrings-python>=1.8,<1.9
-griffe >= 0.37 # seems to not be requested by mkdocstrings-python but needed
+mkdocstrings>=0.24
+mkdocstrings-python>=1.10
+# seems to not be requested by mkdocstrings-python but needed
+griffe == 0.49 # latest versions are incompatible with mkdocstrings-python
 mkdocs-jupyter>=0.24,<0.25
 mkdocs-include-markdown-plugin
 mkdocs-exclude
