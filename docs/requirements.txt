@@ -16,6 +16,9 @@ mkdocs-exclude
 # mkdocs-jupyter
 # #mkdocstrings[python] <= 0.22
 # mkdocstrings[python] >= 0.23
+# REQUIRED to run notebooks
+cfdtools >= 0.6.0
+ipykernel
 pyvirtualdisplay
 trame
 pyvista
