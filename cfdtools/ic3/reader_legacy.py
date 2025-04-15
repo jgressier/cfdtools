@@ -333,12 +333,12 @@ class reader(binreader):
             boco.properties["periodic_transform"] = h.rdata
             if boco.type in ('perio_cart',):
                 meshco = _mesh.meshconnection()
-                meshco.set_translation(h.rdata[0:2])
+                meshco.set_translation(h.rdata[0:3])
                 boco.connection = meshco
             elif boco.type in ('perio_cylx', 'perio_cyly', 'perio_cylz'):
                 meshco = _mesh.meshconnection()
                 rottype = {'perio_cylx': 'rotx', 'perio_cyly': 'roty', 'perio_cylz': 'rotz'}[boco.type]
-                meshco.set_rotation(rottype=rottype, angle=np.atan2(*h.rdata[0:1]))
+                meshco.set_rotation(rottype=rottype, angle=np.atan2(*h.rdata[0:2]))
                 boco.connection = meshco
             #
             famin, famax = boco.index.range()

@@ -87,7 +87,7 @@ class meshconnection:
         return nodes
 
     def __str__(self):
-        return f"meshconnection({self.contype}:{self.transform}): {self._properties}"
+        return f"meshconnection({self.contype}:{self.transform}):\n  - properties: {self._properties}\n  - index: {self._index}"
 
 
 class submeshmark:
@@ -426,6 +426,7 @@ class Mesh:
         Returns:
             meshconnection: _description_
         """
+        # obtain submeshmark with given names
         boco1 = self.get_mark(mark1)
         boco2 = self.get_mark(mark2)
         if (boco1 is None) or (boco2 is None):
@@ -433,20 +434,26 @@ class Mesh:
         if not (boco1.nodebased() and boco2.nodebased()):
             api.error_stop(f"currently, marks should be nodebased")
         i1, i2 = (bc.index.list() for bc in (boco1, boco2))
+        # defines Nodes object to obtain geometrical methods
         node1, node2 = (Nodes(self.extract_nodes(index)) for index in (i1, i2))
         if connection is None:
-            log.info("  build automatic periodic connection:")
+            log.info("  build automatic periodic connection (translation only):")
             meshco = meshconnection()
             meshco.set_translation(node2.center - node1.center)
         else:
             log.info(f"  build periodic connection using prescribed: {connection}")
             meshco = connection
+        # transform node1 positions
         node1 = meshco.apply(node1)
+        # and look for match in nodes2 cloud of nodes
         d, index = node2.kdtree_query(node1)
         log.info("  computed distance is (min:avg:max) {:.3f} : {:.3f} : {:.3f}".format(*minavgmax(d)))
         if np.max(d) > tol:
             api.error_stop(f"periodic connection does not match tolerance ({tol})")
-        meshco.index = index
+        meshco.index = index # ??? indirection in mark list or global index
+        boco1.connection = meshco
+        boco1.properties['link-mark'] = mark2
+        # create reverse connection
         return meshco
 
     def set_params(self, params):
