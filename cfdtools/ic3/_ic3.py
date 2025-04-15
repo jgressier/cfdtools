@@ -288,10 +288,7 @@ class restartSectionHeader:
         mystring += "\n"
         mystring += "Name : %s" % self.name
         mystring += "\n"
-        mystring += "Id   : %i %s" % (
-            self.id,
-            list(dict(filter(lambda items: items[1] == self.id[0], ic3_restart_codes.items())).keys()),
-        )
+        mystring += f"Id   : {self.id} {list(dict(filter(lambda items: items[1] == self.id[0], ic3_restart_codes.items())).keys())}" 
         mystring += "\n"
         mystring += "idata: (" + ", ".join(str(i) for i in self.idata) + ")"
         mystring += "\n"

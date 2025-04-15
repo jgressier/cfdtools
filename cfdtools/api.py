@@ -180,8 +180,7 @@ class Timer:  # from https://realpython.com/python-timer/
             self._ncol = 0
             # ...then line is restarted...
             log.info('')
-        # ...else line is continued
-
+        # ...else line is continuedwith
         self.start()
 
     def __exit__(self, *exitoptions):

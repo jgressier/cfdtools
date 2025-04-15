@@ -8,8 +8,8 @@ theme:
   icon:
     repo: fontawesome/brands/github
   language: en
-  features:
-    #- navigation.tabs
+  # features: # to enable first level navigation as tabs
+  #   - navigation.tabs
   font:
     text: Helvetica
     code: Menlo
@@ -27,6 +27,7 @@ nav:
   - Examples:
     - Examples: examples.md
     - Cube to Sphere: examples/morph-sphere.ipynb
+    - Z-convolution: examples/zconvolution.ipynb
   - Code reference:
     - internal structures: cfdtools-format.md
     - IC3 V2 and V3 format: ic3-format.md
@@ -38,6 +39,8 @@ nav:
 plugins:
   - search
   - include-markdown
+  - autorefs:
+      link_titles: auto
   - mkdocs-jupyter:
       execute: True
       include_source: False
