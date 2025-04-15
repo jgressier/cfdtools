@@ -87,7 +87,7 @@ class meshconnection:
         return nodes
 
     def __str__(self):
-        return f"meshconnection({self.contype}:{self.transform}):\n  - properties: {self._properties}\n  - index: {self._index}"
+        return f"meshco({self.contype}:{self.transform}): properties: {self._properties} - index: {self._index}"
 
 
 class submeshmark:
@@ -171,8 +171,17 @@ class submeshmark:
     def properties(self, properties: dict):
         self._properties = properties
 
+    def copy(self):
+        """copy mark with all properties"""
+        newmark = submeshmark(self.name)
+        newmark.geodim = self.geodim
+        newmark.type = self.type
+        newmark.index = self.index.copy()
+        newmark.properties = self.properties.copy()
+        return newmark
+    
     def __str__(self):
-        return f"{self.name:12} ({self.geodim}): {self.index}"
+        return f"{self.name:12} ({self.type}-{self.geodim}): {self.index}"
 
 
 class Mesh:
@@ -298,9 +307,9 @@ class Mesh:
         return mixedfaces_con, face2cell
 
     def add_boco(self, boco: submeshmark):
-        self._bocos[boco.name] = boco
+        self._bocos[boco.name] = boco.copy()
 
-    def remove_boco(self, name):
+    def remove_boco(self, name: str):
         self._bocos.pop(name)
 
     def bocomarks_set_node_to_face(self):
@@ -545,6 +554,8 @@ class Mesh:
         log.info(f"bocos: {' '.join(self._bocos.keys())}")
         for name, boco in self._bocos.items():
             log.info(f"  BC {boco}")
+            if boco.type[:6] == 'perio_':
+                log.info(f"     periodic connection: {boco.connection}")
         log.info(f"params: {self._params}")
 
     def _check_cell2node(self):

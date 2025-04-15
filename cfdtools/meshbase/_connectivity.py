@@ -94,6 +94,16 @@ class indexlist:
                 self.set_range([self._list[0], self._list[-1]])
         # else no error, keep list
 
+    def copy(self):
+        """copy indexlist"""
+        if self._type == 'list':
+            return indexlist(ilist=self._list.copy())
+        elif self._type == 'range':
+            return indexlist(irange=self._range.copy())
+        else:
+            api.error_stop(f"unknown type: {self._type}")
+        return None
+    
     def __getitem__(self, indices):  # caution: may be highly costly
         return self.list()[indices]
 

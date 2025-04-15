@@ -16,6 +16,21 @@ A mesh is described by the positions of *nodes* and a connectivity between nodes
 
 ### face connectivity
 
-### tags
+- `nfa_b` is the number of actual boundary faces
+- `nfa_bp` is the number of periodic boundary faces
+- `fa_count` is the total number of faces
+
+### marks
+
+Marks or tags are specified with `submeshmark` objects. Such mark contains the following properties:
+
+- `name`
+- `geodim`: node, face, or cell, possibly internal or bounding
+- `type`: internal or bounding, can also define periodicity
+- `index`: indirection table of elements (`indexlist` object)
+- `connection` is a `meshconnection` object, need for mesh connections or periodic connections
+
+### mesh connections
+
 
 ## data

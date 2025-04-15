@@ -13,6 +13,7 @@ import filecmp
         "Box3x3x2v2.ic3",
         "Box3x3x2v3.ic3",
         "nrg-tinycube-v2.ic3",
+        "restart-perio.ic3",
     ],
 )
 def test_reader(datadir, filename):
@@ -23,6 +24,13 @@ def test_reader(datadir, filename):
     assert rmesh.check()
     # currently, ic3 based mesh is exported to cfdtools.Mesh with face description
     # 
+
+def test_reader_perio(datadir):
+    # test a periodic mesh
+    ic3mesh = ic3reader.reader(datadir / "restart-perio.ic3", cIntegrity=True)
+    ic3mesh.read_data()
+    rmesh = ic3mesh.export_mesh()
+    assert rmesh.check()
 
 
 @pytest.mark.parametrize(
