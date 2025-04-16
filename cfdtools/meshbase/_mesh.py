@@ -6,10 +6,100 @@ import numpy as np
 import cfdtools.api as api
 import cfdtools.data as _data
 import cfdtools.meshbase._connectivity as _conn
+from cfdtools.meshbase._geom import Nodes
 from cfdtools.utils.maths import minavgmax
 
 log = logging.getLogger(__name__)
 
+
+_default_domain_name = "fluid"
+
+
+class meshconnection:
+    """general mesh connectivity"""
+
+    _available_transform = ('local', 'translate', 'rot', 'rotx', 'roty', 'rotz')
+    _available_contype = ('match_node', 'match_face', 'match_nface', 'nomatch')
+
+    def __init__(self):
+        self._geodim = None
+        self._properties = {}
+        self._contype = None
+        self._index = None
+
+    @property
+    def transform(self):
+        return self._transform
+
+    @transform.setter
+    def transform(self, transform):
+        assert transform in self._available_transform
+        self._transform = transform
+
+    @property
+    def contype(self):
+        return self._contype
+
+    @contype.setter
+    def contype(self, contype):
+        assert contype in self._available_contype
+        self._contype = contype
+
+    @property
+    def index(self):
+        return self._index
+
+    @index.setter
+    def index(self, index):
+        self._index = index
+
+    def __getitem__(self, key):
+        return self._properties[key]
+
+    def set_translation(self, translation: np.ndarray):
+        """set translation"""
+        self._properties = {}
+        self.transform = 'translate'
+        self._properties['translation vector'] = translation
+
+    def set_rotation(self, rottype, axis: np.ndarray = None, angle: float = 0.0):
+        """set rotation (rotx, roty, rotz) and angle in degree"""
+        self._properties = {}
+        self.transform = rottype
+        self._properties['axis'] = {
+            'rotx': np.array([1.0, 0.0, 0.0]),
+            'roty': np.array([0.0, 1.0, 0.0]),
+            'rotz': np.array([0.0, 0.0, 1.0]),
+            'rot': np.array(axis),
+        }.get(rottype)
+        self._properties['angle'] = angle
+
+    def is_rotation(self):
+        return self.transform in ('rot', 'rotx', 'roty', 'rotz')
+
+    def apply(self, nodes: Nodes):
+        if self.transform == 'translate':
+            nodes += self._properties['translation vector']
+        elif self.is_rotation():
+            nodes.rotate(axis=self['axis'], angle=self['angle'])
+        else:
+            api.error_stop(f"meshconnection.apply() not yet implemented with {self.transform}")
+        return nodes
+
+    def __str__(self):
+        return f"meshco({self.contype}:{self.transform}): properties: {self._properties} - index: {self._index}"
+
+    def reversed_connection(self, index):
+        """return a meshconnection with reversed index and transformation"""
+        newco = meshconnection()
+        newco.index = index
+        newco.transform = self.transform
+        newco.contype = self.contype
+        newco._properties = self._properties.copy()
+        for key in [k for k in newco._properties.keys() if k in {'angle', 'translation vector'}]:
+            newco._properties[key] = -self._properties[key]
+        return newco
+    
 
 class submeshmark:
     # authorized geomdim type and actual dimension
@@ -68,6 +158,16 @@ class submeshmark:
         assert mtype in self._available_types
         self._properties['type'] = mtype
 
+    @property
+    def connection(self):
+        return self._properties.get('connection', None)
+
+    @connection.setter
+    def connection(self, conn: meshconnection):
+        assert isinstance(conn, meshconnection)
+        # other assertions ?
+        self._properties['connection'] = conn
+
     def nodebased(self):
         return self._geodim in {'node', 'bdnode', 'intnode'}
 
@@ -82,8 +182,17 @@ class submeshmark:
     def properties(self, properties: dict):
         self._properties = properties
 
+    def copy(self):
+        """copy mark with all properties"""
+        newmark = submeshmark(self.name)
+        newmark.geodim = self.geodim
+        newmark.type = self.type
+        newmark.index = self.index.copy()
+        newmark.properties = self.properties.copy()
+        return newmark
+    
     def __str__(self):
-        return f"{self.name:12} ({self.geodim}): {self.index}"
+        return f"{self.name:12} ({self.type}-{self.geodim}): {self.index}"
 
 
 class Mesh:
@@ -140,6 +249,17 @@ class Mesh:
         coords = tuple(self._nodes[c] for c in ['x', 'y', 'z'])
         return np.column_stack(coords) if ndarray else coords
 
+    def extract_nodes(self, index):
+        """generates numpy array of coordinates (index,3)
+
+        Args:
+            index (list of int): index for extraction
+
+        Returns:
+            np.ndarray: extracted coordinates
+        """
+        return np.column_stack(tuple(self._nodes[c][index] for c in ('x', 'y', 'z')))
+
     def set_cell2node(self, cell2node: _conn.elem_connectivity):
         """set cell to node connectivity
 
@@ -177,6 +297,12 @@ class Mesh:
                 self._faces.pop(facetype)
 
     def export_mixedfaces(self):
+        """merge boundary and internal faces in the (returned) same connectivity
+
+        Returns:
+            elem_connectivity: face to node connectivity of all faces
+            indexindirection: face to cell connectivity of all faces
+        """
         mixedfaces_con = _conn.elem_connectivity()
         mixedfaces_con.importfrom_merge(
             (self._faces['boundary']['face2node'], self._faces['internal']['face2node'])
@@ -189,13 +315,12 @@ class Mesh:
             ),
             axis=0,
         )
-        # print('merge', face2cell.conn)
         return mixedfaces_con, face2cell
 
     def add_boco(self, boco: submeshmark):
-        self._bocos[boco.name] = boco
+        self._bocos[boco.name] = boco.copy()
 
-    def remove_boco(self, name):
+    def remove_boco(self, name: str):
         self._bocos.pop(name)
 
     def bocomarks_set_node_to_face(self):
@@ -221,6 +346,7 @@ class Mesh:
                 # print(boco.name, len(nodeset), len(boco.index.list()))
 
     def list_boco_index(self):
+        """concatenate all index of boco (without checking consistency)"""
         return list(itertools.chain(*[boco.index.list() for boco in self._bocos.values()]))
 
     def make_unmarked_BC(self, name="unmarked_faces"):
@@ -244,17 +370,22 @@ class Mesh:
             log.warning("can only reindex faces according to boco if separated in 'boundary' list")
         return list_missing
 
-    def seekmark(self, name: str) -> submeshmark:  # What is this method ??
+    def get_mark(self, name: str) -> submeshmark:
         """look for diffent marks set to find mark name"""
         # only _bocos for now
-        return self._bocos[name]
+        return self._bocos.get(name, None)
+
+    def pop_mark(self, name: str):
+        """remove mark name"""
+        # only _bocos for now
+        return self._bocos.pop(name, None)
 
     def exportmark_asmesh(self, name):  # What is this method ??
-        # meshmark = self.seekmark(name)  # Never used. Uncomment if useful...
+        # meshmark = self.get_mark(name)  # Never used. Uncomment if useful...
         newmesh = Mesh()
         return newmesh
 
-    def export_extruded(self, direction=None, extrude=None, domain="fluid"):
+    def export_extruded(self, direction=None, extrude=None, domain=_default_domain_name):
         if direction is None:
             direction = np.array([0.0, 0.0, 1.0])
         if extrude is None:
@@ -300,6 +431,54 @@ class Mesh:
         newboco.index = _conn.indexlist(ilist=index)
         newmesh.add_boco(newboco)
         return newmesh
+
+    def build_perio(
+        self, mark1: str, mark2: str, connection: meshconnection = None, tol=1.0e-10
+    ) -> meshconnection:
+        """build periodic connection using transformation (connection) between 2 marks
+
+        Args:
+            mark1 (str): _description_
+            mark2 (str): _description_
+            connection (meshconnection, optional): _description_. Defaults to None.
+            tol (_type_, optional): _description_. Defaults to 1.0e-10.
+
+        Returns:
+            meshconnection: _description_
+        """
+        # obtain submeshmark with given names
+        boco1 = self.get_mark(mark1)
+        boco2 = self.get_mark(mark2)
+        if (boco1 is None) or (boco2 is None):
+            api.error_stop(f"unable to find at least one of the marks {mark1} {mark2}")
+        if not (boco1.nodebased() and boco2.nodebased()):
+            api.error_stop(f"currently, marks should be nodebased")
+        ilist1, ilist2 = (bc.index.list() for bc in (boco1, boco2))
+        # defines Nodes object to obtain geometrical methods
+        node1, node2 = (Nodes(self.extract_nodes(indexlist)) for indexlist in (ilist1, ilist2))
+        if connection is None:
+            log.info("  build automatic periodic connection (translation only):")
+            meshco = meshconnection()
+            meshco.contype = 'match_node'
+            meshco.set_translation(node2.center - node1.center)
+        else:
+            log.info(f"  build periodic connection using prescribed: {connection}")
+            meshco = connection
+        # transform node1 positions
+        node1 = meshco.apply(node1)
+        # and look for match in nodes2 cloud of nodes
+        d, index = node2.kdtree_query(node1)
+        log.info("  computed distance is (min:avg:max) {:.3f} : {:.3f} : {:.3f}".format(*minavgmax(d)))
+        if np.max(d) > tol:
+            api.error_stop(f"periodic connection does not match tolerance ({tol})")
+        # index is the list of local index in node2 that correspond to node1, the global index is saved
+        meshco.index = np.array(ilist2)[index]
+        boco1.connection = meshco
+        boco1.properties['link-mark'] = mark2
+        # create reverse connection
+        boco2.connection = meshco.reversed_connection(boco1.index.list())
+        boco2.properties['link-mark'] = mark1
+        return meshco
 
     def set_params(self, params):
         self._params = params
@@ -390,6 +569,8 @@ class Mesh:
         log.info(f"bocos: {' '.join(self._bocos.keys())}")
         for name, boco in self._bocos.items():
             log.info(f"  BC {boco}")
+            if boco.type[:6] == 'perio_':
+                log.info(f"     periodic connection: {boco.connection}")
         log.info(f"params: {self._params}")
 
     def _check_cell2node(self):

@@ -3,6 +3,8 @@ import os
 from shutil import Error
 
 import numpy as np
+import cfdtools.api as api
+from cfdtools.utils.maths import minavgmax
 
 log = logging.getLogger(__name__)
 
@@ -15,10 +17,6 @@ varname_syn = {  # name for line_probe
     "P": ["p", "ps", "Ps", "PS"],
     "U-X": ["UX", "Ux", "ux", "U_X", "U_x"],
 }
-
-
-def minavgmax(d):
-    return (f(d) for f in [np.min, np.average, np.max])
 
 
 class phydata:
