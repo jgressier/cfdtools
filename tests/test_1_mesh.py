@@ -33,8 +33,9 @@ def test_meshperio_translation_auto():
     rmesh = cube.export_mesh()
     meshco = rmesh.build_perio(mark1="imin", mark2='imax')
     assert meshco.transform == 'translate'
-    assert meshco.contype == None
+    assert meshco.contype == 'match_node'
     assert np.allclose(meshco['translation vector'], [1., 0, 0.])
+
 
 def test_meshperio_rotation():
     cube = simplemesh.Cube(5, 5, 5)
@@ -46,7 +47,7 @@ def test_meshperio_rotation():
     # build_perio uses con:meshconnection and returns a meshconnection filled with index
     meshco = rmesh.build_perio(mark1="kmin", mark2='kmax', connection=con)
     assert meshco.is_rotation()
-    assert meshco.contype == None
+    assert meshco.contype == 'match_node'
     assert np.allclose(meshco['axis'], [1., 0, 0.])
     assert meshco['angle'] == pytest.approx(90.)
 

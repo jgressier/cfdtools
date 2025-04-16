@@ -459,11 +459,12 @@ class Mesh:
         if connection is None:
             log.info("  build automatic periodic connection (translation only):")
             meshco = meshconnection()
-            meshco.contype = 'match_node'
             meshco.set_translation(node2.center - node1.center)
         else:
             log.info(f"  build periodic connection using prescribed: {connection}")
             meshco = connection
+        # look for node, so impose 'match_node'
+        meshco.contype = 'match_node'
         # transform node1 positions
         node1 = meshco.apply(node1)
         # and look for match in nodes2 cloud of nodes

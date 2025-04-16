@@ -23,7 +23,7 @@ def test_reader(datadir, filename):
     rmesh = ic3mesh.export_mesh()
     assert rmesh.check()
     # currently, ic3 based mesh is exported to cfdtools.Mesh with face description
-    # 
+
 
 def test_reader_perio(datadir):
     # test a periodic mesh

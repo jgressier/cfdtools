@@ -3,7 +3,7 @@ import os
 from shutil import Error
 
 import numpy as np
-import cfdtools.api as api
+#import cfdtools.api as api
 from cfdtools.utils.maths import minavgmax
 
 log = logging.getLogger(__name__)

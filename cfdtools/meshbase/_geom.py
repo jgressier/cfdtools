@@ -53,8 +53,8 @@ class Nodes:
             rotm, error = spspa.transform.Rotation.align_vectors(y, x)
         elif method in ('unordered', 'unordered-svd'):
             # DEV: does not work every time: depends on arbitrary singular vector orientation
-            Ux, Sx, Vhx = np.linalg.svd(x)
-            Uy, Sy, Vhy = np.linalg.svd(y)
+            _, Sx, Vhx = np.linalg.svd(x)
+            _, Sy, Vhy = np.linalg.svd(y)
             # multiplying by S is not necessary but may improve accuracy
             #print(list(np.linalg.det(m) for m in (Ux, Uy, Vhx, Vhy)))
             rotm, error = spspa.transform.Rotation.align_vectors(np.diag(Sy) @ Vhy, np.diag(Sx) @ Vhx)
