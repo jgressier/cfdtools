@@ -19,7 +19,7 @@ class meshconnection:
     """general mesh connectivity"""
 
     _available_transform = ('local', 'translate', 'rot', 'rotx', 'roty', 'rotz')
-    _available_con = ('match_node', 'match_face', 'match_nface', 'nomatch')
+    _available_contype = ('match_node', 'match_face', 'match_nface', 'nomatch')
 
     def __init__(self):
         self._geodim = None
@@ -89,6 +89,17 @@ class meshconnection:
     def __str__(self):
         return f"meshco({self.contype}:{self.transform}): properties: {self._properties} - index: {self._index}"
 
+    def reversed_connection(self, index):
+        """return a meshconnection with reversed index and transformation"""
+        newco = meshconnection()
+        newco.index = index
+        newco.transform = self.transform
+        newco.contype = self.contype
+        newco._properties = self._properties.copy()
+        for key in [k for k in newco._properties.keys() if k in {'angle', 'translation vector'}]:
+            newco._properties[key] = -self._properties[key]
+        return newco
+    
 
 class submeshmark:
     # authorized geomdim type and actual dimension
@@ -442,12 +453,13 @@ class Mesh:
             api.error_stop(f"unable to find at least one of the marks {mark1} {mark2}")
         if not (boco1.nodebased() and boco2.nodebased()):
             api.error_stop(f"currently, marks should be nodebased")
-        i1, i2 = (bc.index.list() for bc in (boco1, boco2))
+        ilist1, ilist2 = (bc.index.list() for bc in (boco1, boco2))
         # defines Nodes object to obtain geometrical methods
-        node1, node2 = (Nodes(self.extract_nodes(index)) for index in (i1, i2))
+        node1, node2 = (Nodes(self.extract_nodes(indexlist)) for indexlist in (ilist1, ilist2))
         if connection is None:
             log.info("  build automatic periodic connection (translation only):")
             meshco = meshconnection()
+            meshco.contype = 'match_node'
             meshco.set_translation(node2.center - node1.center)
         else:
             log.info(f"  build periodic connection using prescribed: {connection}")
@@ -459,10 +471,13 @@ class Mesh:
         log.info("  computed distance is (min:avg:max) {:.3f} : {:.3f} : {:.3f}".format(*minavgmax(d)))
         if np.max(d) > tol:
             api.error_stop(f"periodic connection does not match tolerance ({tol})")
-        meshco.index = index # ??? indirection in mark list or global index
+        # index is the list of local index in node2 that correspond to node1, the global index is saved
+        meshco.index = np.array(ilist2)[index]
         boco1.connection = meshco
         boco1.properties['link-mark'] = mark2
         # create reverse connection
+        boco2.connection = meshco.reversed_connection(boco1.index.list())
+        boco2.properties['link-mark'] = mark1
         return meshco
 
     def set_params(self, params):

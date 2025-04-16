@@ -181,7 +181,12 @@ class compressed_listofindex:
         return True
 
 
-class elem_connectivity:
+class elem_connectivity():
+    """Class for element connectivity (nodes of elements)
+    It is a dict of dict with keys:
+        - index: list of index of elements
+        - elem2node: array of nodes of elements
+    """
     def __init__(self):
         self._nelem = 0
         self._elem2node = OrderedDict()

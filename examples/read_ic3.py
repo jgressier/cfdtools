@@ -1,12 +1,17 @@
 from cfdtools import log
 import cfdtools._cli as cli
 from cfdtools.ic3 import reader
+import logging
+
+log.setLevel(logging.DEBUG)
+
 # cli.info(["examples/restart_gene_21.out"])
 # cli.info(["examples/restart_hades_21.out"])
+
 cli.cfdinfo(["tests/data/restart-perio.ic3"])
 # x/y/z dimensions = 3/5/2
 # periodic faces are y (2x6 faces) and z (2x15 faces) 
-
+# first bd faces are x (2x10 faces) then 42 periodic: y (2x6 faces) and z (2x15 faces)
 r = reader("tests/data/restart-perio.ic3")
 log.info("> Reading IC3 file")
 r.read_data()

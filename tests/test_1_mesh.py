@@ -28,7 +28,7 @@ def test_submeshmark():
     assert mark.facebased()
 
 
-def test_meshco_translation_auto():
+def test_meshperio_translation_auto():
     cube = simplemesh.Cube(5, 5, 5)
     rmesh = cube.export_mesh()
     meshco = rmesh.build_perio(mark1="imin", mark2='imax')
@@ -36,7 +36,7 @@ def test_meshco_translation_auto():
     assert meshco.contype == None
     assert np.allclose(meshco['translation vector'], [1., 0, 0.])
 
-def test_meshco_rotation():
+def test_meshperio_rotation():
     cube = simplemesh.Cube(5, 5, 5)
     rmesh = cube.export_mesh()
     # map y, z to r, theta ; rotation is along x
