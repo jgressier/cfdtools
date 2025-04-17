@@ -11,6 +11,7 @@ from cfdtools.ic3._ic3 import (
     type2zonekind,
     struct_endian,
     BinaryWrite,
+    map_meshco2zonekind,
     restartSectionHeader,
 )
 
@@ -332,11 +333,15 @@ class writer:
             header.name = key
             header.id = ic3_restart_codes["UGP_IO_FA_ZONE"]
             header.skip = header.hsize
-            # diff# print(self.bocos[key]["type"], type2zonekind)
-            assert boco.type in type2zonekind.keys(), f"unsupported type of boco for IC3 output: {boco.type}"
+            if boco.type in ('internal', 'boundary'):
+                header.idata[0] = type2zonekind[boco.type]
+            elif boco.type == 'perio':
+                perio_type = map_meshco2zonekind[boco.connection.transform]
+                header.idata[0] = type2zonekind[perio_type]
+            else:
+                raise ValueError(f"unsupported type of boco for IC3 output: {boco.type}")
             ifmin, ifmax = boco.index.range()
             log.info(f"  . ({boco.type}) {boco.name}: {ifmin}-{ifmax}")
-            header.idata[0] = type2zonekind[boco.type]
             assert boco.index.type == 'range', "indexing must be a range and may need reordering"
             header.idata[1] = ifmin
             header.idata[2] = ifmax

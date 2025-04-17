@@ -16,6 +16,7 @@ from cfdtools.ic3._ic3 import (
     ic3_restart_codes,
     BinaryRead,
     zonekind2type,
+    map_zonekind2internal,
     properties_ugpcode,
 )
 
@@ -326,15 +327,16 @@ class reader(binreader):
             # 3 ints: kind, face range (begin, start)
             self.mesh["params"]["nboco"] += 1
             boco = _mesh.submeshmark(h.name)
-            boco.type = zonekind2type[h.idata[0]]
+            ic3bctype = zonekind2type[h.idata[0]]
+            boco.type = map_zonekind2internal[ic3bctype]
             boco.geodim = 'intface' if boco.type == 'internal' else 'bdface'
             boco.index = _conn.indexlist(irange=[h.idata[1], h.idata[2]])
             boco.properties["periodic_transform"] = h.rdata
-            if boco.type in ('perio_cart',):
+            if ic3bctype in ('perio_cart',):
                 meshco = _mesh.meshconnection()
                 meshco.set_translation(h.rdata[0:3])
                 boco.connection = meshco
-            elif boco.type in ('perio_cylx', 'perio_cyly', 'perio_cylz'):
+            elif ic3bctype in ('perio_cylx', 'perio_cyly', 'perio_cylz'):
                 meshco = _mesh.meshconnection()
                 rottype = {'perio_cylx': 'rotx', 'perio_cyly': 'roty', 'perio_cylz': 'rotz'}[boco.type]
                 meshco.set_rotation(rottype=rottype, angle=np.atan2(*h.rdata[0:2]))

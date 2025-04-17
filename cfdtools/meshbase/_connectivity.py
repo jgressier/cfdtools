@@ -245,6 +245,18 @@ class compressed_listofindex:
         return True
 
 
+class Elemlist():
+    """class for a list of elements, where element is a list of nodes
+    implement contains / in operator
+    """
+    def __init__(self, elemlist: list):
+        self._list = [set(elem) for elem in elemlist]
+
+    def __contains__(self, elem):
+        """check if elem is in the list of elements"""
+        return set(elem) in self._list
+
+
 class elem_connectivity():
     """Class for element connectivity (nodes of elements)
     It is a dict of dict with keys:
@@ -330,18 +342,29 @@ class elem_connectivity():
             list_of_tuples.extend([(ind[i], f2n[i, :].ravel().tolist()) for i in range(f2n.shape[0])])
         return list_of_tuples
 
-    def nodes_of_indexlist(self, elemlist):
-        """get list of nodes given list of index of elements"""
+    def dict_of_elems(self):
+        """get dict of index: elements"""
         ind = []
         f2n = []
         for _, e2n in self.items():
             ind.extend(e2n['index'].list())
             f2n.extend(e2n['elem2node'].tolist())
+        return dict(zip(ind, f2n))
+    
+    def nodes_of_indexlist(self, elemlist):
+        """get list of nodes given list of index of elements"""
         # joinlist = list(
         #     chain.from_iterable([tnod[1] for tnod in filter(lambda tup: tup[0] in elemlist, zip(ind, f2n))])
         # )
-        joinlist = list(chain.from_iterable(map(dict(zip(ind, f2n)).get, elemlist)))
+        joinlist = list(chain.from_iterable(map(self.dict_of_elems().get, elemlist)))
         return list(set(joinlist))  # make unique
+
+    def index_of_elems(self, elemlist):
+        """get list of index of nodes given list of elements [ [n1, n2,...], [n10, n11,...], ...] from all elements"""
+        dict_elem = self.dict_of_elems()
+        allelemlist = Elemlist(list(chain.from_iterable(dict_elem.values())))
+        indexlist = [i for i in dict_elem.keys() if dict_elem[i] in allelemlist]
+        return indexlist
 
     def importfrom_compressedindex(self, zconn: compressed_listofindex):
         # there is no test but must only applied to faces

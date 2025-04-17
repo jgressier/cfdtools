@@ -126,10 +126,7 @@ class submeshmark:
     _available_types = ( # trap: these type are IC3 types, must not be changed without care, see _ic3.type2zonekind
         'internal',
         'boundary',
-        'perio_cart',
-        'perio_cylx',
-        'perio_cyly',
-        'perio_cylz',
+        'perio'
     )
 
     def __init__(self, name):
@@ -359,15 +356,18 @@ class Mesh:
                 bc_index_face = OrderedDict(filter(lambda t: face_in_nodelist(t[1], nodeset), all_bc_faces))
                 newbc.geodim = 'bdface'
                 newbc.index = _conn.indexlist(ilist=list(bc_index_face.keys()))
-                log.info(f"  . {boco.name:<10}: {len(nodeset)} nodes converted into {len(newbc.index)} faces")
-                # if boco.is_perio():
-                #     # if periodic, a mesh connection is defined and needs to be updated
-                #     # to be a face connection
-                #     assert boco.connection is not None
-                #     assert len(boco.index) == len(boco.connection.index)
-                #     mapping = { i1: i2 for i1, i2 in zip(boco.index.list(), boco.connection.index) }
-                #     for iface, face in bc_index_face.items():
-                #         pass #face = all_bc_faces[iface][1]
+                log.info(f"  . {boco.name:<10}: {len(nodeset)} nodes converted into {len(newbc.index)} faces {boco.is_perio()}")
+                if boco.is_perio():
+                    # if periodic, a mesh connection is defined and needs to be updated
+                    # to be a face connection
+                    assert boco.connection is not None
+                    assert len(boco.index) == len(boco.connection.index)
+                    mapping = { i1: i2 for i1, i2 in zip(boco.index.list(), boco.connection.index) }
+                    for iface, face in bc_index_face.items():
+                        print('old', iface, face)
+                        newface = [mapping[n] for n in face]
+                        newindex = self._faces['boundary']['face2node'].index_of_elems([newface])
+                        print('new', newindex, newface)
             newbocos[name] = newbc
         self._bocos = newbocos
 

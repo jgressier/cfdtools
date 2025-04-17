@@ -97,6 +97,23 @@ type2zonekind = {
     "perio_cylz": 5,
     "internal": 6,
 }
+
+map_zonekind2internal = {
+    'internal': 'internal',
+    'boundary': 'boundary',
+    'perio_cart': 'perio',
+    'perio_cylx': 'perio',
+    'perio_cyly': 'perio',
+    'perio_cylz': 'perio'
+}
+
+map_meshco2zonekind = {
+    'translate': 'perio_cart',
+    'rotx': 'perio_cylx',
+    'roty': 'perio_cyly',
+    'rotz': 'perio_cylz',
+}
+
 # Dictionary to convert zone kind to zone type (as a string)
 zonekind2type = {itype: type for type, itype in type2zonekind.items()}
 

@@ -2,6 +2,7 @@ import cfdtools.api as api
 import numpy as np
 import scipy.spatial as spspa
 from cfdtools.utils._dev import lazyprop
+#import cfdtools.meshbase._elements as element
 
 
 class Nodes:
