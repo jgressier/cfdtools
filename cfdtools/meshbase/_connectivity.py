@@ -10,6 +10,66 @@ import cfdtools.meshbase._elements as _elem
 log = logging.getLogger(__name__)
 
 
+class GeneralizedIndex: # new class aiming to replace indexlist, to be tested, and interfaced with indexlist
+    """GeneralizedIndex class to handle a list of indices, which can be a mix of integers and ranges."""
+    def __init__(self, data):
+        """
+        data: list of ints, or list of ranges, or a mix of both
+        """
+        self._parts = []
+        if isinstance(data, range):
+            self._parts.append(data)
+        elif isinstance(data, list):
+            for part in data:
+                if isinstance(part, (range, list)):
+                    self._parts.append(part)
+                elif isinstance(part, int):
+                    self._parts.append([part])
+                else:
+                    raise ValueError(f"Unsupported part: {part}")
+        else:
+            raise ValueError("Input must be a list or range")
+
+    def __iter__(self):
+        for part in self._parts:
+            yield from part
+
+    def __len__(self):
+        return sum(len(part) for part in self._parts)
+
+    def __getitem__(self, index):
+        # support indexing like a flat list
+        if index < 0:
+            index += len(self)
+        if index < 0 or index >= len(self):
+            raise IndexError("Index out of range")
+        i = 0
+        for part in self._parts:
+            plen = len(part)
+            if index < i + plen:
+                return part[index - i]
+            i += plen
+        raise IndexError("Index out of bounds")
+
+    def list(self):
+        """Returns full list of values"""
+        return list(self)
+
+    def append(self, value):
+        """Appends a new item (as a single-item list)"""
+        self._parts.append([value])
+
+    def extend(self, values):
+        """Appends a list or range"""
+        if isinstance(values, (range, list)):
+            self._parts.append(values)
+        else:
+            raise TypeError("Can only extend with list or range")
+
+    def __repr__(self):
+        return f"GeneralizedIndex({self.list()})"
+    
+
 class indexlist:
     """class of different implementation of list of index
 
@@ -35,6 +95,10 @@ class indexlist:
     def size(self):
         return len(self._list) if self.type == 'list' else self._range[1] - self._range[0] + 1
 
+    def __len__(self):
+        """return size of list"""
+        return self.size
+    
     def _delete(self):
         self._type = None
         self._list = None

@@ -85,7 +85,7 @@ class writer:
         self.params["fa_count"] = self._mesh.nface
         self.params["cv_count"] = self._mesh.ncell
 
-        # check face connectivity
+        # check face connectivity: separate internal and boundary faces or mixed
         if 'mixed' in self._mesh._faces.keys():
             zface2node = self._mesh._faces['mixed']['face2node'].exportto_compressedindex()
             self.f2e = self._mesh._faces['mixed']['face2cell'].conn
@@ -326,7 +326,7 @@ class writer:
         last_boco = 0
         for key, boco in self.bocos.items():
             assert key == boco.name
-            assert boco.geodim in ('face', 'bdface'), "boco marks must be faces index"
+            assert boco.geodim in ('face', 'bdface'), "boco marks must be faces indexed"
             # Header
             header = restartSectionHeader()
             header.name = key

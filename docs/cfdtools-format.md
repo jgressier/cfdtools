@@ -14,6 +14,8 @@ A mesh is described by the positions of *nodes* and a connectivity between nodes
 
 ### cell connectivity
 
+The cell connectivity defines elements through their nodes index.
+
 ### face connectivity
 
 - `nfa_b` is the number of actual boundary faces

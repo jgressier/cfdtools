@@ -1,4 +1,5 @@
 import itertools
+from collections import OrderedDict
 import logging
 
 import numpy as np
@@ -55,6 +56,15 @@ class meshconnection:
 
     def __getitem__(self, key):
         return self._properties[key]
+
+    def copy(self):
+        """copy meshconnection with all properties"""
+        newco = meshconnection()
+        newco.transform = self.transform
+        if self.contype is not None: newco.contype = self.contype
+        newco._properties = self._properties.copy()
+        if self._index is not None: newco._index = self._index.copy()
+        return newco
 
     def set_translation(self, translation: np.ndarray):
         """set translation"""
@@ -113,7 +123,7 @@ class submeshmark:
         'cell',
     )
 
-    _available_types = (
+    _available_types = ( # trap: these type are IC3 types, must not be changed without care, see _ic3.type2zonekind
         'internal',
         'boundary',
         'perio_cart',
@@ -174,6 +184,9 @@ class submeshmark:
     def facebased(self):
         return self._geodim in {'face', 'bdface', 'intface'}
 
+    def is_perio(self):
+        return self.type.startswith('perio_')
+    
     @property
     def properties(self):
         return self._properties
@@ -189,6 +202,7 @@ class submeshmark:
         newmark.type = self.type
         newmark.index = self.index.copy()
         newmark.properties = self.properties.copy()
+        if self.connection is not None: newmark.connection = self.connection.copy()
         return newmark
     
     def __str__(self):
@@ -329,21 +343,35 @@ class Mesh:
         'internal'/'boundary' instead of 'mixed'
         """
 
-        def face_in_nodelist(face, nodelist):
+        def face_in_nodelist(face, nodelist: set):
             return all(map(lambda n: n in nodelist, face))
 
         assert 'boundary' in self._faces.keys()
-        index_face_tuples = self._faces['boundary']['face2node'].index_elem_tuples()
-        for _, boco in self._bocos.items():
+        all_bc_faces = self._faces['boundary']['face2node'].index_elem_tuples()
+        # create a new dict, parse all bocos then remove the old one (necessary for periodic ones)
+        newbocos = {}
+        for name, boco in self._bocos.items():
+            newbc = boco.copy()
             if boco.nodebased():
-                nodeset = set(boco.index.list())
+                bcindex = boco.index.list()
+                nodeset = set(bcindex)
                 # get all face index whose nodes are all in nodeset
-                listface_index = [
-                    i for i, _ in filter(lambda t: face_in_nodelist(t[1], nodeset), index_face_tuples)
-                ]
-                boco.geodim = 'bdface'
-                boco.index = _conn.indexlist(ilist=listface_index)
-                # print(boco.name, len(nodeset), len(boco.index.list()))
+                bc_index_face = OrderedDict(filter(lambda t: face_in_nodelist(t[1], nodeset), all_bc_faces))
+                newbc.geodim = 'bdface'
+                newbc.index = _conn.indexlist(ilist=list(bc_index_face.keys()))
+                log.info(f"  . {boco.name:<10}: {len(nodeset)} nodes converted into {len(newbc.index)} faces")
+                # if boco.is_perio():
+                #     # if periodic, a mesh connection is defined and needs to be updated
+                #     # to be a face connection
+                #     assert boco.connection is not None
+                #     assert len(boco.index) == len(boco.connection.index)
+                #     mapping = { i1: i2 for i1, i2 in zip(boco.index.list(), boco.connection.index) }
+                #     for iface, face in bc_index_face.items():
+                #         pass #face = all_bc_faces[iface][1]
+            newbocos[name] = newbc
+        self._bocos = newbocos
+
+                    
 
     def list_boco_index(self):
         """concatenate all index of boco (without checking consistency)"""

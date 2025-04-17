@@ -63,10 +63,11 @@ Though the format can be read in any order. The current (v2 and v3) order in IC3
 
 ## boundary conditions
 
+- `cfdtools`reader adds a slicing array for connected nodes
+
 ## periodic connections
 
 periodic connections are defined as boundary conditions
 
 - periodic_transform: `perio_cart`
 - 16 floats
-- slicing for connected faces
