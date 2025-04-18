@@ -141,7 +141,7 @@ class Mesh:
         return np.column_stack(coords) if ndarray else coords
 
     def set_cell2node(self, cell2node: _conn.elem_connectivity):
-        """set cell to node connectivity
+        """Set element-node connectivity.
 
         Args:
             cell2node (elem_connectivity): connectivity of cells
@@ -163,11 +163,11 @@ class Mesh:
             face2node (_conn.elem_connectivity): _description_
             face2cell (_conn.indexindirection, optional): _description_. Defaults to None.
         """
-        if facetype in self.__available_facetypes:
-            self._faces[facetype] = {'face2node': face2node, 'face2cell': face2cell}
-        else:
+        if facetype not in self.__available_facetypes:
             api.error_stop(f"bad face type: {facetype} since {self.__available_facetypes} expected")
-        self.nface = np.sum([fcon['face2node'].nelem for _, fcon in self._faces.items()])
+
+        self._faces[facetype] = {'face2node': face2node, 'face2cell': face2cell}
+        self.nface = np.sum([fcon['face2node'].nelem for fcon in self._faces.values()])
 
     def pop_faces(self, facetype: str):
         if facetype in self.__available_facetypes:
@@ -199,26 +199,33 @@ class Mesh:
         self._bocos.pop(name)
 
     def bocomarks_set_node_to_face(self):
-        """transform node list into face list
+        """Transform node list into face list.
+
         face/node connectivity must exist and must be splitted into
         'internal'/'boundary' instead of 'mixed'
         """
 
         def face_in_nodelist(face, nodelist):
-            return all(map(lambda n: n in nodelist, face))
+            return all(n in nodelist for n in face)
 
         assert 'boundary' in self._faces.keys()
         index_face_tuples = self._faces['boundary']['face2node'].index_elem_tuples()
-        for _, boco in self._bocos.items():
+        # print("index_face_tuples: ", index_face_tuples)
+        for boco in self._bocos.values():
+            # print(boco.name)
             if boco.nodebased():
-                nodeset = set(boco.index.list())
+                nodeset = boco.index.list()
+                # print("nodeset: ", nodeset)
                 # get all face index whose nodes are all in nodeset
-                listface_index = [
-                    i for i, _ in filter(lambda t: face_in_nodelist(t[1], nodeset), index_face_tuples)
-                ]
+                listface_index = [ind for (ind, face) in index_face_tuples if face_in_nodelist(face, nodeset)]
+                # listface_index = []
+                # for ind, face in index_face_tuples:
+                #     print(face)
+                #     if face_in_nodelist(face, nodeset):
+                #         listface_index.append(ind)
+
                 boco.geodim = 'bdface'
                 boco.index = _conn.indexlist(ilist=listface_index)
-                # print(boco.name, len(nodeset), len(boco.index.list()))
 
     def list_boco_index(self):
         return list(itertools.chain(*[boco.index.list() for boco in self._bocos.values()]))
@@ -334,6 +341,7 @@ class Mesh:
         for _, boco in self._bocos.items():
             assert boco.geodim in ('face', 'bdface'), "boco marks must be faces index"
         oldindex = self.list_boco_index()
+        # print("reindex_boundaryfaces: ", oldindex)
         # checks
         c_unique = np.all(np.unique(oldindex) == sorted(oldindex))
         if not c_unique:  # pragma: no cover

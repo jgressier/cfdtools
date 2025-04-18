@@ -9,10 +9,12 @@ elem_properties = [
     (0, '    bar2', 2, 1, '   quad4'),
     (0, '    tri3', 3, 2, '  penta6'),
     (0, '   quad4', 4, 2, '   hexa8'),
+    (0, '   quad9', 9, 2, '  hexa27'),
     (0, '  tetra4', 4, 3, '    none'),
     (0, '   pyra5', 5, 3, '    none'),
     (0, '  prism6', 6, 3, '    none'),
     (0, '   hexa8', 8, 3, '    none'),
+    (0, '  hexa27', 27, 3, '    none'),
 ]
 # remove leading spaces of strings
 elem_properties = [tuple(i.lstrip() if isinstance(i, str) else i for i in u) for u in elem_properties]
@@ -62,6 +64,7 @@ def group_faces_by_type(connectivity):
 # see https://cgns.github.io/CGNS_docs_current/sids/conv.html#unst_quad
 # QUAD 4 2D
 cgns_elem2faces = {
+    # https://cgns.github.io/CGNS_docs_current/sids/conv.html#unst_quad
     'quad4': {'bar2': [[0, 1], [1, 2], [2, 3], [3, 0]]},
 }
 
@@ -80,7 +83,7 @@ face_corners = {
 }
 
 connectivity_hexa8 = set_starting_index_to_zero(face_corners)
-connectivity_hexa8 = set_inward_normal(connectivity_hexa8)
+# connectivity_hexa8 = set_inward_normal(connectivity_hexa8)
 
 # List of quad4 faces for a hexa8 element.
 cgns_elem2faces['hexa8'] = group_faces_by_type(connectivity_hexa8)

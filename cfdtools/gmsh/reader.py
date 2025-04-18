@@ -42,10 +42,8 @@ class reader(api._files):
         _elem.elem2faces = _elem.gmsh_elem2faces
 
         # Read file.
-        filename = self.filename
-        fam, bctype, x, y, z, elts = self.__read_sections(filename)
-
-        # fam: dict with index: family name
+        families, bctype, x, y, z, elts = self.__read_sections(self.filename)
+        # families: dict(index str: family name str)
         # bctype: dict with name: type
         # elts: list of list[index, element type, x, x, x, nodes index ]
         log.info("Analyze...")
@@ -78,6 +76,7 @@ class reader(api._files):
                     if elt_type not in connectivity.keys():
                         connectivity[elt_type] = []
                     ntag = elt[2]  # expected to be 2
+                    assert ntag == 2
                     connectivity[elt_type].append(elt[3 + ntag :])
                     bnd_connect += 1
                 else:
@@ -94,38 +93,39 @@ class reader(api._files):
                 elt_type = gmshtype_elem[elt[1]]
                 if elt_type in bc_elt:
                     ntag = elt[2]  # expected to be 2
+                    assert ntag == 2
                     # bnd_tag = elt[2 + tag]
                     # bnd_fam = elt[2 + tag - 1]
                     bnd_tag = elt[4]
                     bnd_fam = elt[3]
                     if bnd_tag not in connect_bc.keys():
                         connect_bc[bnd_tag] = collections.defaultdict(list)
-                    # if elt_type in connect_bc[bnd_tag].keys():
-                    #     connect_bc[bnd_tag][elt_type].append(elt[3+ntag:])
-                    # else:
-                    #    connect_bc[bnd_tag][elt_type] = []
                     connect_bc[bnd_tag][elt_type].append(elt[3 + ntag :])
-                    # if bnd_tag not in bnd.keys():
-                    #     bnd[bnd_tag] = []
                     bnd[bnd_tag].append(bnd_connect)
-                    # if bnd_fam not in bnd2fam:
                     bnd2fam[bnd_tag] = bnd_fam
                     bnd_connect += 1
         log.info(f"    tags are {bnd2fam}")
-        # Reindex connectivities
+
         # Element-to-vertex
         for elt_type in connectivity.keys():
-            connectivity[elt_type] = np.array(connectivity[elt_type]) - 1
+            # Reindex connectivities
+            conn = np.array(connectivity[elt_type]) - 1
+            # Change the node ordering convention from GMSH to CGNS
+            connectivity[elt_type] = conn
+
         # Boundary patches element-to-vertex
         for bnd_tag in connect_bc.keys():
             for elt_type in connect_bc[bnd_tag].keys():
-                connect_bc[bnd_tag][elt_type] = np.array(connect_bc[bnd_tag][elt_type]) - 1
+                # Reindex connectivities
+                conn = np.array(connect_bc[bnd_tag][elt_type]) - 1
+                # Change the node ordering convention from GMSH to CGNS
+                connect_bc[bnd_tag][elt_type] = conn
 
         # Fill the dictionary of boundary conditions
         self._famm = []
-        if fam is not None:  # B.C. are defined
+        if families is not None:  # B.C. are defined
             for bnd_tag in bnd.keys():
-                family = fam[str(bnd2fam[bnd_tag])]
+                family = families[str(bnd2fam[bnd_tag])]
                 if family != "fluid":
                     self.__create_bnd(
                         boundaries,
@@ -170,7 +170,7 @@ class reader(api._files):
         meshdata.set_nodescoord_xyz(*self._coords)
         # meshdata.set_face2node(self.mesh['connectivity']['noofa'])
         cellconn = _conn.elem_connectivity()
-        # extract cell connectivity only
+        # extract cell connectivity only but not face connectivity
         for etype, econn in self._cellconnectivity.items():
             if _elem.dim_elem[etype] == self._maxdim:
                 cellconn.add_elems(etype, econn)
@@ -181,6 +181,7 @@ class reader(api._files):
                 boco.geodim = 'bdnode'
                 boco.properties['type'] = bc_dict['type']
                 boco.properties['periodic_transform'] = bc_dict['periodic_transform']
+                print('export mesh: ', name, bc_dict['slicing'])
                 boco.index = _conn.indexlist(ilist=bc_dict['slicing'])
                 meshdata.add_boco(boco)
         # meshdata.set_celldata(self.variables['cells'])
@@ -221,11 +222,13 @@ class reader(api._files):
             }
 
             bc = boundaries[family]
-            bc["slicing"] = []
+            bc["slicing"] = np.array([])
             for elt_type in connectivity.keys():
+                print("create_bnd: ", elt_type)
+                print("create_bnd: ", connectivity[elt_type])
                 raveled = np.unique(connectivity[elt_type].ravel())
-                bc["slicing"] += raveled.tolist()
-            bc["slicing"] = np.array(bc["slicing"])
+                bc["slicing"] = np.concatenate((bc["slicing"], raveled))
+                print("create_bnd slicing: ", elt_type, bc["slicing"])
             bc["type"] = "boundary"
             bc["periodic_transform"] = np.zeros((16,), dtype=np.float64)
             self._famm.append(fff)
@@ -289,9 +292,9 @@ class reader(api._files):
             families = self.__get_section_from_name(msh, "$PhysicalNames")
             fam = {}
             bctype = {}
-            for i in range(1, int(families[0][0]) + 1):
-                fam[families[i][1]] = families[i][2][1:-1]
-                bctype[families[i][2][1:-1]] = families[i][0]
+            for family in families[1:]:
+                fam[family[1]] = family[2][1:-1]
+                bctype[family[2][1:-1]] = family[0]
             log.info(f"    found Physical names {fam}")
             log.info(f"    found Entities {bctype}")
         else:
@@ -305,9 +308,9 @@ class reader(api._files):
             addd = 0  # temporary variable to seek the line and return
             bot = int(entities[0][0]) + int(entities[0][1])
             top = int(entities[0][2]) + bot
-            for i in range(bot, top + 1):
-                if j == int(entities[i][0]) and len(entities[i]) >= 8:
-                    addd = int(entities[i][8])
+            for entity in entities[bot : top + 1]:
+                if j == int(entity[0]) and len(entity) >= 8:
+                    addd = int(entity[8])
                     break
             return addd
 
@@ -315,8 +318,7 @@ class reader(api._files):
         log.info("  parse Nodes")
         coords = self.__get_section_from_name(msh, "$Nodes")
         nnodes = int(coords[0][3])
-        nodes = 1
-        count = 1
+        nodes = 0
         counter = 1
         x = [None] * (nnodes)
         y = [None] * (nnodes)
@@ -336,7 +338,6 @@ class reader(api._files):
         elements = self.__get_section_from_name(msh, "$Elements")
         # header is: numEntityBlocks, numElements, minIndex, maxIndex
         elts = []
-        counter = 1
         count = 1
         neltypes = int(elements[0][0])
         # entityblock: dimEntity EntityIndex ElemType numElements
@@ -360,18 +361,18 @@ class reader(api._files):
 
     def __read_sections(self, filename):
         # Read the entire mesh.
-        msh = []
+        msh = None
         log.info(f"Reading file {filename!r}...")
         with open(filename) as fid:
-            for l in fid:
-                msh.append(l.split())
+            msh = [line.split() for line in fid]
         log.info(" done")
 
         # Find version of the GMSH used
         version = self.__get_section_from_name(msh, "$MeshFormat")
-        self.version = int(float(version[0][0]))
-        assert int(version[0][1]) == 0, "only ASCII version is supported"
-        assert int(version[0][2]) == 8, "size of float must be 8 (64bits)"
+        version = version[0]
+        self.version = int(float(version[0]))
+        assert int(version[1]) == 0, "only ASCII version is supported"
+        assert int(version[2]) == 8, "size of float must be 8 (64bits)"
 
         if self.version <= 2:
             return self.__read_sections_V2(msh)
