@@ -173,8 +173,8 @@ class vtkMesh:
         if not self.brief():
             return False
 
-        # Optional checks
-        do_iter_check = False
+        # CHK # # Optional checks
+        # CHK # do_iter_check = False
 
         ### Compute cell volumes
         ###=====================
@@ -247,8 +247,7 @@ class vtkMesh:
                 points_to_cells[p].append(ic)
 
         ### Build cell_cells: list for each cell of dict for each neighbour cell of common points
-        if do_iter_check:
-            log.info("Start (   cc) count")
+        #
         # Initialize cell_cells: list of nbcells empty dicts
         cell_cells = [{} for _ in range(len(cells_to_points))]
         # Loop on each point and list of cells thereof
@@ -266,8 +265,6 @@ class vtkMesh:
                         cell_cells[ca][cb] = []
                     # Add common point
                     cell_cells[ca][cb] += [p]
-        if do_iter_check:
-            log.info("Endof (   cc) count")
 
         ### Activate ONLY if VERY FEW cells
         ### for ica, ca in enumerate(cell_cells):
@@ -275,8 +272,6 @@ class vtkMesh:
         ###           ', '.join([f"{i}: {str(x):16}" for i, x in ca.items()]),
         ###           '}')
 
-        if do_iter_check:
-            log.info("Start (nc,ec) count")
         node_cells = [[] for _ in range(len(m.points))]
         edge_cells = {}
         face_cells = {}
@@ -295,8 +290,6 @@ class vtkMesh:
                         face_cells[tpts] = []
                     face_cells[tpts] += [ca, cb]
                 del cell_cells[cb][ca]
-        if do_iter_check:
-            log.info("Endof (nc,ec) count")
 
         ### Activate ONLY if VERY FEW cells
         ### print("Edges:")
@@ -326,35 +319,35 @@ class vtkMesh:
         count_rat_node = 0
         count_rat_edge = 0
         count_rat_face = 0
-        # initialize optional counters
-        if do_iter_check:
-            nb_iter_ca = nb_iter_pi = nb_iter_cb = 0
+        # CHK # # initialize optional counters
+        # CHK # if do_iter_check:
+        # CHK #     nb_iter_ca = nb_iter_pi = nb_iter_cb = 0
         # loop on all cells: ca
         # for ca in range(len(cells_to_points)):
         # initialize time distribution
-        if do_iter_check and out_is_tty:
-            time0 = time()
-            mytime = [0 for i in range(m.n_cells)]
+        # CHK # if do_iter_check and out_is_tty:
+        # CHK #     time0 = time()
+        # CHK #     mytime = [0 for i in range(m.n_cells)]
         for ca in tqdm(range(len(cells_to_points))):
             # record time distribution
-            if do_iter_check and out_is_tty:
-                mytime[ca] = time() - time0
-            if do_iter_check:
-                nb_iter_ca += 1
+            # CHK # if do_iter_check and out_is_tty:
+            # CHK #     mytime[ca] = time() - time0
+            # CHK # if do_iter_check:
+            # CHK #     nb_iter_ca += 1
             # neighbour cells already processed: initialize
             ca_done = []
             # loop on those points of ca: pi
             for pi in cells_to_points[ca]:
                 # remove cell ca for point pi (to not be processed again)
                 points_to_cells[pi].remove(ca)
-                if do_iter_check:
-                    nb_iter_pi += 1
+                # CHK # if do_iter_check:
+                # CHK #     nb_iter_pi += 1
                 # cells of pi not already processed (as a previous ca, or as cb for this ca)
                 pi_cells = [c for c in points_to_cells[pi] if c not in ca_done]
                 # loop on those cells of pi: cb
                 for cb in pi_cells:
-                    if do_iter_check:
-                        nb_iter_cb += 1
+                    # CHK # if do_iter_check:
+                    # CHK #     nb_iter_cb += 1
                     # neighbour cells already processed: update (for the next pi)
                     ca_done += [cb]
                     # Compute the absolute volume ratio log of ca/cb
@@ -374,10 +367,11 @@ class vtkMesh:
                     else:  # len(pcom) > 2:  # more than two common points for a face
                         rat_face = max(rat_face, rat)
                         count_rat_face += 1
-        # plot time distribution
-        if do_iter_check and out_is_tty:
-            plt.plot(mytime[::10])
-            plt.show()
+        # CHK # # plot time distribution
+        # CHK # if do_iter_check and out_is_tty:
+        # CHK #     plt.plot(mytime[::10])
+        # CHK #     plt.show()
+
         # Recover point_to_cells
         points_to_cells = bk_points_to_cells
 
@@ -412,10 +406,10 @@ class vtkMesh:
         log.info(f"    | max vol ratio /nodes  : {rat_node:12.6e}")
         log.info(f"    | max vol ratio /edges  : {rat_edge:12.6e}")
         log.info(f"    | max vol ratio /faces  : {rat_face:12.6e}")
-        if do_iter_check:
-            log.info(f"      cell__iter = {nb_iter_ca:6}")
-            log.info(f"      c_pnt_iter = {nb_iter_pi:6}")
-            log.info(f"      com_c_iter = {nb_iter_cb:6}")
+        # CHK # if do_iter_check:
+        # CHK #     log.info(f"      cell__iter = {nb_iter_ca:6}")
+        # CHK #     log.info(f"      c_pnt_iter = {nb_iter_pi:6}")
+        # CHK #     log.info(f"      com_c_iter = {nb_iter_cb:6}")
 
         return True
 
