@@ -174,8 +174,7 @@ def vtkbrief(argv=None):
     #
     r = vtk.vtkMesh()
     r.read(parser.args().filename)
-    r.brief()
-    return True  # needed for pytest
+    return r.brief()  # True/False needed for pytest
 
 
 @cli_header()
@@ -189,8 +188,7 @@ def vtkdiag(argv=None):
     #
     r = vtk.vtkMesh()
     r.read(parser.args().filename)
-    r.diag()
-    return True  # needed for pytest
+    return r.diag()  # True/False needed for pytest
 
 @cli_header()
 def vtkpack(argv=None):

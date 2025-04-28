@@ -417,6 +417,8 @@ class vtkMesh:
             log.info(f"      c_pnt_iter = {nb_iter_pi:6}")
             log.info(f"      com_c_iter = {nb_iter_cb:6}")
 
+        return True
+
     def plot(self, background='white', show_edges=True, *args, **kwargs):
         self.pyvista_grid.plot(background=background, show_edges=show_edges, *args, **kwargs)
 
