@@ -1,11 +1,24 @@
-mkdocs-material
+mkdocs>=1.6
+mkdocs-material>=9.5
+mkdocs-autorefs>=1.4  # ok à partir de mkdocs>=1.6
+mkdocstrings>=0.24
+mkdocstrings-python>=1.10
+# seems to not be requested by mkdocstrings-python but needed
+griffe == 0.49 # latest versions are incompatible with mkdocstrings-python
+mkdocs-jupyter>=0.24,<0.25
 mkdocs-include-markdown-plugin
 mkdocs-exclude
-cfdtools
+# mkdocs-material
+# mkdocs-include-markdown-plugin
+# mkdocs-exclude
+# cfdtools
+# ipykernel
+# mkdocs-jupyter
+# #mkdocstrings[python] <= 0.22
+# mkdocstrings[python] >= 0.23
+# REQUIRED to run notebooks
+cfdtools >= 0.6.0
 ipykernel
-mkdocs-jupyter
-#mkdocstrings[python] <= 0.22
-mkdocstrings[python] >= 0.23
 pyvirtualdisplay
 trame
 pyvista

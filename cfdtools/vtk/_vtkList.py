@@ -3,11 +3,10 @@ import os
 from pathlib import Path
 
 import numpy as np
-import scipy.spatial as spspa
+import scipy.spatial as spatial
 
 try:
     import pyvista as pv
-
     importpyvista = True
 except ImportError:  # pragma: no cover
     importpyvista = False
@@ -53,7 +52,7 @@ class vtkList:
             log.info(f"  {count}/{self.nfile} grids are not {pos}-coincident")
         return count == 0
 
-    def read(self, filterdata=None, reorder=False, tol=1e-10):
+    def read(self, filterdata=None, reorder=False, tol=1e-10, tolverbose=1e-10):
         count = 0
         assert self.nfile > 0
         Tread = api.Timer()
@@ -67,7 +66,7 @@ class vtkList:
         if self._verbose:
             log.info("> build kd-tree")
         Tsort.start()
-        tree = spspa.KDTree(ctrRef)
+        tree = spatial.KDTree(ctrRef)
         Tsort.pause()
         #
         self._data = DataSetList(self.nfile, Xrep='cellaverage', Trep='instant')
@@ -92,11 +91,18 @@ class vtkList:
                 # if self._verbose:
                 #     log.info(f"  . {name}: {d}")
                 Tsort.start()
-                dfinal, index = tree.query(ctr, p=2)
+                dfinal, index = tree.query(ctr, p=2) # p=2 is the norm
                 # reverse indexing to sort new arrays
                 rindex = index.copy()
                 rindex[index] = np.arange(index.size)
-                assert np.max(dfinal) <= tol
+                dmin, davg, dmax = maths.minavgmax(dfinal)
+                if dmax > tolverbose:
+                    log.warning(f"  max distance if above tolerance {tolverbose}: {np.count_nonzero(dfinal > tolverbose)} cells incriminated")
+                    log.warning(f"  min:avg:max = {dmin:.2e}:{davg:.2e}:{dmax:.2e}")
+                if dmax > tol:
+                    log.error(f"  max distance is above tolerance {tol}: {np.count_nonzero(dfinal > tol)} cells incriminated")
+                    log.error(f"  min:avg:max = {dmin:.2e}:{davg:.2e}:{dmax:.2e}")
+                    raise ValueError("  max distance is above tolerance")
                 Tsort.pause()
                 # automatically deals with different shapes
                 datalist = {name: vtk.cell_data[name][rindex] for name in namelist}

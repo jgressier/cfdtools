@@ -2,7 +2,7 @@
 import logging
 import sys
 
-__version__ = "0.5.4"
+__version__ = "0.6.0"
 
 level = 'info'
 if '--log' in sys.argv:
@@ -16,6 +16,7 @@ if not isinstance(numeric_level, int):
 
 log = logging.getLogger(__name__)
 handler = logging.StreamHandler()
-handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+#handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+handler.setFormatter(logging.Formatter("%(levelname)s %(message)s"))
 log.addHandler(handler)
 log.setLevel(level.upper())
