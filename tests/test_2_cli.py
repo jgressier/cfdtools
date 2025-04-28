@@ -62,6 +62,11 @@ def test_vtkbrief(datadir: Path):
     assert cli.vtkbrief([str(datadir / file)])
 
 
+def test_vtkdiag(datadir: Path):
+    file = "cubemixed0000.vtu"
+    assert cli.vtkdiag([str(datadir / file)])
+
+
 def test_vtkpack(datadir: Path):
     filelist = map(str, sorted(list(datadir.glob("cubemixed*.vtu"))))
     outfile = cli.vtkpack(filelist)
