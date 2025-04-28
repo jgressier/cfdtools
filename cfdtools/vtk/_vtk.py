@@ -6,10 +6,14 @@ from typing import Callable
 import sys
 
 out_is_tty = sys.stdout.isatty()
+# CHK # # switch for check+debug counters
+# CHK # do_iter_check = False
 if out_is_tty:
     from tqdm import tqdm
-    import matplotlib.pyplot as plt
-    from time import time
+    # CHK # # imports for check+debug counters
+    # CHK # if do_iter_check:
+    # CHK #     import matplotlib.pyplot as plt
+    # CHK #     from time import time
 else:
     tqdm = lambda x: x
 
@@ -159,7 +163,7 @@ class vtkMesh:
         log.info(f"    | cell  data names: {m.cell_data.keys()}")
         log.info(f"    | point data names: {m.point_data.keys()}")
         log.info(f"    | field data names: {m.field_data.keys()}")
-        # log.info("> properties")
+        # log.info("  Properties")
 
         return True
 
@@ -172,9 +176,6 @@ class vtkMesh:
 
         if not self.brief():
             return False
-
-        # CHK # # Optional checks
-        # CHK # do_iter_check = False
 
         ### Compute cell volumes
         ###=====================
@@ -319,17 +320,17 @@ class vtkMesh:
         count_rat_node = 0
         count_rat_edge = 0
         count_rat_face = 0
-        # CHK # # initialize optional counters
+        # CHK # # initialize check+debug counters
         # CHK # if do_iter_check:
         # CHK #     nb_iter_ca = nb_iter_pi = nb_iter_cb = 0
         # loop on all cells: ca
         # for ca in range(len(cells_to_points)):
-        # initialize time distribution
+        # CHK # # initialize time distribution
         # CHK # if do_iter_check and out_is_tty:
         # CHK #     time0 = time()
         # CHK #     mytime = [0 for i in range(m.n_cells)]
         for ca in tqdm(range(len(cells_to_points))):
-            # record time distribution
+            # CHK # # record time distribution
             # CHK # if do_iter_check and out_is_tty:
             # CHK #     mytime[ca] = time() - time0
             # CHK # if do_iter_check:
@@ -340,12 +341,14 @@ class vtkMesh:
             for pi in cells_to_points[ca]:
                 # remove cell ca for point pi (to not be processed again)
                 points_to_cells[pi].remove(ca)
+                # CHK # # increment check+debug counters
                 # CHK # if do_iter_check:
                 # CHK #     nb_iter_pi += 1
                 # cells of pi not already processed (as a previous ca, or as cb for this ca)
                 pi_cells = [c for c in points_to_cells[pi] if c not in ca_done]
                 # loop on those cells of pi: cb
                 for cb in pi_cells:
+                    # CHK # # increment check+debug counters
                     # CHK # if do_iter_check:
                     # CHK #     nb_iter_cb += 1
                     # neighbour cells already processed: update (for the next pi)
@@ -406,6 +409,7 @@ class vtkMesh:
         log.info(f"    | max vol ratio /nodes  : {rat_node:12.6e}")
         log.info(f"    | max vol ratio /edges  : {rat_edge:12.6e}")
         log.info(f"    | max vol ratio /faces  : {rat_face:12.6e}")
+        # CHK # # display check+debug counters
         # CHK # if do_iter_check:
         # CHK #     log.info(f"      cell__iter = {nb_iter_ca:6}")
         # CHK #     log.info(f"      c_pnt_iter = {nb_iter_pi:6}")
