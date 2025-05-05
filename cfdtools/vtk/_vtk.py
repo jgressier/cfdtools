@@ -136,19 +136,21 @@ class vtkMesh:
             log.warning("  no pyvista mesh available")
             return False
 
-        log.info(f"pyvista object:")
-        mstr_list = f"{m}".split(chr(10))
-        for l in mstr_list[:1]:
-            log.info(f"  {l}")
-        log.info(f"  Mesh")
-        for l in mstr_list[1:]:
-            log.info(f"    | {l[2:]}")
+        # Using pyvista internel representation
+        # log.info(f"pyvista object:")
+        #
+        # mstr_list = f"{m}".split(chr(10))
+        # mstr_list[1:1] = ["Mesh"]
+        # for l in mstr_list:
+        #     log.info(f"  {l}")
+        #
         # # To get all possible attributes:
         # for w in dir(m):
         #     print(f"{w}:", (str(m.__getattr__(w)).split(chr(10)))[0])
         # return
         # log.info(f"pyvista object: {m.DATA_TYPE_NAME}") # Attribute is a method
         # log.info(f"pyvista object: {m.DATA_TYPE_NAME()}") # Wrong output
+        #
         log.info(f"pyvista object:")
         log.info(f"  {type(m).__name__} ({hex(id(m))}) [{m.__vtkname__}]")
         log.info(f"  Mesh")
@@ -180,9 +182,8 @@ class vtkMesh:
         ### Compute cell volumes
         ###=====================
 
-        if out_is_tty:
-            log.info(f"  ...Computing volumes of {m.n_cells} cells...")
-        volume = self.volumes()
+        with api.Timer(f"  Computing volumes of {m.n_cells} cells"):
+            volume = self.volumes()
         volmin, volmax = min(volume), max(volume)
         voltot, volava = sum(volume), np.mean(volume)
         vol_nb, volavg = len(volume), np.exp(np.mean(np.log(volume)))
@@ -215,57 +216,60 @@ class vtkMesh:
         # Initialize counter for cells_to_points
         idx_pc = 0
         # Loop on all elements in m.cells
-        while idx_mc < len(m.cells):
-            # Number of points of next cell
-            c_npt = m.cells[idx_mc]
-            # Number of indices for next cell (== 1 + nb_points)
-            c_nptp1 = c_npt + 1
-            # Number of next cells with the same nb_points
-            nc_c_npt = np.argmax(m.cells[idx_mc::c_nptp1] != c_npt)
-            # If zero:
-            if nc_c_npt == 0:
-                # All remaining cells
-                nc_c_npt = (len(m.cells) - idx_mc) // c_nptp1
-            # Compute index increment
-            n_idx_mc = nc_c_npt * c_nptp1
-            # Compute cell sublist and extent_base
-            cells_sublist = m.cells[idx_mc : idx_mc + n_idx_mc]
-            cl_subl_table = cells_sublist.reshape((nc_c_npt, c_nptp1))
-            # Complement cells_to_points list
-            cells_to_points[idx_pc : idx_pc + nc_c_npt] = (cp[1:] for cp in cl_subl_table)
-            # Increment counter by nb_points * nb_indices
-            idx_mc += n_idx_mc
-            idx_pc += nc_c_npt
+        with api.Timer("  Building cells_to_points"):
+            while idx_mc < len(m.cells):
+                # Number of points of next cell
+                c_npt = m.cells[idx_mc]
+                # Number of indices for next cell (== 1 + nb_points)
+                c_nptp1 = c_npt + 1
+                # Number of next cells with the same nb_points
+                nc_c_npt = np.argmax(m.cells[idx_mc::c_nptp1] != c_npt)
+                # If zero:
+                if nc_c_npt == 0:
+                    # All remaining cells
+                    nc_c_npt = (len(m.cells) - idx_mc) // c_nptp1
+                # Compute index increment
+                n_idx_mc = nc_c_npt * c_nptp1
+                # Compute cell sublist and extent_base
+                cells_sublist = m.cells[idx_mc : idx_mc + n_idx_mc]
+                cl_subl_table = cells_sublist.reshape((nc_c_npt, c_nptp1))
+                # Complement cells_to_points list
+                cells_to_points[idx_pc : idx_pc + nc_c_npt] = (cp[1:] for cp in cl_subl_table)
+                # Increment counter by nb_points * nb_indices
+                idx_mc += n_idx_mc
+                idx_pc += nc_c_npt
 
         ### Build points_to_cells: list for each point of cells of point
         #
         points_to_cells = [[] for _ in range(m.n_points)]
         # Loop on all cells in cells_to_points
-        for ic, c in enumerate(cells_to_points):
-            # For every point in cell
-            for p in c:
-                # Add cell for point in points_to_cells
-                points_to_cells[p].append(ic)
+        with api.Timer("  Building points_to_cells"):
+            for ic, c in enumerate(cells_to_points):
+                # For every point in cell
+                for p in c:
+                    # Add cell for point in points_to_cells
+                    points_to_cells[p].append(ic)
 
         ### Build cell_cells: list for each cell of dict for each neighbour cell of common points
         #
         # Initialize cell_cells: list of nbcells empty dicts
         cell_cells = [{} for _ in range(len(cells_to_points))]
         # Loop on each point and list of cells thereof
-        for p, pc in enumerate(points_to_cells):
-            # Loop on all cells of points
-            for ca in pc:
-                # Loop on all cells of points again
-                for cb in pc:
-                    # Ignore if cellb == cella
-                    if cb == ca:
-                        continue
-                    # If cellb not yet neighbour of cella
-                    if cb not in cell_cells[ca]:
-                        # Initialize key cellb for cella
-                        cell_cells[ca][cb] = []
-                    # Add common point
-                    cell_cells[ca][cb] += [p]
+        with api.Timer("  Building cell_cells"):
+            for p, pc in enumerate(points_to_cells):
+                # Loop on all cells of points
+                for ca in pc:
+                    # Loop on all cells of points again
+                    for cb in pc:
+                        # Ignore if cellb == cella
+                        if cb == ca:
+                            continue
+                        # If cellb not yet neighbour of cella
+                        if cb not in cell_cells[ca]:
+                            # Initialize key cellb for cella
+                            cell_cells[ca][cb] = []
+                        # Add common point
+                        cell_cells[ca][cb] += [p]
 
         ### Activate ONLY if VERY FEW cells
         ### for ica, ca in enumerate(cell_cells):
@@ -276,21 +280,22 @@ class vtkMesh:
         node_cells = [[] for _ in range(len(m.points))]
         edge_cells = {}
         face_cells = {}
-        for ca, ca_cb_pts in enumerate(cell_cells):
-            for cb, pts in ca_cb_pts.items():
-                if len(pts) == 1:
-                    node_cells[pts[0]] += [ca, cb]
-                elif len(pts) == 2:
-                    tpts = tuple(pts)
-                    if tpts not in edge_cells:
-                        edge_cells[tpts] = []
-                    edge_cells[tpts] += [ca, cb]
-                else:  # len(pts) > 2
-                    tpts = tuple(pts)
-                    if tpts not in face_cells:
-                        face_cells[tpts] = []
-                    face_cells[tpts] += [ca, cb]
-                del cell_cells[cb][ca]
+        with api.Timer("  Building face_cells/edge_cells/node_cells"):
+            for ca, ca_cb_pts in enumerate(cell_cells):
+                for cb, pts in ca_cb_pts.items():
+                    if len(pts) == 1:
+                        node_cells[pts[0]] += [ca, cb]
+                    elif len(pts) == 2:
+                        tpts = tuple(pts)
+                        if tpts not in edge_cells:
+                            edge_cells[tpts] = []
+                        edge_cells[tpts] += [ca, cb]
+                    else:  # len(pts) > 2
+                        tpts = tuple(pts)
+                        if tpts not in face_cells:
+                            face_cells[tpts] = []
+                        face_cells[tpts] += [ca, cb]
+                    del cell_cells[cb][ca]
 
         ### Activate ONLY if VERY FEW cells
         ### print("Edges:")
@@ -329,47 +334,48 @@ class vtkMesh:
         # CHK # if do_iter_check and out_is_tty:
         # CHK #     time0 = time()
         # CHK #     mytime = [0 for i in range(m.n_cells)]
-        for ca in tqdm(range(len(cells_to_points))):
-            # CHK # # record time distribution
-            # CHK # if do_iter_check and out_is_tty:
-            # CHK #     mytime[ca] = time() - time0
-            # CHK # if do_iter_check:
-            # CHK #     nb_iter_ca += 1
-            # neighbour cells already processed: initialize
-            ca_done = []
-            # loop on those points of ca: pi
-            for pi in cells_to_points[ca]:
-                # remove cell ca for point pi (to not be processed again)
-                points_to_cells[pi].remove(ca)
-                # CHK # # increment check+debug counters
+        with api.Timer("  Computing cell size ratios", nelem=len(cells_to_points)):
+            for ca in tqdm(range(len(cells_to_points))):
+                # CHK # # record time distribution
+                # CHK # if do_iter_check and out_is_tty:
+                # CHK #     mytime[ca] = time() - time0
                 # CHK # if do_iter_check:
-                # CHK #     nb_iter_pi += 1
-                # cells of pi not already processed (as a previous ca, or as cb for this ca)
-                pi_cells = [c for c in points_to_cells[pi] if c not in ca_done]
-                # loop on those cells of pi: cb
-                for cb in pi_cells:
+                # CHK #     nb_iter_ca += 1
+                # neighbour cells already processed: initialize
+                ca_done = []
+                # loop on those points of ca: pi
+                for pi in cells_to_points[ca]:
+                    # remove cell ca for point pi (to not be processed again)
+                    points_to_cells[pi].remove(ca)
                     # CHK # # increment check+debug counters
                     # CHK # if do_iter_check:
-                    # CHK #     nb_iter_cb += 1
-                    # neighbour cells already processed: update (for the next pi)
-                    ca_done += [cb]
-                    # Compute the absolute volume ratio log of ca/cb
-                    rat = volume[ca] / volume[cb]
-                    if rat < 1.0:
-                        rat = 1 / rat
-                    count_rat_all += 1
-                    # Common points of ca and cb
-                    pcom = tuple(sorted(p for p in cells_to_points[ca] if p in cells_to_points[cb]))
-                    # if len(pcom) > 2:  # more than two common points for a face
-                    if len(pcom) == 1:  # Only one common point
-                        rat_node = max(rat_node, rat)
-                        count_rat_node += 1
-                    elif len(pcom) == 2:  # Two common points for an edge
-                        rat_edge = max(rat_edge, rat)
-                        count_rat_edge += 1
-                    else:  # len(pcom) > 2:  # more than two common points for a face
-                        rat_face = max(rat_face, rat)
-                        count_rat_face += 1
+                    # CHK #     nb_iter_pi += 1
+                    # cells of pi not already processed (as a previous ca, or as cb for this ca)
+                    pi_cells = [c for c in points_to_cells[pi] if c not in ca_done]
+                    # loop on those cells of pi: cb
+                    for cb in pi_cells:
+                        # CHK # # increment check+debug counters
+                        # CHK # if do_iter_check:
+                        # CHK #     nb_iter_cb += 1
+                        # neighbour cells already processed: update (for the next pi)
+                        ca_done += [cb]
+                        # Compute the absolute volume ratio log of ca/cb
+                        rat = volume[ca] / volume[cb]
+                        if rat < 1.0:
+                            rat = 1 / rat
+                        count_rat_all += 1
+                        # Common points of ca and cb
+                        pcom = tuple(sorted(p for p in cells_to_points[ca] if p in cells_to_points[cb]))
+                        # if len(pcom) > 2:  # more than two common points for a face
+                        if len(pcom) == 1:  # Only one common point
+                            rat_node = max(rat_node, rat)
+                            count_rat_node += 1
+                        elif len(pcom) == 2:  # Two common points for an edge
+                            rat_edge = max(rat_edge, rat)
+                            count_rat_edge += 1
+                        else:  # len(pcom) > 2:  # more than two common points for a face
+                            rat_face = max(rat_face, rat)
+                            count_rat_face += 1
         # CHK # # plot time distribution
         # CHK # if do_iter_check and out_is_tty:
         # CHK #     plt.plot(mytime[::10])

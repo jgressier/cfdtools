@@ -15,7 +15,9 @@ if not isinstance(numeric_level, int):
     raise ValueError(f"Invalid log level: {level}. Must be one of: {' | '.join(logging._nameToLevel.keys())}")
 
 log = logging.getLogger(__name__)
+
 handler = logging.StreamHandler()
+
 #handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
 handler.setFormatter(logging.Formatter("%(levelname)s %(message)s"))
 log.addHandler(handler)

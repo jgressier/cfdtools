@@ -60,8 +60,8 @@ def _printreadable(string, value):
         print(string + ': ' + str(type(value)))
 
 
-def error_stop(msg):
-    raise RuntimeError(msg)
+def error_stop(errmsg):
+    raise RuntimeError(errmsg)
 
 
 class _files:
@@ -118,14 +118,14 @@ class TimerError(Exception):
 
 class Timer:  # from https://realpython.com/python-timer/
     default_ltab = 60
-    default_msg = ""
+    default_errmsg = ""
 
-    def __init__(self, task="", msg=default_msg, nelem=None, ltab=default_ltab):
+    def __init__(self, task="", errmsg=default_errmsg, nelem=None, ltab=default_ltab):
         self.reset()
         self._nelem = nelem
         self._ltab = ltab
         self._task = task
-        self._msg = msg
+        self._errmsg = errmsg
 
     def reset(self):
         self._start_time = None
@@ -158,15 +158,15 @@ class Timer:  # from https://realpython.com/python-timer/
         normalized_time_ms = 0.0 if self._nelem is None else 1e6 * self._elapsed / self._nelem
 
         # There was a print, line is restarted
-        self._ncol = 0
+        self._ncol = 0 # WHY?
 
-        nspc = (self._ltab - self._ncol) * ' '
-        log.info(nspc + f"wtime: {self._elapsed:0.4f}s")
+        spcs = (self._ltab - self._ncol) * ' '
+        log.info(spcs + f"wtime: {self._elapsed:0.4f}s")
         if self._nelem is None:
-            log.info("")
-        else:
+            pass # log.info('') # WHY?
+        else: # WHY " | "?
             log.info(
-                f" | {normalized_time_ms:0.4f}µs/elem",
+                f" | {normalized_time_ms:0.4f} µs/elem",
             )
         # reset
         self.reset()
@@ -179,8 +179,8 @@ class Timer:  # from https://realpython.com/python-timer/
         if self._ncol >= self._ltab:
             self._ncol = 0
             # ...then line is restarted...
-            log.info('')
-        # ...else line is continuedwith
+            log.info('') # WHY?
+        # ...else line is continued with
         self.start()
 
     def __exit__(self, *exitoptions):
