@@ -150,24 +150,34 @@ class Timer:  # from https://realpython.com/python-timer/
         self._elapsed += time.perf_counter() - self._start_time
         self._start_time = None
 
-    def stop(self, nelem=None):
+    def stop(self, nelem=None, show=None):
         """Stop the timer, and report the elapsed time"""
         if nelem is not None:
             self._nelem = nelem
         self.pause()
         normalized_time_ms = 0.0 if self._nelem is None else 1e6 * self._elapsed / self._nelem
+        if show:
+            if show is True:
+                show = self._task + " - End"
+            log.info(show)
+            # There was a print, line is restarted
+            self._ncol = 0
 
         # There was a print, line is restarted
         self._ncol = 0 # WHY?
 
         spcs = (self._ltab - self._ncol) * ' '
-        log.info(spcs + f"wtime: {self._elapsed:0.4f}s")
-        if self._nelem is None:
-            pass # log.info('') # WHY?
-        else: # WHY " | "?
-            log.info(
-                f" | {normalized_time_ms:0.4f} µs/elem",
-            )
+        timestr = f"wtime: {self._elapsed:0.4f}s"
+        if self._nelem: # is not None:
+            timestr += f" ( {normalized_time_ms:0.4f} µs/elem )"
+        log.info(spcs + timestr)
+        #log.info(spcs + f"wtime: {self._elapsed:0.4f}s")
+        #if self._nelem is None:
+        #    pass # log.info('') # WHY?
+        #else: # WHY " | "?
+        #    log.info(
+        #        f" | {normalized_time_ms:0.4f} µs/elem",
+        #    )
         # reset
         self.reset()
 
@@ -185,6 +195,9 @@ class Timer:  # from https://realpython.com/python-timer/
 
     def __exit__(self, *exitoptions):
         self.stop()
+
+    def enter(self):
+        self.__enter__()
 
 
 def memoize(f):
