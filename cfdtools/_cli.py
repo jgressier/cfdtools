@@ -132,7 +132,7 @@ class cli_argparser:
 def cfdinfo(argv=None):
     """ fully reads all supported formats, 
     converts to an internal mesh and data structure 
-    and prints a sum up of available information.
+    and prints a summary of available information
     """
     parser = cli_argparser(prog=__fname__)  # noqa: F821
     parser.addarg_filenameformat()
@@ -172,9 +172,9 @@ def vtkbrief(argv=None):
     parser.parse_cli_args(argv)
     parser.parse_filenameformat()
     #
-    r = vtk.vtkMesh()
-    r.read(parser.args().filename)
-    r.brief()
+    vtkm = vtk.vtkMesh()
+    vtkm.read(parser.args().filename)
+    vtkm.brief()
     return True  # needed for pytest
 
 
@@ -184,12 +184,67 @@ def vtkdiag(argv=None):
     """
     parser = cli_argparser(prog=f"[temp] {__fname__}")  # noqa: F821
     parser.addarg_filenameformat(format="VTK")
+    file_group = parser._parser.add_mutually_exclusive_group()
+    file_group.add_argument(
+        "-o",
+        action="store",
+        dest="ratfilename",
+        type=str,
+        help="name of output file",
+    )
+    file_group.add_argument(
+        "-O",
+        action="store_true",
+        dest="ratfilename",
+        help="name of output file based on name input file",
+    )
+    file_group.add_argument(
+        "-d", "--data",
+        action="store_true",
+        dest="return_data",
+        help="return vtkmesh data for processing (implied with -o/-O)",
+        # return_data: could choose which variable(s) for plot
+    )
     parser.parse_cli_args(argv)
     parser.parse_filenameformat()
-    #
-    r = vtk.vtkMesh()
-    r.read(parser.args().filename)
-    r.diag()
+
+    filename = parser.args().filename
+    ratfilename = parser.args().ratfilename
+    return_data = parser.args().return_data
+
+    isout = bool(ratfilename)
+    if isout:
+        if ratfilename is True:
+            fpath = Path(filename)
+            fsufx = fpath.suffix
+            ratpath = Path(f"{fpath.with_suffix('')}-VolRat").with_suffix(fsufx)
+            ratfilename = str(ratpath)
+        else:
+            ratpath = Path(ratfilename)
+        if ratpath.exists():
+            if ratpath.is_dir():
+                istype = "a directory"
+            elif ratpath.is_file():
+                istype = "a regular file"
+            else:
+                istype = "of unknown type"
+            log.info(f"Path {ratfilename!r} exists and is {istype}")
+            log.info("")
+            return False
+    return_data = return_data or isout
+
+    vtkm = vtk.vtkMesh()
+    vtkm.read(filename)
+
+    nvtkm = vtkm.diag(data=return_data)
+    if return_data:
+        if isout:
+            try:
+                nvtkm.write_data(ratfilename)
+                log.info(f"File {ratfilename!r} written")
+            except:
+                raise
+        nvtkm.plot()
     return True  # needed for pytest
 
 @cli_header()

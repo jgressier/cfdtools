@@ -152,10 +152,11 @@ class Timer:  # from https://realpython.com/python-timer/
 
     def stop(self, nelem=None, show=None):
         """Stop the timer, and report the elapsed time"""
+        self.pause()
         if nelem is not None:
             self._nelem = nelem
-        self.pause()
-        normalized_time_ms = 0.0 if self._nelem is None else 1e6 * self._elapsed / self._nelem
+        if self._nelem: # is not None:
+            normalized_time_ms = 1e6 * self._elapsed / self._nelem
         if show:
             if show is True:
                 show = self._task + " - End"
@@ -176,7 +177,7 @@ class Timer:  # from https://realpython.com/python-timer/
         #    pass # log.info('') # WHY?
         #else: # WHY " | "?
         #    log.info(
-        #        f" | {normalized_time_ms:0.4f} µs/elem",
+        #        f"    | {normalized_time_ms:0.4f} µs/elem",
         #    )
         # reset
         self.reset()
