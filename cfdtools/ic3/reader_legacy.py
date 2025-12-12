@@ -46,9 +46,10 @@ def print_stats_vector(name, dnp):
     :type dnp: ndarray
     '''
     for component in range(dnp.shape[1]):
+        arr = dnp[:, component]
         log.info(
             "  %s%s%s:  %+.5e / %+.5e / %+.5e (min/mean/max)."
-            % (name, "-%d" % component, ' ' * (20 - len(name)), dnp.min(), np.mean(dnp), dnp.max())
+            % (name, "-%d" % component, ' ' * (20 - len(name)), arr.min(), np.mean(arr), arr.max())
         )
 
 
