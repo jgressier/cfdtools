@@ -60,8 +60,8 @@ def _printreadable(string, value):
         print(string + ': ' + str(type(value)))
 
 
-def error_stop(msg):
-    raise RuntimeError(msg)
+def error_stop(errmsg):
+    raise RuntimeError(errmsg)
 
 
 class _files:
@@ -118,14 +118,14 @@ class TimerError(Exception):
 
 class Timer:  # from https://realpython.com/python-timer/
     default_ltab = 60
-    default_msg = ""
+    default_errmsg = ""
 
-    def __init__(self, task="", msg=default_msg, nelem=None, ltab=default_ltab):
+    def __init__(self, task="", errmsg=default_errmsg, nelem=None, ltab=default_ltab):
         self.reset()
         self._nelem = nelem
         self._ltab = ltab
         self._task = task
-        self._msg = msg
+        self._errmsg = errmsg
 
     def reset(self):
         self._start_time = None
@@ -150,24 +150,35 @@ class Timer:  # from https://realpython.com/python-timer/
         self._elapsed += time.perf_counter() - self._start_time
         self._start_time = None
 
-    def stop(self, nelem=None):
+    def stop(self, nelem=None, show=None):
         """Stop the timer, and report the elapsed time"""
+        self.pause()
         if nelem is not None:
             self._nelem = nelem
-        self.pause()
-        normalized_time_ms = 0.0 if self._nelem is None else 1e6 * self._elapsed / self._nelem
+        if self._nelem: # is not None:
+            normalized_time_ms = 1e6 * self._elapsed / self._nelem
+        if show:
+            if show is True:
+                show = self._task + " - End"
+            log.info(show)
+            # There was a print, line is restarted
+            self._ncol = 0
 
         # There was a print, line is restarted
-        self._ncol = 0
+        self._ncol = 0 # WHY?
 
-        nspc = (self._ltab - self._ncol) * ' '
-        log.info(nspc + f"wtime: {self._elapsed:0.4f}s")
-        if self._nelem is None:
-            log.info("")
-        else:
-            log.info(
-                f" | {normalized_time_ms:0.4f}µs/elem",
-            )
+        spcs = (self._ltab - self._ncol) * ' '
+        timestr = f"wtime: {self._elapsed:0.4f}s"
+        if self._nelem: # is not None:
+            timestr += f" ( {normalized_time_ms:0.4f} µs/elem )"
+        log.info(spcs + timestr)
+        #log.info(spcs + f"wtime: {self._elapsed:0.4f}s")
+        #if self._nelem is None:
+        #    pass # log.info('') # WHY?
+        #else: # WHY " | "?
+        #    log.info(
+        #        f"    | {normalized_time_ms:0.4f} µs/elem",
+        #    )
         # reset
         self.reset()
 
@@ -179,12 +190,15 @@ class Timer:  # from https://realpython.com/python-timer/
         if self._ncol >= self._ltab:
             self._ncol = 0
             # ...then line is restarted...
-            log.info('')
-        # ...else line is continuedwith
+            log.info('') # WHY?
+        # ...else line is continued with
         self.start()
 
     def __exit__(self, *exitoptions):
         self.stop()
+
+    def enter(self):
+        self.__enter__()
 
 
 def memoize(f):

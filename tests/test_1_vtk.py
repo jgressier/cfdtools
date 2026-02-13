@@ -102,8 +102,8 @@ class Test_vtk_zconvolution():
         assert vtkslice.ncell == 100
         assert len(vtkslice.pyvista_grid.point_data.keys()) == 0
         assert len(vtkslice.pyvista_grid.cell_data.keys()) == 10
-        for name in ('U', 'U_k1', 'U_rms', 'P', 'P_avg', 'P_rms', 'P_k1', 'P_k2', 'P_k1_phase', 'P_k2_phase'):
-            assert name in vtkslice.pyvista_grid.cell_data.keys()
+        names = ['U', 'U_k1', 'U_rms', 'P', 'P_avg', 'P_rms', 'P_k1', 'P_k2', 'P_k1_phase', 'P_k2_phase']
+        assert sorted(names) == sorted(vtkslice.pyvista_grid.cell_data.keys())
 
 def test_vtkList(datadir):
     namelist = list(datadir.glob("cubemixed00*.vtu"))
