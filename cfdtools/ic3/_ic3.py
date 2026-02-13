@@ -250,7 +250,6 @@ class restartSectionHeader:
         if reset_offset:
             bfile.seek(8, os.SEEK_SET)
         while True:
-            self.name = ""
             self.id = np.zeros((1,), dtype=np.int32)
             self.idata = np.zeros((8,), dtype=np.int64)
             self.rdata = np.zeros((16,), dtype=np.float64)
@@ -266,11 +265,15 @@ class restartSectionHeader:
 
             # Remove trailing space from header name (h.name)
             i = 0
+            name_acc = []  # OPTIMIZATION: Use list to collect chars
             while (s[i] != b'\x00') and (
                 i < ic3_restart_codes["UGP_IO_HEADER_NAME_LEN"]
             ):  # remove trailing spaces
-                self.name += s[i].decode()  # .decode() for python3 portage
+                name_acc.append(s[i].decode())  # .decode() for python3 portage
                 i += 1
+
+            self.name = "".join(name_acc)
+
             if self.name.startswith("DEOF"):
                 break
             # Store the rest of the tokens in the right namespace
