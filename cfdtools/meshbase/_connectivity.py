@@ -277,7 +277,8 @@ class elem_connectivity:
 
     # @profile
     def exportto_compressedindex(self) -> compressed_listofindex:
-        concat = sorted(self.index_elem_tuples())
+        concat = self.index_elem_tuples()
+        concat.sort()
         nnode_perface = [len(face) for _, face in concat]
         index = np.concatenate(([0], np.cumsum(nnode_perface)))
         value = np.array(list(chain(*[face for _, face in concat])))
