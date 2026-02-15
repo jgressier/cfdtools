@@ -54,6 +54,66 @@ def test_compressed_listofindex():
     assert zcon.check()
 
 
+def test_iter_and_list_conversion():
+    g = _conn.GeneralizedIndex([range(3), [10, 11], 20])
+    assert list(g) == [0, 1, 2, 10, 11, 20]
+
+def test_indexing():
+    g = _conn.GeneralizedIndex([range(3), [10, 11], 20])
+    assert g[0] == 0
+    assert g[3] == 10
+    assert g[5] == 20
+
+def test_negative_indexing():
+    g = _conn.GeneralizedIndex([1, 2, 3, 4])
+    assert g[-1] == 4
+    assert g[-2] == 3
+    assert g[-4] == 1
+    with pytest.raises(IndexError):
+        _ = g[-5]
+
+def test_length():
+    g = _conn.GeneralizedIndex([range(3), [7], [8, 9]])
+    assert len(g) == 6
+
+def test_list_method():
+    g = _conn.GeneralizedIndex([range(2), [99]])
+    assert g.list() == [0, 1, 99]
+
+def test_append():
+    g = _conn.GeneralizedIndex([1, 2])
+    g.append(3)
+    assert list(g) == [1, 2, 3]
+
+def test_extend_with_list():
+    g = _conn.GeneralizedIndex([1])
+    g.extend([2, 3])
+    assert list(g) == [1, 2, 3]
+
+def test_extend_with_range():
+    g = _conn.GeneralizedIndex([5])
+    g.extend(range(6, 8))
+    assert list(g) == [5, 6, 7]
+
+def test_invalid_input_raises():
+    with pytest.raises(ValueError):
+        _conn.GeneralizedIndex(123)  # not list or range
+
+    with pytest.raises(ValueError):
+        _conn.GeneralizedIndex([object()])  # not int, list or range
+
+def test_out_of_bounds_index():
+    g = _conn.GeneralizedIndex([1, 2, 3])
+    with pytest.raises(IndexError):
+        _ = g[10]
+    with pytest.raises(IndexError):
+        _ = g[-4]
+
+def test_repr():
+    g = _conn.GeneralizedIndex([1, 2, 3])
+    assert "GeneralizedIndex" in repr(g)
+    assert repr(g).endswith("[1, 2, 3])")
+
 class TestElem:
     dict_basiccon = {
         '2quads': ('quad4', np.array([[0, 1, 2, 3], [2, 1, 4, 5]])),

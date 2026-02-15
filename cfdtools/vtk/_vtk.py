@@ -39,7 +39,7 @@ if importpyvista:
         CellType.WEDGE: "Prism",
     }
 else:
-    log.warning("pyvista missing or failing at import: some features will be missing.")
+    log.warning("pyvista missing or failing at import: some features will be missing.\n(the reason could be a missing X connection)")
 
 
 @api.fileformat_writer("VTK", '.vtu')

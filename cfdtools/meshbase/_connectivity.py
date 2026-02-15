@@ -10,6 +10,66 @@ import cfdtools.meshbase._elements as _elem
 log = logging.getLogger(__name__)
 
 
+class GeneralizedIndex: # new class aiming to replace indexlist, to be tested, and interfaced with indexlist
+    """GeneralizedIndex class to handle a list of indices, which can be a mix of integers and ranges."""
+    def __init__(self, data):
+        """
+        data: list of ints, or list of ranges, or a mix of both
+        """
+        self._parts = []
+        if isinstance(data, range):
+            self._parts.append(data)
+        elif isinstance(data, list):
+            for part in data:
+                if isinstance(part, (range, list)):
+                    self._parts.append(part)
+                elif isinstance(part, int):
+                    self._parts.append([part])
+                else:
+                    raise ValueError(f"Unsupported part: {part}")
+        else:
+            raise ValueError("Input must be a list or range")
+
+    def __iter__(self):
+        for part in self._parts:
+            yield from part
+
+    def __len__(self):
+        return sum(len(part) for part in self._parts)
+
+    def __getitem__(self, index):
+        # support indexing like a flat list
+        if index < 0:
+            index += len(self)
+        if index < 0 or index >= len(self):
+            raise IndexError("Index out of range")
+        i = 0
+        for part in self._parts:
+            plen = len(part)
+            if index < i + plen:
+                return part[index - i]
+            i += plen
+        raise IndexError("Index out of bounds")
+
+    def list(self):
+        """Returns full list of values"""
+        return list(self)
+
+    def append(self, value):
+        """Appends a new item (as a single-item list)"""
+        self._parts.append([value])
+
+    def extend(self, values):
+        """Appends a list or range"""
+        if isinstance(values, (range, list)):
+            self._parts.append(values)
+        else:
+            raise TypeError("Can only extend with list or range")
+
+    def __repr__(self):
+        return f"GeneralizedIndex({self.list()})"
+    
+
 class indexlist:
     """class of different implementation of list of index
 
@@ -35,6 +95,10 @@ class indexlist:
     def size(self):
         return len(self._list) if self.type == 'list' else self._range[1] - self._range[0] + 1
 
+    def __len__(self):
+        """return size of list"""
+        return self.size
+    
     def _delete(self):
         self._type = None
         self._list = None
@@ -94,6 +158,16 @@ class indexlist:
                 self.set_range([self._list[0], self._list[-1]])
         # else no error, keep list
 
+    def copy(self):
+        """copy indexlist"""
+        if self._type == 'list':
+            return indexlist(ilist=self._list.copy())
+        elif self._type == 'range':
+            return indexlist(irange=self._range.copy())
+        else:
+            api.error_stop(f"unknown type: {self._type}")
+        return None
+    
     def __getitem__(self, indices):  # caution: may be highly costly
         return self.list()[indices]
 
@@ -171,7 +245,24 @@ class compressed_listofindex:
         return True
 
 
-class elem_connectivity:
+class Elemlist():
+    """class for a list of elements, where element is a list of nodes
+    implement contains / in operator
+    """
+    def __init__(self, elemlist: list):
+        self._list = [set(elem) for elem in elemlist]
+
+    def __contains__(self, elem):
+        """check if elem is in the list of elements"""
+        return set(elem) in self._list
+
+
+class elem_connectivity():
+    """Class for element connectivity (nodes of elements)
+    It is a dict of dict with keys:
+        - index: list of index of elements
+        - elem2node: array of nodes of elements
+    """
     def __init__(self):
         self._nelem = 0
         self._elem2node = OrderedDict()
@@ -251,18 +342,29 @@ class elem_connectivity:
             list_of_tuples.extend([(ind[i], f2n[i, :].ravel().tolist()) for i in range(f2n.shape[0])])
         return list_of_tuples
 
-    def nodes_of_indexlist(self, elemlist):
-        """get list of nodes given list of index of elements"""
+    def dict_of_elems(self):
+        """get dict of index: elements"""
         ind = []
         f2n = []
         for _, e2n in self.items():
             ind.extend(e2n['index'].list())
             f2n.extend(e2n['elem2node'].tolist())
+        return dict(zip(ind, f2n))
+    
+    def nodes_of_indexlist(self, elemlist):
+        """get list of nodes given list of index of elements"""
         # joinlist = list(
         #     chain.from_iterable([tnod[1] for tnod in filter(lambda tup: tup[0] in elemlist, zip(ind, f2n))])
         # )
-        joinlist = list(chain.from_iterable(map(dict(zip(ind, f2n)).get, elemlist)))
+        joinlist = list(chain.from_iterable(map(self.dict_of_elems().get, elemlist)))
         return list(set(joinlist))  # make unique
+
+    def index_of_elems(self, elemlist):
+        """get list of index of nodes given list of elements [ [n1, n2,...], [n10, n11,...], ...] from all elements"""
+        dict_elem = self.dict_of_elems()
+        allelemlist = Elemlist(list(chain.from_iterable(dict_elem.values())))
+        indexlist = [i for i in dict_elem.keys() if dict_elem[i] in allelemlist]
+        return indexlist
 
     def importfrom_compressedindex(self, zconn: compressed_listofindex):
         # there is no test but must only applied to faces

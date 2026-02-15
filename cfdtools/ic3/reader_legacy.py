@@ -16,6 +16,7 @@ from cfdtools.ic3._ic3 import (
     ic3_restart_codes,
     BinaryRead,
     zonekind2type,
+    map_zonekind2internal,
     properties_ugpcode,
 )
 
@@ -116,16 +117,16 @@ class reader(binreader):
         log.debug(f"Opening file {self.filename!r}")
         with open(self.filename, "rb") as self.fid:
             #
-            log.info("Reading binary file header")
+            log.info("> Reading binary file header")
             self._ReadRestartHeader()
             #
-            log.info("Reading connectivity...")
+            log.info("> Reading connectivity")
             self._ReadRestartConnectivity()
             #
-            log.info("Reading informative values...")
+            log.info("> Reading informative values")
             self._ReadInformativeValues()
             #
-            log.info("Reading variables...")
+            log.info("> Reading variables")
             self.celldata = _data.DataSet('cellaverage')
             self.nodedata = _data.DataSet('nodal')
             self.facedata = _data.DataSet('nodal')
@@ -249,7 +250,7 @@ class reader(binreader):
         #
         # - First, NOOFA
         #
-        log.info("  Parsing face to node connectivity...")
+        log.info("- Parsing face to node connectivity...")
         sys.stdout.flush()
         h = restartSectionHeader()
         h.readReqVar(self.fid, self.byte_swap, ["UGP_IO_NOOFA_I_AND_V"])
@@ -274,17 +275,16 @@ class reader(binreader):
         zface2node = _conn.compressed_listofindex(face2node_index, face2node_value)
         zface2node.check()
         self.mesh["connectivity"]["noofa"] = zface2node
-        log.info("end of face/vertex connectivity")
+        log.info("  end of face/vertex connectivity")
         sys.stdout.flush()
         del nno_per_face, uniq, counts
         #
         # - Second, CVOFA
         #
-        log.info("  Parsing face to cell connectivity...")
+        log.info("- Parsing face to cell connectivity")
         sys.stdout.flush()
         h = restartSectionHeader()
         h.readReqVar(self.fid, self.byte_swap, ["UGP_IO_CVOFA"])
-
         assert h.idata[0] == fa_count
         assert h.idata[1] == 2
         # Fill the connectivities
@@ -292,7 +292,7 @@ class reader(binreader):
         # store in 8 bytes
         self.mesh["connectivity"]["cvofa"]["cvofa"] = np.asarray(s).astype(np.int64).reshape((fa_count, 2))
 
-        log.info("end of face/cell connectivity")
+        log.info("  end of face/cell connectivity")
         sys.stdout.flush()
 
         # Checks and a few associations
@@ -317,7 +317,7 @@ class reader(binreader):
         # print("RC",self.mesh["connectivity"]["cvofa"]["cvofa"])
         #
         # The boundary conditions now
-        log.info("  Parsing boundary conditions...")
+        log.info("- Parsing boundary conditions")
         sys.stdout.flush()
         self.mesh['bocos'] = []  # init list of bocos
         while True:
@@ -328,27 +328,39 @@ class reader(binreader):
             # 3 ints: kind, face range (begin, start)
             self.mesh["params"]["nboco"] += 1
             boco = _mesh.submeshmark(h.name)
-            boco.type = zonekind2type[h.idata[0]]
+            ic3bctype = zonekind2type[h.idata[0]]
+            boco.type = map_zonekind2internal[ic3bctype]
             boco.geodim = 'intface' if boco.type == 'internal' else 'bdface'
             boco.index = _conn.indexlist(irange=[h.idata[1], h.idata[2]])
             boco.properties["periodic_transform"] = h.rdata
+            if ic3bctype in ('perio_cart',):
+                meshco = _mesh.meshconnection()
+                meshco.set_translation(h.rdata[0:3])
+                boco.connection = meshco
+            elif ic3bctype in ('perio_cylx', 'perio_cyly', 'perio_cylz'):
+                meshco = _mesh.meshconnection()
+                rottype = {'perio_cylx': 'rotx', 'perio_cyly': 'roty', 'perio_cylz': 'rotz'}[boco.type]
+                meshco.set_rotation(rottype=rottype, angle=np.atan2(*h.rdata[0:2]))
+                boco.connection = meshco
             #
             famin, famax = boco.index.range()
             sta = face2node_index[famin]
             try:
                 sto = face2node_index[famax + 1]
             except IndexError:
+                log.warning("face2node_index out of range")
                 sto = face2node_value.size
             #
+            # slicing is kept but not used
             boco.properties["slicing"] = np.unique(face2node_value[sta:sto])
             self.mesh['bocos'].append(boco)
-            if h.idata[0] == 6:
+            if h.idata[0] == 6: # 'internal' faces, supposed to be last
                 break
-        log.info("end of boundary conditions")
+        log.info("end of face marks (boundary conditions and internal)")
         sys.stdout.flush()
 
         # Parse the header of the partition information
-        log.info("  Parsing partitioning information...")
+        log.info("> Parsing partitioning information")
         sys.stdout.flush()
         h = restartSectionHeader()
         h.readReqVar(self.fid, self.byte_swap, ["UGP_IO_CV_PART"])

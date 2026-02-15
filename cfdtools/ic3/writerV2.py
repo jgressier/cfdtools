@@ -11,6 +11,7 @@ from cfdtools.ic3._ic3 import (
     type2zonekind,
     struct_endian,
     BinaryWrite,
+    map_meshco2zonekind,
     restartSectionHeader,
 )
 
@@ -66,7 +67,7 @@ class writer:
             with api.Timer(task="  reindex boundary faces with boco marks and compress"):
                 self._mesh.reindex_boundaryfaces()
 
-        log.info("Setting coordinates and connectivity arrays")
+        log.info("- Setting coordinates and connectivity arrays")
 
         # Nodes
         self.coordinates = np.stack([self._mesh._nodes[c] for c in 'xyz'], axis=1)
@@ -85,7 +86,7 @@ class writer:
         self.params["fa_count"] = self._mesh.nface
         self.params["cv_count"] = self._mesh.ncell
 
-        # check face connectivity
+        # check face connectivity: separate internal and boundary faces or mixed
         if 'mixed' in self._mesh._faces.keys():
             zface2node = self._mesh._faces['mixed']['face2node'].exportto_compressedindex()
             self.f2e = self._mesh._faces['mixed']['face2cell'].conn
@@ -113,7 +114,7 @@ class writer:
         __WriteRestartConnectivity method.
         The bocos slicing is expressed in terms of faces.
         """
-        log.info("Setting boundary conditions")
+        log.info("- Setting boundary conditions and periodicity connections")
         self.bocos = {key: boco for key, boco in self._mesh._bocos.items() if not boco.type == 'internal'}
         # self.bocos.pop("nfa_b")
         # self.bocos.pop("nfa_bp")
@@ -141,7 +142,7 @@ class writer:
         They will be later written to the file using the
         __WriteRestartVar method.
         """
-        log.info("Setting variables")
+        log.info("- Setting variables")
         self.vars = {
             "nodes": self._mesh._nodedata,
             "cells": self._mesh._celldata,
@@ -167,7 +168,7 @@ class writer:
             #
             log.info("> check consistency before writing")
             if not self.check():
-                raise RuntimeError("Inconsistent data to write")
+                api.error_stop("check of IC3 writer class failed: inconsistent data to write")
             #
             log.info("> Writing header")
             self.__WriteRestartHeader()
@@ -268,9 +269,7 @@ class writer:
         """
         # First the header for counts
         nnode, nface, ncell = (self.params[key] for key in ('no_count', 'fa_count', 'cv_count'))
-        log.info(
-            f"  sizes: {nnode} nodes, {nface} faces and reference to {ncell} cells",
-        )
+        log.info(f"  sizes: {nnode} nodes, {nface} faces and reference to {ncell} cells")
         header = restartSectionHeader()
         header.name = "NO_FA_CV_NOOFA_COUNTS"
         header.id = ic3_restart_codes["UGP_IO_NO_FA_CV_NOOFA_COUNTS"]
@@ -328,17 +327,21 @@ class writer:
         last_boco = 0
         for key, boco in self.bocos.items():
             assert key == boco.name
-            assert boco.geodim in ('face', 'bdface'), "boco marks must be faces index"
+            assert boco.geodim in ('face', 'bdface'), "boco marks must be faces indexed"
             # Header
             header = restartSectionHeader()
             header.name = key
             header.id = ic3_restart_codes["UGP_IO_FA_ZONE"]
             header.skip = header.hsize
-            # diff# print(self.bocos[key]["type"], type2zonekind)
-            assert boco.type in type2zonekind.keys(), f"unsupported type of boco for IC3 output: {boco.type}"
+            if boco.type in ('internal', 'boundary'):
+                header.idata[0] = type2zonekind[boco.type]
+            elif boco.type == 'perio':
+                perio_type = map_meshco2zonekind[boco.connection.transform]
+                header.idata[0] = type2zonekind[perio_type]
+            else:
+                raise ValueError(f"unsupported type of boco for IC3 output: {boco.type}")
             ifmin, ifmax = boco.index.range()
             log.info(f"  . ({boco.type}) {boco.name}: {ifmin}-{ifmax}")
-            header.idata[0] = type2zonekind[boco.type]
             assert boco.index.type == 'range', "indexing must be a range and may need reordering"
             header.idata[1] = ifmin
             header.idata[2] = ifmax

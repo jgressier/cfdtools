@@ -106,7 +106,7 @@ class reader:
             # log.info("Reading version")
             # self._read_version()
 
-            log.info("Reading connectivity...")
+            log.info("> Reading connectivity")
             self._read_connectivity(fid)
 
         if self._solution_filename is None:
@@ -114,10 +114,10 @@ class reader:
 
         log.debug(f"Opening file {self._solution_filename!r}")
         with h5py.File(self._solution_filename, "r") as fid:
-            log.info("Reading variables...")
+            log.info("> Reading variables")
             self._read_variables(fid)
 
-            log.info("Reading informative values...")
+            log.info("> Reading informative values")
             self._read_informative_values(fid)
 
             self._ncell = self.mesh['params']['cv_count']  # for generic writer and timer
