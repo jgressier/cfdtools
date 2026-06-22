@@ -55,12 +55,8 @@ class reader(api._files):
             api.error_stop(f"unexpected max element dimension: {self._maxdim}")
 
         log.info("%dD mesh", self._maxdim)
-        mesh_elt = [
-            etype for etype, dim in _elem.dim_elem.items() if dim == self._maxdim
-        ]
-        bc_elt = [
-            etype for etype, dim in _elem.dim_elem.items() if dim == self._maxdim - 1
-        ]
+        mesh_elt = [etype for etype, dim in _elem.dim_elem.items() if dim == self._maxdim]
+        bc_elt = [etype for etype, dim in _elem.dim_elem.items() if dim == self._maxdim - 1]
 
         # Initialize returned variables
         boundaries = {}
@@ -89,7 +85,8 @@ class reader(api._files):
                 connectivity[elt_type] = []
 
             ntag = elt[2]  # expected to be 2
-            assert ntag == 2
+            if ntag != 2:
+                api.error_stop(f"Expected number of tags to be 2, got {ntag}")
             connectivity[elt_type].append(elt[3 + ntag :])
 
             bnd_connect += 1
@@ -109,7 +106,8 @@ class reader(api._files):
 
             # Process valid element
             ntag = elt[2]  # expected to be 2
-            assert ntag == 2
+            if ntag != 2:
+                api.error_stop(f"Expected number of tags to be 2, got {ntag}")
             # bnd_tag = elt[2 + tag]
             # bnd_fam = elt[2 + tag - 1]
             bnd_tag = elt[4]
@@ -124,25 +122,21 @@ class reader(api._files):
 
         # Element-to-vertex
         for elt_type in connectivity:
-            # Change the node numbering convention from GMSH to CGNS
+            # Change the node numbering convention from GMSH to 0-based
             connectivity[elt_type] = np.array(connectivity[elt_type]) - 1
 
         # Boundary patches element-to-vertex
         for bnd_tag in connect_bc:
             for elt_type in connect_bc[bnd_tag]:
-                # Change the node numbering convention from GMSH to CGNS
-                connect_bc[bnd_tag][elt_type] = (
-                    np.array(connect_bc[bnd_tag][elt_type]) - 1
-                )
+                # Change the node numbering convention from GMSH to 0-based.
+                connect_bc[bnd_tag][elt_type] = np.array(connect_bc[bnd_tag][elt_type]) - 1
 
         if exclude_center_points:
             log.info("  exclude center points of volume connectivity")
             x = np.asarray(x)
             y = np.asarray(y)
             z = np.asarray(z)
-            x, y, z, point27 = self.__remove_27th_point_hexa27(
-                connect_bc, connectivity, x, y, z
-            )
+            x, y, z, point27 = self.__remove_27th_point_hexa27(connect_bc, connectivity, x, y, z)
             self.celldata.add_data("point27", point27)
 
         # Fill the dictionary of boundary conditions
@@ -177,9 +171,7 @@ class reader(api._files):
         }
         for elt_type in connectivity:
             raveled = np.unique(connectivity[elt_type].ravel())
-            boundaries["int_fluid"]["slicing"] = np.concatenate(
-                (boundaries["int_fluid"]["slicing"], raveled)
-            )
+            boundaries["int_fluid"]["slicing"] = np.concatenate((boundaries["int_fluid"]["slicing"], raveled))
 
         self._elems = elts
         self._coords = (x, y, z)
@@ -256,7 +248,7 @@ class reader(api._files):
         assert sectionName.startswith("$")
         ibeg = msh.index(["$" + sectionName[1:]])
         iend = msh.index(["$End" + sectionName[1:]])
-        return msh[ibeg + 1: iend]
+        return msh[ibeg + 1 : iend]
 
     def __read_sections_V2(self, msh):
         # ------------------------------------------
@@ -398,9 +390,7 @@ class reader(api._files):
         elif self.version >= 4:
             return self.__read_sections_V4(msh)
         else:
-            api.error_stop(
-                f"unexpected mesh version: {self.version} (expected <= 2 or >= 4)"
-            )
+            api.error_stop(f"unexpected mesh version: {self.version} (expected <= 2 or >= 4)")
 
     def __remove_27th_point_hexa27(self, conn_bc, conn_vol, x, y, z):
         """Remove the 27th local node of each HEXA27 element.
@@ -422,25 +412,20 @@ class reader(api._files):
         removed_nodes : ndarray
             Deleted global node ids
         """
-        assert "hexa27" in conn_vol
+        assert "hexa27" in conn_vol, f"HEXA27 connectivity missing in {conn_vol.keys()}"
         conn = conn_vol["hexa27"]
 
-        initial_nb_nodes = len(x)
         # Keep first 26 nodes of the initial connectivity
         conn26_old = conn[:, :26]
 
         # Nodes in 27th column
         removed_nodes = conn[:, 26]
 
-        # Store coordinates of removed nodes
-        removed_x = x[removed_nodes]
-        removed_y = y[removed_nodes]
-        removed_z = z[removed_nodes]
-
-        # Optionally store them together
-        removed_coords = np.column_stack((removed_x, removed_y, removed_z))
+        # Store the actual coordinates of those centre points (for celldata)
+        removed_coords = np.column_stack((x[removed_nodes], y[removed_nodes], z[removed_nodes]))
 
         # Keep mask
+        initial_nb_nodes = len(x)
         keep = np.ones(initial_nb_nodes, dtype=bool)
         keep[removed_nodes] = False
 
@@ -458,7 +443,7 @@ class reader(api._files):
 
         for bnd_tag in conn_bc:
             for elt_type in conn_bc[bnd_tag]:
-                assert elt_type == "quad9"
+                assert elt_type == "quad9", f"Unexpected BC element type {elt_type}"
                 conn_bc[bnd_tag][elt_type] = new_id[conn_bc[bnd_tag][elt_type]]
 
         return x, y, z, removed_coords

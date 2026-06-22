@@ -16,8 +16,6 @@ _builddir = Path("./tests/build")
         "test_3d.msh",
         "mesh3_o2.msh",
         "test_2d_small.msh",
-        "test_3d.msh",
-        "mesh3_o2.msh",
     ],
 )
 def test_reader(filename):
