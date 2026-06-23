@@ -1,6 +1,6 @@
-from collections import defaultdict, OrderedDict
-from itertools import chain
 import logging
+from collections import OrderedDict, defaultdict
+from itertools import chain
 
 import numpy as np
 
@@ -17,7 +17,7 @@ class indexlist:
         _type_: _description_
     """
 
-    __available_types = ['list', 'range']
+    __available_types = ["list", "range"]
 
     def __init__(self, irange=None, ilist=None):
         self._type = None
@@ -33,7 +33,11 @@ class indexlist:
 
     @property
     def size(self):
-        return len(self._list) if self.type == 'list' else self._range[1] - self._range[0] + 1
+        return (
+            len(self._list)
+            if self.type == "list"
+            else self._range[1] - self._range[0] + 1
+        )
 
     def _delete(self):
         self._type = None
@@ -42,7 +46,7 @@ class indexlist:
 
     # @property
     def range(self):
-        if self._type == 'range':
+        if self._type == "range":
             return self._range
         else:
             api.error_stop("unable to get range from list connectivity")
@@ -50,13 +54,13 @@ class indexlist:
     def set_range(self, irange):
         """define range of index with first and last included"""
         self._delete()
-        self._type = 'range'
+        self._type = "range"
         self._range = [*irange]
 
     def list(self):
-        if self._type == 'range':
+        if self._type == "range":
             return list(range(self._range[0], self._range[1] + 1))
-        elif self._type == 'list':
+        elif self._type == "list":
             return list(self._list)  # ensure list if may be
         else:
             api.error_stop(f"unknown type: {self._type}")
@@ -68,12 +72,12 @@ class indexlist:
             rlist = self._list = ilist.tolist()
         else:
             log.error(f"{type(ilist)}")
-            api.error_stop("unknow type in indexlist class")
+            api.error_stop("unknown type in indexlist class")
         return rlist
 
     def set_list(self, ilist):
         self._delete()
-        self._type = 'list'
+        self._type = "list"
         self._list = self._listof(ilist)
 
     def append(self, ilist: list):
@@ -82,15 +86,17 @@ class indexlist:
         self.set_list(self.list() + self._listof(ilist))
 
     def shift(self, i):
-        if self._type == 'range':
+        if self._type == "range":
             return indexlist(irange=[self._range[0] + i, self._range[1] + i])
-        elif self._type == 'list':
+        elif self._type == "list":
             return indexlist(ilist=[j + i for j in self._list])
 
     def compress(self):
         """try to make it a range"""
-        if self._type == 'list':
-            if np.all(self._list == np.arange(self._list[0], self._list[0] + len(self._list))):
+        if self._type == "list":
+            if np.all(
+                self._list == np.arange(self._list[0], self._list[0] + len(self._list))
+            ):
                 self.set_range([self._list[0], self._list[-1]])
         # else no error, keep list
 
@@ -102,9 +108,9 @@ class indexlist:
         return indexlist(ilist=self.list() + other.list())
 
     def __str__(self):
-        if self._type == 'range':
+        if self._type == "range":
             return f"range {self._range[0]} to {self._range[1]}"
-        elif self._type == 'list':
+        elif self._type == "list":
             n = np.array(self._list)
             return "list min:max:size = {}:{}:{}".format(n.min(), n.max(), n.size)
 
@@ -113,11 +119,10 @@ class indexindirection:
     """class for a genuine connectivity, regular which size = nelem x 2"""
 
     def __init__(self, array: np.ndarray = None):
-        if array is None:
-            self._nelem = 0
-            self._conn = None
-        else:
-            self.conn = array  # setter
+        self.conn = array  # setter
+
+    def __str__(self):
+        return str(self.conn)
 
     @property
     def conn(self):
@@ -125,9 +130,13 @@ class indexindirection:
 
     @conn.setter
     def conn(self, array: np.ndarray):
-        assert array.shape[1] == 2
-        self._conn = array
-        self._nelem = array.shape[0]
+        if array is None:
+            self._nelem = 0
+            self._conn = None
+        else:
+            assert array.shape[1] == 2
+            self._conn = array
+            self._nelem = array.shape[0]
 
     @property
     def nelem(self):
@@ -138,7 +147,7 @@ class indexindirection:
         return self._conn.__getitem__(indices)
 
     def append(self, array: np.ndarray):
-        if self._conn is None:
+        if self.conn is None:
             self.conn = array
         else:
             assert array.shape[1] == 2
@@ -176,17 +185,24 @@ class elem_connectivity:
         self._nelem = 0
         self._elem2node = OrderedDict()
 
+    def __str__(self) -> str:
+        return str(self._elem2node)
+
     def add_elems(self, etype: str, elem2node: np.ndarray, index: indexlist = None):
         dim = elem2node.shape[0]
-        ind = indexlist(irange=[self._nelem, self._nelem + dim - 1]) if index is None else index
+        ind = (
+            indexlist(irange=[self._nelem, self._nelem + dim - 1])
+            if index is None
+            else index
+        )
         self._nelem += dim
         if etype in self.elems():
-            self._elem2node[etype]['index'].append(ind.list())
-            self._elem2node[etype]['elem2node'] = np.concatenate(
-                (self._elem2node[etype]['elem2node'], elem2node), axis=0
+            self._elem2node[etype]["index"].append(ind.list())
+            self._elem2node[etype]["elem2node"] = np.concatenate(
+                (self._elem2node[etype]["elem2node"], elem2node), axis=0
             )
         else:
-            self._elem2node[etype] = {'index': ind, 'elem2node': elem2node}
+            self._elem2node[etype] = {"index": ind, "elem2node": elem2node}
 
     # def index_elem2node(self, etype):
     #     ist = self._elem2node[etype]['starts']
@@ -207,11 +223,13 @@ class elem_connectivity:
         return self._elem2node.keys()
 
     def __getitem__(self, key):
-        return self._elem2node[key]['elem2node']
+        return self._elem2node[key]["elem2node"]
 
     def check(self):
         # check uniqueness of all index
-        index = np.concatenate(tuple(e2n['index'].list() for _, e2n in self._elem2node.items()))
+        index = np.concatenate(
+            tuple(e2n["index"].list() for _, e2n in self._elem2node.items())
+        )
         uniq = np.unique(index)
         assert index.min() == 0
         assert index.max() == index.size - 1
@@ -226,14 +244,15 @@ class elem_connectivity:
     def print(self, prefix="", detailed=False):
         for elemtype, elemco in self._elem2node.items():
             log.info(
-                prefix + f"{elemtype}: {elemco['elem2node'].shape} with index {elemco['index']}",
+                prefix
+                + f"{elemtype}: {elemco['elem2node'].shape} with index {elemco['index']}",
             )
             if detailed:
                 log.info(prefix + f"  index: {elemco['index'].list()}")
                 log.info(prefix + f"  faces: {elemco['elem2node']}")
 
     def all_index(self):
-        return list(sum([econ['index'].list() for _, econ in self.items()], []))
+        return list(sum([econ["index"].list() for _, econ in self.items()], []))
 
     # def index_elem_tuples(self):
     #     # optim: here, .list() is not mandatory but avoid massively calling .list().getitem()
@@ -246,9 +265,12 @@ class elem_connectivity:
         list_of_tuples = []
         for _, e2n in self.items():
             # optim: here, .list() is not mandatory but avoid massively calling .list().getitem()
-            ind = e2n['index'].list()
-            f2n = e2n['elem2node']
-            list_of_tuples.extend([(ind[i], f2n[i, :].ravel().tolist()) for i in range(f2n.shape[0])])
+            ind = e2n["index"].list()
+            f2n = e2n["elem2node"]
+            list_of_tuples.extend(
+                [(ind[i], f2n[i, :].ravel().tolist()) for i in range(f2n.shape[0])]
+            )
+
         return list_of_tuples
 
     def nodes_of_indexlist(self, elemlist):
@@ -256,8 +278,8 @@ class elem_connectivity:
         ind = []
         f2n = []
         for _, e2n in self.items():
-            ind.extend(e2n['index'].list())
-            f2n.extend(e2n['elem2node'].tolist())
+            ind.extend(e2n["index"].list())
+            f2n.extend(e2n["elem2node"].tolist())
         # joinlist = list(
         #     chain.from_iterable([tnod[1] for tnod in filter(lambda tup: tup[0] in elemlist, zip(ind, f2n))])
         # )
@@ -288,7 +310,7 @@ class elem_connectivity:
     def importfrom_merge(self, list_elem):
         # computes size of all elem_connectivity
         sizes = [
-            np.sum([np.array(e2n['index'].list()).size for _, e2n in elemcon.items()])
+            np.sum([np.array(e2n["index"].list()).size for _, e2n in elemcon.items()])
             for elemcon in list_elem
         ]
         sizes = [0] + sizes[:-1]  # start with 0, last is useless
@@ -296,22 +318,24 @@ class elem_connectivity:
         for shift, elemcon in zip(sizes, list_elem):
             for key, elemtype in elemcon.items():
                 if key in mergedict.keys():
-                    mergedict[key]['index'] = mergedict[key]['index'] + elemtype['index'].shift(shift)
-                    mergedict[key]['elem2node'] = np.concatenate(
-                        (mergedict[key]['elem2node'], elemtype['elem2node']), axis=0
+                    mergedict[key]["index"] = mergedict[key]["index"] + elemtype[
+                        "index"
+                    ].shift(shift)
+                    mergedict[key]["elem2node"] = np.concatenate(
+                        (mergedict[key]["elem2node"], elemtype["elem2node"]), axis=0
                     )
                 else:
-                    mergedict[key]['index'] = elemtype['index'].shift(shift)
-                    mergedict[key]['elem2node'] = elemtype['elem2node']
+                    mergedict[key]["index"] = elemtype["index"].shift(shift)
+                    mergedict[key]["elem2node"] = elemtype["elem2node"]
 
         for elem, elemtype in mergedict.items():
-            self.add_elems(elem, elemtype['elem2node'], elemtype['index'])
+            self.add_elems(elem, elemtype["elem2node"], elemtype["index"])
 
     # @profile
     def create_faces_from_elems(self):
         # @profile
         def __build_face_and_neighbour():
-            """build a dict of face type to a list of tuples of each (oriented) face and its neighbor
+            """Build a dict of face type to a list of tuples of each (oriented) face and its neighbors.
 
             Args:
                 elems (dict): dict of elements with node definition
@@ -320,12 +344,11 @@ class elem_connectivity:
                 _type_: dict of face type
             """
             faces_neighbour = defaultdict(list)
-            for (
-                elemtype,
-                elemsdict,
-            ) in self._elem2node.items():  # elemtype: 'hexa8', elemsarray: ndarray[nelem,8]
-                index = elemsdict['index'].list()  # call export to list now
-                elemsarray = elemsdict['elem2node']
+            # elemtype: 'hexa8', elemsarray: ndarray[nelem,8]
+            for elemtype, elemsdict in self._elem2node.items():
+                # cell/element indices
+                index = elemsdict["index"].list()  # call export to list now
+                elemsarray = elemsdict["elem2node"]
                 # V0
                 # for ielem in range(elemsarray.shape[0]):
                 #     for ftype, listfaces in _elem.elem2faces[elemtype].items():
@@ -339,68 +362,94 @@ class elem_connectivity:
                 #         faces_neighbour[ftype].extend(
                 #             [ (tuple(elemsarray[ielem, face]), index[ielem]) for ielem in range(elemsarray.shape[0]) ] )
                 # V2 (-30%)
-                # NODE ORDER of face IS REVERSED
                 for ftype, face_of_elem in _elem.elem2faces[elemtype].items():
+                    # Loop over the definition of each face of the element type
                     for eface in face_of_elem:
-                        reindex_f = elemsarray[:, list(reversed(eface))].tolist()
+                        # Get all face definition from the mesh for each face.
+                        index_f = elemsarray[:, eface]
+                        # Store the face indices with the element index
                         faces_neighbour[ftype].extend(
-                            [(tuple(fnodes), ind) for fnodes, ind in zip(reindex_f, index)]
+                            [
+                                (tuple(fnodes), ind)
+                                for fnodes, ind in zip(index_f, index)
+                            ]
                         )
+
             return faces_neighbour
 
         # @profile
         def __find_duplicates(faces_neighbour: dict):
-            """find duplicated faces and build unique face/node face/cell connectivity
+            """Find duplicated faces and build unique face/node face/cell connectivity.
 
-            Args:
-                faces_neighbour (dict): _description_
+            Parameters
+            ----------
+            faces_neighbour: `dict`
+                 description
+
+            Returns
+            -------
+            internalfaces: `elem_connectivity`
+                Connectivity of internal faces.
+            iface2cell: `indexindirection`
+                Cells of each internal face.
+            boundaryfaces: `elem_connectivity`
+                Connectivity of boundary faces.
+            bface2cell: `indexindirection`
+                Cells of each boundary face.
             """
             internalfaces = elem_connectivity()
             boundaryfaces = elem_connectivity()
             iface2cell = indexindirection()  #
-            bface2cell = indexindirection()  #
+            # give the two cells attached to a face
+            bface2cell = indexindirection()
 
             def face_from_ufacedict(uface_dict):
-                return np.array(list(map(lambda flist: flist[0][0], uface_dict.values())))
+                """Get the tuple of node indices for all first face."""
+                return np.array([flist[0][0] for flist in uface_dict.values()])
 
             # find pairs for a given face type
             for ftype, listfaces in faces_neighbour.items():
                 nf_all = len(listfaces)
+                # quad interface only, could be adapted to other ftype
+                nb_linear_face_pts = 4
                 # build a dict of "sorted node" face with list of tuple (face, elem)
                 # face_pairs = dict()
                 # for uface, facepair in groupby(listfaces, lambda tup: tuple(sorted(tup[0]))):
                 #     face_pairs[uface] = list(facepair)
                 face_pairs = defaultdict(list)
                 for tface in listfaces:
-                    face_pairs[tuple(sorted(tface[0]))].append(tface)  # 50% COST
+                    # nodes of faces are sorted to get a dict key
+                    face_pairs[tuple(sorted(tface[0][:nb_linear_face_pts]))].append(
+                        tface
+                    )  # 50% COST
                 nf_unique = len(face_pairs)
                 assert nf_unique < nf_all
                 assert 2 * nf_unique >= nf_all
-                # extract all unique face
+
+                # extract all unique faces: boundary faces
                 #   since reversed when created, boco faces are pointing outward
-                uniqueface_dict = dict(
-                    filter(lambda tup: len(tup[1]) == 1, face_pairs.items())
-                )  # tup[1] is the value of key
-                boundaryfaces.add_elems(ftype, face_from_ufacedict(uniqueface_dict))
-                f2c = np.full((len(uniqueface_dict), 2), -1)
+                unique_faces = {
+                    key: pair for key, pair in face_pairs.items() if len(pair) == 1
+                }
+                boundaryfaces.add_elems(ftype, face_from_ufacedict(unique_faces))
+                # get cells of each boundary face. Left cell is always defined.
+                # Right cell is -1.
                 # get index of connected cells
-                f2c[:, 0] = list(map(lambda flist: flist[0][1], uniqueface_dict.values()))
+                f2c = np.array([[flist[0][1], -1] for flist in unique_faces.values()])
                 bface2cell.append(f2c)
-                # remove these faces
-                for uface in uniqueface_dict.keys():
-                    face_pairs.pop(uface)
+
+                # extract all double faces: internal faces
+                face_pairs = {
+                    key: pair for key, pair in face_pairs.items() if len(pair) == 2
+                }
                 # get all first face of each pair of tuple (face,ielem)
                 intfaces = face_from_ufacedict(face_pairs)  # 10% COST
                 internalfaces.add_elems(ftype, intfaces)
+                # get cells of each internal face.
                 # get all elements connections via faces
                 # get index of connected cells # 25% COST
                 f2c = np.array(
-                    list(
-                        map(
-                            lambda flist: [flist[0][1], flist[1][1]],
-                            face_pairs.values(),
-                        )
-                    )
+                    [[flist[0][1], flist[1][1]] for flist in face_pairs.values()]
                 )
                 iface2cell.append(f2c)
 
@@ -410,10 +459,10 @@ class elem_connectivity:
         return __find_duplicates(faces_neighbour)
 
     def nodelist(self):
-        """create list of (unique) nodes from element connectivity""" 
+        """Create list of (unique) nodes from element connectivity."""
         nodeset = set()
         for _, econ in self.items():
-            nodeset.update(econ['elem2node'].ravel().tolist())
+            nodeset.update(econ["elem2node"].ravel().tolist())
         return list(nodeset)
 
     def extrude(self, nplanes: int, inodeshift: int):
@@ -427,15 +476,17 @@ class elem_connectivity:
         ncell = nplanes - 1
         newcon = elem_connectivity()
         for etype, econ in self.items():
-            nelem = econ['elem2node'].shape[0]
-            elemcon = np.tile(econ['elem2node'], (ncell, 2))
+            nelem = econ["elem2node"].shape[0]
+            elemcon = np.tile(econ["elem2node"], (ncell, 2))
             fnnode = _elem.nnode_elem[etype]
             elemcon[:, fnnode : 2 * fnnode] += inodeshift
             for i in range(ncell):
                 elemcon[i * nelem : (i + 1) * nelem, :] += i * inodeshift
             # print(etype, econ['elem2node'], elemcon)
-            index = np.tile(econ['index'].list(), (ncell))
+            index = np.tile(econ["index"].list(), (ncell))
             for i in range(ncell):
                 index[i * nelem : (i + 1) * nelem] += i * inodeshift
-            newcon.add_elems(_elem.extruded_face[etype], elemcon, indexlist(ilist=index.tolist()))
+            newcon.add_elems(
+                _elem.extruded_face[etype], elemcon, indexlist(ilist=index.tolist())
+            )
         return newcon
