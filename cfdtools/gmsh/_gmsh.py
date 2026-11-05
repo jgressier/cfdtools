@@ -30,6 +30,10 @@ gmshtype_elem = {
     14: "pyra14",
     15: "node1",
 }
+
+# Number of nodes per GMSH element type code (first/second order).
+nodes_per_gmshtype = {1: 2, 2: 3, 3: 4, 4: 4, 5: 8, 6: 6, 7: 5, 8: 3, 9: 6,
+                      10: 9, 11: 10, 12: 27, 13: 18, 14: 14, 15: 1, 16: 8, 17: 20}
 # # Actual number of vertices for a given cell type
 # nodes_per_cell = {
 #     "bi": 2,
