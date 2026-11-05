@@ -214,7 +214,7 @@ class Mesh:
         index_face_tuples = self._faces["boundary"]["face2node"].index_elem_tuples()
         for boco in self._bocos.values():
             if boco.nodebased():
-                nodeset = boco.index.list()
+                nodeset = set(boco.index.list())
                 # get all face index whose nodes are all in nodeset
                 listface_index = [
                     ind
