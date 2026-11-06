@@ -276,9 +276,11 @@ class cgnsMesh:
         keep = np.ones(initial_nb_nodes, dtype=bool)
         keep[removed_nodes] = False
 
-        # Renumber map old -> new
-        new_id = -np.ones(initial_nb_nodes, dtype=int)
-        new_id[keep] = np.arange(np.sum(keep))
+        # Renumber map old -> new. Keep the connectivity's own integer type so
+        # an int32 CGNS connectivity is not silently promoted to int64 through
+        # the fancy-index new_id[conn]; -1 is safe because int32 is signed.
+        new_id = -np.ones(initial_nb_nodes, dtype=conn.dtype)
+        new_id[keep] = np.arange(np.sum(keep), dtype=conn.dtype)
 
         # Renumber connectivity
         # reduce HEXA27 to its first 26 nodes and renumber
