@@ -9,7 +9,7 @@ PKG := cfdtools
 .PHONY: help venv
 
 help: ## print this help
-	@echo "\n$$(poetry version): use target ; available Makefile following targets"
+	@echo "\nAvailable Makefile targets:"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' Makefile | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-16s\033[0m %s\n", $$1, $$2}'
 
 venv: $(REQUIREMENTS_FILE)
@@ -30,16 +30,14 @@ install_dev: install ## install package for development and testing
 	#<missing># pip install -r $(SRC)/requirements-dev.txt
 	#<missing># pip install -r $(SRC)/docs/requirements.txt
 
-check_pyproject: ## check all requirements are defined in pyproject.toml
-	cat requirements.txt | grep -E '^[^# ]' | cut -d= -f1 | xargs -n 1 poetry add
-	cat requirements-dev.txt | grep -E '^[^# ]' | cut -d= -f1 | xargs -n 1 poetry add -D
-	cat docs/requirements.txt | grep -E '^[^# ]' | cut -d= -f1 | xargs -n 1 poetry add -D
+check_pyproject: ## check package metadata and optional dependencies
+	python -m pip install --dry-run ".[dev,doc,mpi]"
 
 test: install_dev ## run tests with pytest
 	pytest
 
 cov_run:
-	poetry run pytest --cov-report=xml
+	pytest --cov-report=xml
 
 cov_publish: .codecov_token
 	CODECOV_TOKEN=$$(cat .codecov_token)  bash <(curl -s https://codecov.io/bash)
