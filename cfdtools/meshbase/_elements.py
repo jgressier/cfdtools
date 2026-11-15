@@ -2,32 +2,34 @@ import numpy as np
 
 geodim = {"point": 0, "line": 1, "surface": 2, "volume": 3}
 
-# Declare all element types here.
-# itype, name of the element, number of nodes, geometry dimension, element given by the extrusion of the element
-elem_properties = [
-    (0, "   node1", 1, 0, "    bar2"),
-    (0, "    bar2", 2, 1, "   quad4"),
-    (0, "    bar3", 3, 1, "   quad9"),
-    (0, "    tri3", 3, 2, "  penta6"),
-    (0, "   quad4", 4, 2, "   hexa8"),
-    (0, "   quad9", 9, 2, "  hexa27"),
-    (0, "  tetra4", 4, 3, "    none"),
-    (0, "   pyra5", 5, 3, "    none"),
-    (0, "  prism6", 6, 3, "    none"),
-    (0, "   hexa8", 8, 3, "    none"),
-    (0, "  hexa27", 27, 3, "    none"),
+# Declare all element types here. Properties are, in order:
+# internal type id, name, total node count, linear corner count, geometry
+# dimension, and element obtained by extrusion. Corner nodes must be stored
+# first in every connectivity; face matching relies on this ordering.
+_elem_properties = [
+    (0, "   node1", 1, 1, 0, "    bar2"),
+    (0, "    bar2", 2, 2, 1, "   quad4"),
+    (0, "    bar3", 3, 2, 1, "   quad9"),
+    (0, "    tri3", 3, 3, 2, "  penta6"),
+    (0, "   quad4", 4, 4, 2, "   hexa8"),
+    (0, "   quad9", 9, 4, 2, "  hexa27"),
+    (0, "  tetra4", 4, 4, 3, "    none"),
+    (0, "   pyra5", 5, 5, 3, "    none"),
+    (0, "  prism6", 6, 6, 3, "    none"),
+    (0, "   hexa8", 8, 8, 3, "    none"),
+    (0, "  hexa27", 27, 8, 3, "    none"),
 ]
 # remove leading spaces of strings
-elem_properties = [
-    tuple(i.lstrip() if isinstance(i, str) else i for i in u) for u in elem_properties
+_elem_properties = [
+    tuple(i.lstrip() if isinstance(i, str) else i for i in properties)
+    for properties in _elem_properties
 ]
 
-dim_elem = {e: d for _, e, _, d, _ in elem_properties}
-nnode_elem = {e: n for _, e, n, _, _ in elem_properties}
-face_from_nnode = {n: e for _, e, n, d, _ in elem_properties if d <= 2}
-extruded_face = {e: x for _, e, _, d, x in elem_properties if d <= 2}
-
-del elem_properties
+dim_elem = {e: d for _, e, _, _, d, _ in _elem_properties}
+nnode_elem = {e: n for _, e, n, _, _, _ in _elem_properties}
+ncorner_linear = {e: nc for _, e, _, nc, _, _ in _elem_properties}
+face_from_nnode = {n: e for _, e, n, _, d, _ in _elem_properties if d <= 2}
+extruded_face = {e: x for _, e, _, _, d, x in _elem_properties if d <= 2}
 
 ###############################################################################
 # CGNS convention uses the convention of outward normal for element faces.

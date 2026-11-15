@@ -24,11 +24,11 @@ class writer(writerV2.writer):
 
     __version__ = "3"
 
-    def __init__(self, mesh, endian='native'):
+    def __init__(self, mesh, endian='native', face_connectivity_method='current'):
         """
         Initialization of a ic3 restart file writer.
         """
-        super().__init__(mesh, endian)
+        super().__init__(mesh, endian, face_connectivity_method)
 
     def check(self):
         return True

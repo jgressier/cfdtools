@@ -24,7 +24,7 @@ class writer:
 
     __version__ = "2"
 
-    def __init__(self, mesh, endian="native"):
+    def __init__(self, mesh, endian="native", face_connectivity_method="current"):
         """
         Initialization of a ic3 restart file writer.
         """
@@ -33,6 +33,7 @@ class writer:
             raise ValueError("unknown endian key")
         else:
             self.endian = endian
+        self._face_connectivity_method = face_connectivity_method
         # self.vars = {"nodes": {}, "cells": {}}
         self._mesh = mesh
         self.params = {}
@@ -52,7 +53,9 @@ class writer:
         log.info("> Check connectivity and compute mandatory")
         if not self._mesh._faces:  # empty dict of faces
             with api.Timer(task="  generate all faces"):
-                self._mesh.make_face_connectivity()
+                self._mesh.make_face_connectivity(
+                    method=self._face_connectivity_method
+                )
         if any([boco.nodebased() for boco in self._mesh._bocos.values()]):
             with api.Timer(task="  change boco marks (node to face)"):
                 self._mesh.bocomarks_set_node_to_face()
