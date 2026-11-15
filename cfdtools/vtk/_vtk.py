@@ -1,4 +1,6 @@
 import logging
+from collections import defaultdict
+from itertools import combinations
 
 import numpy as np
 import scipy.spatial as spatial
@@ -31,11 +33,162 @@ except ImportError:
 
 import cfdtools.api as api
 import cfdtools.meshbase._connectivity as _conn
+import cfdtools.meshbase._elements as _elem
 import cfdtools.meshbase._mesh as cfdmesh
 import cfdtools.utils.maths as maths
 import cfdtools.hdf5 as hdf5
 
 log = logging.getLogger(__name__)
+
+
+def _cell_point_ids(mesh, cell_id):
+    """Return one cell's point ids across supported PyVista APIs."""
+    if _HAS_CELL_ARRAY_ACCESSORS:
+        offsets = mesh.cell_offsets
+        return mesh.cell_connectivity[offsets[cell_id] : offsets[cell_id + 1]]
+    return np.asarray(mesh.get_cell(int(cell_id)).point_ids, dtype=np.int64)
+
+
+def _relations_from_incidence(incidence, excluded_pairs=()):
+    """Build unique cell-pair relations from entity-to-cell incidence."""
+    excluded_pairs = set(excluded_pairs)
+    pairs = set()
+    relations = []
+    for entity_nodes, incident_cells in incidence.items():
+        for pair in combinations(sorted(set(incident_cells)), 2):
+            if pair not in excluded_pairs and pair not in pairs:
+                pairs.add(pair)
+                relations.append((entity_nodes, *pair))
+    return relations, pairs
+
+
+def _topological_relations(mesh):
+    """Return exclusive face, edge and node cell relations.
+
+    Relations are built from the explicit topology of the supported linear
+    element types instead of inferring geometry from a shared-node count.
+    """
+    face_to_cells = defaultdict(list)
+    edge_to_cells = defaultdict(list)
+    node_to_cells = [[] for _ in range(mesh.n_points)]
+
+    for cell_id, vtk_type in enumerate(mesh.celltypes):
+        try:
+            elemtype = ele_vtktype[vtk_type]
+            element_faces = [
+                face
+                for faces in _elem.elem2faces[elemtype].values()
+                for face in faces
+            ]
+        except KeyError as error:
+            raise ValueError(
+                f"unsupported VTK cell type {int(vtk_type)} in vtkMesh.diag()"
+            ) from error
+        if not element_faces:
+            raise ValueError(
+                f"no face topology available for element type {elemtype}"
+            )
+
+        point_ids = np.asarray(_cell_point_ids(mesh, cell_id), dtype=np.int64)
+        for point_id in point_ids:
+            node_to_cells[point_id].append(cell_id)
+
+        for local_face in element_faces:
+            face_nodes = tuple(sorted(point_ids[local_face].tolist()))
+            face_to_cells[face_nodes].append(cell_id)
+
+        if _elem.dim_elem[elemtype] == 3:
+            local_edges = {
+                tuple(sorted((face[i - 1], face[i])))
+                for face in element_faces
+                for i in range(len(face))
+            }
+            for local_edge in local_edges:
+                edge_nodes = tuple(sorted(point_ids[list(local_edge)].tolist()))
+                edge_to_cells[edge_nodes].append(cell_id)
+
+    face_relations, face_pairs = _relations_from_incidence(face_to_cells)
+    edge_relations, edge_pairs = _relations_from_incidence(
+        edge_to_cells,
+        excluded_pairs=face_pairs,
+    )
+    node_incidence = {
+        (point_id,): incident_cells
+        for point_id, incident_cells in enumerate(node_to_cells)
+        if incident_cells
+    }
+    node_relations, _ = _relations_from_incidence(
+        node_incidence,
+        excluded_pairs=face_pairs | edge_pairs,
+    )
+    return {
+        'Face': face_relations,
+        'Edge': edge_relations,
+        'Node': node_relations,
+    }, node_to_cells
+
+
+def _validate_cell_volumes(cell_volume):
+    """Reject empty, non-finite and non-positive cell-volume arrays."""
+    if cell_volume.size == 0:
+        raise ValueError("cannot diagnose a mesh without cells")
+    invalid = ~np.isfinite(cell_volume) | (cell_volume <= 0.0)
+    if np.any(invalid):
+        indices = np.flatnonzero(invalid)
+        preview = ', '.join(map(str, indices[:10]))
+        raise ValueError(
+            f"{indices.size} cells have non-positive or non-finite volumes"
+            f" (first indices: {preview})"
+        )
+
+
+def _volume_ratio_fields(mesh, cell_volume):
+    """Compute cell and point volume-ratio fields by topological relation."""
+    _validate_cell_volumes(cell_volume)
+    relations, node_to_cells = _topological_relations(mesh)
+    point_ratio = {
+        name: np.zeros(mesh.n_points, dtype=float)
+        for name in ('Face', 'Edge', 'Node')
+    }
+    cell_ratio = {
+        name: np.ones(mesh.n_cells, dtype=float)
+        for name in ('Face', 'Edge', 'Node')
+    }
+    maxima = {}
+    counts = {}
+
+    for name, entity_relations in relations.items():
+        maximum = 1.0
+        for entity_nodes, cell_a, cell_b in entity_relations:
+            ratio = max(
+                cell_volume[cell_a] / cell_volume[cell_b],
+                cell_volume[cell_b] / cell_volume[cell_a],
+            )
+            cell_ratio[name][[cell_a, cell_b]] = np.maximum(
+                cell_ratio[name][[cell_a, cell_b]],
+                ratio,
+            )
+            point_ratio[name][list(entity_nodes)] = np.maximum(
+                point_ratio[name][list(entity_nodes)],
+                ratio,
+            )
+            maximum = max(maximum, ratio)
+        maxima[name] = maximum
+        counts[name] = len(entity_relations)
+
+    # Give points without a direct relation the maximum value of their
+    # incident cells. Isolated points remain NaN and are therefore visible.
+    for point_id, incident_cells in enumerate(node_to_cells):
+        for name in ('Face', 'Edge', 'Node'):
+            if point_ratio[name][point_id] == 0.0:
+                point_ratio[name][point_id] = (
+                    np.max(cell_ratio[name][incident_cells])
+                    if incident_cells
+                    else np.nan
+                )
+
+    return point_ratio, cell_ratio, maxima, counts
+
 
 if importpyvista:
     vtktype_ele = {
@@ -170,33 +323,20 @@ class vtkMesh:
         return True
 
     def diag(self, data=False):
-        # rename 'data' (for ease of use) to
-        # 'return_data' (for clarity)
+        """Diagnose cell volumes and topological volume-ratio variations.
+
+        When ``data`` is true, return a new :class:`vtkMesh` containing the
+        volume and node-, edge- and face-neighbour ratio fields. Otherwise,
+        log a summary and return ``True``. A mesh with invalid cell volumes is
+        rejected because its ratios and geometric mean are undefined.
+        """
         return_data = data
 
-        if self._grid:
-            pvm = grid = self._grid
-        else:
+        if self._grid is None:
             log.warning("  no pyvista mesh available")
             return False
+        pvm = self._grid
 
-        #GG
-        #geta = lambda w: {k:w.__getattribute__(k) for k in 
-        #sp = pvm.points
-        #sa = np.array([0,0])
-        #dp = set( dir(sp) )
-        #da = set( dir(sa) )
-        #print(dp - da)
-        #print(da - dp)
-        #print(pvm.cell_data)
-        #print(type(pvm.cell_data['Q']))
-        #print(self)
-        #for k in dp:
-        #    print(f"{k}: {sp.__getattribute__(k)}")
-        #raise RuntimeError
-        #for k in dir(pvm):
-        #    print(f"{k!r}: {getattr(pvm, k)}")
-        #GG
         # Print brief and return False if error
         if not self.brief():
             return False
@@ -210,6 +350,7 @@ class vtkMesh:
 
         with api.Timer(f"  Computing volumes of {pvm.n_cells} cells"):
             volume = CellVolume = self.volumes()
+        _validate_cell_volumes(CellVolume)
         volmin, volmax = min(volume), max(volume)
         voltot, volava = sum(volume), np.mean(volume)
         vol_nb, volavg = len(volume), np.exp(np.mean(np.log(volume)))
@@ -219,208 +360,26 @@ class vtkMesh:
         log.info(f"    | (arith / geom) avg :    {volava:12.6e} / {volavg:12.6e}")
         log.info(f"    | min vol / max vol  :    {volmin:12.6e} / {volmax:12.6e}")
 
-        ### Compute volume ratios from vtk cells and points
-        ###================================================
+        with api.Timer("  Building topology and computing cell size ratios"):
+            PointVolumeRatio, CellVolumeRatio, maxima, counts = (
+                _volume_ratio_fields(pvm, CellVolume)
+            )
 
-        ### As input:
-        # pvm.cells: 1-D (flat) array containing the concatenation of, for each cell:
-        #           [n==nb_pts_of_cell, 1st_pt_of_cell, (...), nth_pt_of_cell]
-
-        ### Fill lists: cells_to_points, points_to_cells
-        #
-        # cells_to_points: list indexed with cell number containing, for each cell:
-        #               [1st_pt_of_cell, (...), nth_pt_of_cell]
-        # points_to_cells: list indexed with point number containing, for each point:
-        #               [1st_cell_of_pt, (...), nth_cell_of_pt]
-
-        ### Build cells_to_points: list for each cell of points of cell
-        ### Build list cells_to_points: list[list[points of cell] for each cell]
-        #
-        cells_to_points = [[] for _ in range(pvm.n_cells)]
-        # Initialize counter for pvm.cells
-        idx_mc = 0
-        # Initialize counter for cells_to_points
-        idx_pc = 0
-        # Loop on all elements in pvm.cells
-        with api.Timer("  Building cells_to_points"):
-            while idx_mc < len(pvm.cells):
-                # Number of points of next cell
-                c_npt = pvm.cells[idx_mc]
-                # Number of indices for next cell (== 1 + nb_points)
-                c_nptp1 = c_npt + 1
-                # Number of next cells with the same nb_points
-                nc_c_npt = np.argmax(pvm.cells[idx_mc::c_nptp1] != c_npt)
-                # If zero:
-                if nc_c_npt == 0:
-                    # All remaining cells
-                    nc_c_npt = (len(pvm.cells) - idx_mc) // c_nptp1
-                # Compute index increment
-                n_idx_mc = nc_c_npt * c_nptp1
-                # Compute cell sublist and extent_base
-                cells_sublist = pvm.cells[idx_mc : idx_mc + n_idx_mc]
-                cl_subl_table = cells_sublist.reshape((nc_c_npt, c_nptp1))
-                # Complement cells_to_points list
-                cells_to_points[idx_pc : idx_pc + nc_c_npt] = (cp[1:] for cp in cl_subl_table)
-                # Increment counter by nb_points * nb_indices
-                idx_mc += n_idx_mc
-                idx_pc += nc_c_npt
-
-        ### Build points_to_cells: list for each point of cells of point
-        ### Build list points_to_cells: list[list[cells of point] for each point]
-        #
-        points_to_cells = [[] for _ in range(pvm.n_points)]
-        # Loop on all cells in cells_to_points
-        with api.Timer("  Building points_to_cells"):
-            for ic, c in enumerate(cells_to_points):
-                # For every point in cell
-                for p in c:
-                    # Add cell for point in points_to_cells
-                    points_to_cells[p].append(ic)
-
-        ### Build cells_to_nbcells_to_compoints:
-        ###     list for each cell of dict for each neighbour cell of common points
-        ### Build list of dicts cells_to_nbcells_to_compoints:
-        ###     list[dict{list[common points] for each neighbour cell} for each cell]
-        #
-        # Initialize cells_to_nbcells_to_compoints: list of ncells empty dicts
-        cells_to_nbcells_to_compoints = [{} for _ in range(len(cells_to_points))]
-        # Loop on each point and list of cells thereof
-        with api.Timer("  Building cells_to_nbcells_to_compoints"):
-            for p, pc in enumerate(points_to_cells):
-                # Loop on all cells of points
-                for ca in pc:
-                    # Loop on all cells of points again
-                    for cb in pc:
-                        # Ignore if cellb == cella
-                        if cb == ca:
-                            continue
-                        # If cellb not yet neighbour of cella
-                        if cb not in cells_to_nbcells_to_compoints[ca]:
-                            # Initialize key cellb for cella
-                            cells_to_nbcells_to_compoints[ca][cb] = []
-                        # Add common point
-                        cells_to_nbcells_to_compoints[ca][cb] += [p]
-
-        node_to_cells = [[] for _ in range(len(pvm.points))]
-        edge_to_cells = {}
-        face_to_cells = {}
-        with api.Timer("  Building face_cells/edge_cells/node_cells"):
-            for ca, ca_cb_pts in enumerate(cells_to_nbcells_to_compoints):
-                for cb, pts in ca_cb_pts.items():
-                    # Only one common point: node (corner)
-                    if len(pts) == 1:
-                        node_to_cells[pts[0]] += [(ca, cb)]
-                    # Two common points: edge (segment)
-                    elif len(pts) == 2:
-                        tpts = tuple(pts)
-                        if tpts not in edge_to_cells:
-                            edge_to_cells[tpts] = []
-                        edge_to_cells[tpts] += [(ca, cb)]
-                    # More common points: face
-                    else:  # len(pts) > 2
-                        tpts = tuple(pts)
-                        if tpts not in face_to_cells:
-                            face_to_cells[tpts] = []
-                        face_to_cells[tpts] += [(ca, cb)]
-                    del cells_to_nbcells_to_compoints[cb][ca]
-
-        PointVolumeRatio = {}
-        PointVolumeRatio['Face'] = np.zeros(pvm.n_points)
-        PointVolumeRatio['Edge'] = np.zeros(pvm.n_points)
-        PointVolumeRatio['Node'] = np.zeros(pvm.n_points)
-        CellVolumeRatio = {}
-        CellVolumeRatio['Face'] = np.ones(pvm.n_cells)
-        CellVolumeRatio['Edge'] = np.ones(pvm.n_cells)
-        CellVolumeRatio['Node'] = np.ones(pvm.n_cells)
-
-        # Initialize ratios
-        max_rat_node, max_rat_edge, max_rat_face = [1.0, 1.0, 1.0]
-        # Initialize counters
-        count_rat_all = 0
-        count_rat_node = 0
-        count_rat_edge = 0
-        count_rat_face = 0
-
-        rat_timer = api.Timer("  Computing all cell size ratios")
-        rat_timer.enter()
-
-        with api.Timer("    Computing node cell size ratios"): # , nelem=len(node_to_cells)):
-            # Loop on common cell nodes
-            for pi, lstcacb in enumerate(node_to_cells):
-                if len(lstcacb) == 0:
-                    continue
-                for ca, cb in lstcacb:
-                    # Compute the absolute volume ratio of ca/cb
-                    rat = CellVolume[ca] / CellVolume[cb]
-                    if rat < 1.0:
-                        rat = 1 / rat
-                    if rat > PointVolumeRatio['Node'][pi]:
-                        PointVolumeRatio['Node'][pi] = rat
-                    for ci in ca, cb:
-                        if rat > CellVolumeRatio['Node'][ci]:
-                            CellVolumeRatio['Node'][ci] = rat
-                    max_rat_node = max(max_rat_node, rat)
-                    count_rat_node += 1
-
-        with api.Timer("    Computing edge cell size ratios"): # , nelem=len(edge_to_cells)):
-            # Loop on common cell edges
-            for (pi, pj), lstcacb in edge_to_cells.items():
-                for ca, cb in lstcacb:
-                    # Compute the absolute volume ratio of ca/cb
-                    rat = CellVolume[ca] / CellVolume[cb]
-                    if rat < 1.0:
-                        rat = 1 / rat
-                    for p in pi, pj:
-                        if rat > PointVolumeRatio['Edge'][p]:
-                            PointVolumeRatio['Edge'][p] = rat
-                    for ci in ca, cb:
-                        if rat > CellVolumeRatio['Edge'][ci]:
-                            CellVolumeRatio['Edge'][ci] = rat
-                    max_rat_edge = max(max_rat_edge, rat)
-                    count_rat_edge += 1
-
-        with api.Timer("    Computing face cell size ratios"): # , nelem=len(face_to_cells)):
-            # Loop on common cell faces
-            for lstp, lstcacb in face_to_cells.items():
-                for ca, cb in lstcacb:
-                    # Compute the absolute volume ratio of ca/cb
-                    rat = CellVolume[ca] / CellVolume[cb]
-                    if rat < 1.0:
-                        rat = 1 / rat
-                    for p in lstp:
-                        if rat > PointVolumeRatio['Face'][p]:
-                            PointVolumeRatio['Face'][p] = rat
-                    for ci in ca, cb:
-                        if rat > CellVolumeRatio['Face'][ci]:
-                            CellVolumeRatio['Face'][ci] = rat
-                    max_rat_face = max(max_rat_face, rat)
-                    count_rat_face += 1
-
-        count_rat_all = count_rat_node + count_rat_edge + count_rat_face
-
-        rat_timer.stop(show=True)
-
+        count_rat_all = sum(counts.values())
         full_timer.stop(show=True)
 
         log.info(f"  Computed ratios: {count_rat_all:8d}")
-        log.info(f"    |   node ratios: {count_rat_node:8d}")
-        log.info(f"    |   edge ratios: {count_rat_edge:8d}")
-        log.info(f"    |   face ratios: {count_rat_face:8d}")
-        log.info(f"    | max vol ratio /nodes  : {max_rat_node:12.6e}")
-        log.info(f"    | max vol ratio /edges  : {max_rat_edge:12.6e}")
-        log.info(f"    | max vol ratio /faces  : {max_rat_face:12.6e}")
-
-        pnt_timer = api.Timer("  Correcting point volume ratios")
-        pnt_timer.enter()
-        for s in ['Face', 'Edge', 'Node']:
-            for p, r in enumerate(PointVolumeRatio[s]):
-                if r == 0.0:
-                    PointVolumeRatio[s][p] = max([CellVolumeRatio[s][c] for c in points_to_cells[p]])
-        pnt_timer.stop(show=True)
+        for name in ('Node', 'Edge', 'Face'):
+            log.info(f"    | {name.lower():>6} ratios: {counts[name]:8d}")
+        for name in ('Node', 'Edge', 'Face'):
+            log.info(
+                f"    | max vol ratio /{name.lower():<5}: {maxima[name]:12.6e}"
+            )
 
         # Build and display histogram of ratios
         #
         min_rat_face = min(CellVolumeRatio['Face'])
+        max_rat_face = maxima['Face']
         if np.isclose(max_rat_face, min_rat_face):
             rw = 2
             hseg = np.array([min_rat_face, max_rat_face])

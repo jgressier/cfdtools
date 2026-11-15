@@ -127,6 +127,14 @@ def test_vtkdiag_morphed_cube_returns_expected_volume_ratios():
         assert np.allclose(diagnosed.cell_data[name], expected_ratios)
 
 
+def test_vtkdiag_rejects_collapsed_cube():
+    mesh = sm.Cube(2, 2, 2).export_mesh()
+    mesh.morph(lambda x, y, z: (np.zeros_like(x), y, z))
+
+    with pytest.raises(ValueError, match='non-positive or non-finite volumes'):
+        vtkMesh(mesh).diag()
+
+
 class Test_vtk_zconvolution():
     """Test the vtk_zconvolution function."""
     @pytest.fixture(autouse=True)
