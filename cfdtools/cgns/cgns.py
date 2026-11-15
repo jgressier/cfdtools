@@ -9,16 +9,20 @@ except ImportError:
 
     cache = lru_cache(maxsize=None)
     del lru_cache
+
+import numpy as np
+
 from cfdtools.api import error_stop, fileformat_reader  # , memoize
 from cfdtools.hdf5 import h5File, h5_str
 from cfdtools.meshbase._mesh import Mesh, submeshmark
+import cfdtools.data as _data
 import cfdtools.meshbase._connectivity as _conn
 import cfdtools.meshbase._elements as _elem
 
 log = logging.getLogger(__name__)
 
 cgtype = {}
-ele_cgns2local = {2: 'node1', 3: 'bar2', 5: 'tri3', 7: 'quad4', 17: 'hexa8'}
+ele_cgns2local = {2: 'node1', 3: 'bar2', 5: 'tri3', 7: 'quad4', 9: 'quad9', 17: 'hexa8', 19: 'hexa27'}
 
 
 def cgnstype(obj):
@@ -31,7 +35,8 @@ def dict_cgnstype(obj, cgtype):
 
 
 def cg_gridlocation(bc):
-    assert cgnstype(bc) in [b"BC_t", b"GridConnectivity_t"]
+    if cgnstype(bc) not in [b"BC_t", b"GridConnectivity_t"]:
+        error_stop("Invalid BC type encountered in cg_gridlocation")
     if "GridLocation" in bc.keys():
         bcloc = h5_str(bc["GridLocation/ data"])
     else:
@@ -40,11 +45,13 @@ def cg_gridlocation(bc):
 
 
 class cgnszone:
+
     def __init__(self, zone, geodim=None) -> None:
         self._zone = zone
         self._zonetype = h5_str(zone["ZoneType/ data"])
         self._geodim = geodim
-        assert self._zonetype == "Unstructured", "Only Unstructured zone expected"
+        if self._zonetype != "Unstructured":
+            error_stop("Only Unstructured zone expected")
         # look for Elements
         self._elems = dict_cgnstype(zone, b'Elements_t')
         # look for ZoneBC and BC
@@ -75,12 +82,16 @@ class cgnszone:
             cgnstype = elements[" data"][0]
             etype = ele_cgns2local[cgnstype]
             nnode = _elem.nnode_elem[etype]
-            # extract cell connectivity only
-            if _elem.dim_elem[etype] == geodim:
-                index = _conn.indexlist(irange=elements["ElementRange/ data"][:] - 1)
-                econ = elements["ElementConnectivity/ data"][:].reshape((-1, nnode))
-                econ -= 1  # shift node index (starts 0)
-                cellconn.add_elems(etype, econ, index)
+            # Keep only elements that belong to the requested dimension.
+            if _elem.dim_elem[etype] != geodim:
+                continue
+
+            # Change the node numbering convention from CGNS to 0-based.
+            index = _conn.indexlist(irange=elements["ElementRange/ data"][:] - 1)
+            econ = elements["ElementConnectivity/ data"][:].reshape((-1, nnode))
+            # Change the node numbering convention from CGNS to 0-based.
+            econ -= 1
+            cellconn.add_elems(etype, econ, index)
         return cellconn
 
     def export_cellcon(self):
@@ -149,13 +160,19 @@ class cgnsMesh:
     def __init__(self, filename) -> None:
         self._filename = filename
         self._ncell = None
+        self._exclude_center_points = False
+        self._celldata = _data.DataSet("cellaverage")
 
     @property
     def ncell(self):
         return self._ncell
 
-    def read_data(self, zone=None):
+    def read_data(self, zone=None, exclude_center_points=False):
         log.info(f"> CGNS reader: starts reading {self._filename}")
+        self._exclude_center_points = exclude_center_points
+        # Use the CGNS node ordering convention for face extraction. This is the
+        # module default, but a previous gmsh read may have switched the global.
+        _elem.elem2faces = _elem.cgns_elem2faces
         # Check file exists
         if not Path(self._filename).exists():
             error_stop(f"File not found: {self._filename!r}")
@@ -163,12 +180,12 @@ class cgnsMesh:
         # get BASE list
         self._bases = self._file.list_bases()
         for base in self._bases:
-            # print('base', self._file._h5file[base].name, self._file._h5file[base][" data"][:])
             self._zones = dict_cgnstype(self._file._h5file[base], b'Zone_t')
         # geo dimension from base
         self._geodim = self._file._h5file[self._bases[0]][" data"][0]
         if zone is None:
-            assert len(self._zones) == 1, "Multiple zones found, must specify which zone to export"
+            if len(self._zones) != 1:
+                error_stop("Multiple zones found, must specify which zone to export")
             name = list(self._zones.keys())[0]
         else:
             name = zone
@@ -184,19 +201,18 @@ class cgnsMesh:
         log.info(f"zones: {list(self._zones.keys())}")
         for zn in self._zones.keys():
             log.info(f"  Zone {zn}")
-            # for bcn, bc in
 
     def export_mesh(self):
-        # log.info(f"> export mesh ") # printed by parent
+        log.info("> export mesh from CGNS")
         cgzone = self._zone
         log.info(
             f"Parse zone {self._zonename} ({self._geodim}D) ncell: {cgzone.ncell}, nnode: {cgzone.nnode}"
         )
-        meshdata = Mesh(ncell=cgzone.ncell, nnode=cgzone.nnode)
-        # get coordinates
-        meshdata.set_nodescoord_xyz(*cgzone.coords())
-        # # cell connectivity
-        meshdata.set_cell2node(cgzone.export_cellcon())
+        # get coordinates and cell connectivity
+        x, y, z = cgzone.coords()
+        cellcon = cgzone.export_cellcon()
+        # boundary conditions (collect, filtering out full-domain internal marks)
+        bocos = []
         # boundary conditions
         for _, bc in cgzone._BCs.items():
             boco = cgzone.export_BC(bc)
@@ -204,25 +220,72 @@ class cgnsMesh:
             if boco.type in ['internal']:
                 log.info(f"  filter internal mark {boco.name}")
             else:
-                log.info(f"  add boco {boco}")
-                meshdata.add_boco(boco)
+                bocos.append(boco)
+        # optionally remove the central (27th) node of each HEXA27 element
+        if self._exclude_center_points:
+            x, y, z = self.__remove_27th_point_hexa27(cellcon, bocos, x, y, z)
+
+        # assemble mesh
+        meshdata = Mesh(ncell=cgzone.ncell, nnode=len(x))
+        meshdata.set_nodescoord_xyz(x, y, z)
+        meshdata.set_cell2node(cellcon)
+        for boco in bocos:
+            log.info(f"  add boco {boco}")
+            meshdata.add_boco(boco)
+        if self._exclude_center_points:
+            meshdata.set_celldata(self._celldata)
+
         # meshdata.check()
         # meshdata.printinfo()
         return meshdata
 
+    def __remove_27th_point_hexa27(self, cellcon, bocos, x, y, z):
+        """Remove the 27th local node of each HEXA27 element.
 
-# if __name__ == "__main__":
-#     f = cgnsMesh(filename="./examples/MESH.nogit/cavity-degen.hdf")
-#     f.read_data()
-#     f.printinfo()
-#     f.export_mesh()
+        The HEXA27 connectivity is reduced to its first 26 nodes.
+        The coordinates of the removed nodes are deleted and all remaining node
+        indices (cell and boundary) are renumbered.
+        Removed coordinates are kept as "point27" cell data.
 
-# ElementType_t := Enumeration(
-#      ElementTypeNull, ElementTypeUserDefined, NODE, BAR_2, BAR_3,
-#      TRI_3, TRI_6, QUAD_4, QUAD_8, QUAD_9,
-#      TETRA_4, TETRA_10, PYRA_5, PYRA_14,
-#      PENTA_6, PENTA_15, PENTA_18, HEXA_8, HEXA_20, HEXA_27,
-#      MIXED, PYRA_13, NGON_n, NFACE_n,
-#      BAR_4, TRI_9, TRI_10, QUAD_12, QUAD_16,
-#      TETRA_16, TETRA_20, PYRA_21, PYRA_29, PYRA_30,
-#      PENTA_24, PENTA_38, PENTA_40, HEXA_32, HEXA_56, HEXA_64 );
+        Parameters
+        ----------
+        bocos : dict
+            Boundary‑face connectivity dictionary. (`{bnd_tag: {elt_type: np.ndarray}}`).
+        cellcon : (nel,27) array_like
+            HEXA27 connectivity
+        x, y, z : (nnode,ndim) array_like
+            Coordinates
+        Returns
+        -------
+        x : ndarray
+            Coordinates without point27
+        """
+        if 'hexa27' not in cellcon.elems():
+            log.warning("exclude_center_points: no hexa27 element found, nothing to remove")
+            return x, y, z
+        conn = cellcon['hexa27']
+
+        # Nodes in 27th column
+        removed_nodes = conn[:, 26]
+
+        # Store the actual coordinates of those centre points (for celldata)
+        removed_coords = np.column_stack((x[removed_nodes], y[removed_nodes], z[removed_nodes]))
+
+        # Keep mask
+        initial_nb_nodes = len(x)
+        keep = np.ones(initial_nb_nodes, dtype=bool)
+        keep[removed_nodes] = False
+
+        # Renumber map old -> new
+        new_id = -np.ones(initial_nb_nodes, dtype=int)
+        new_id[keep] = np.arange(np.sum(keep))
+
+        # Renumber connectivity
+        # reduce HEXA27 to its first 26 nodes and renumber
+        cellcon._elem2node['hexa27']['elem2node'] = new_id[conn[:, :26]]
+        for boco in bocos:
+            if boco.nodebased():
+                boco.index = _conn.indexlist(ilist=new_id[np.asarray(boco.index.list())].tolist())
+        self._celldata.add_data("point27", removed_coords)
+        log.info(f"  excluded {len(removed_nodes)} hexa27 center nodes")
+        return x[keep], y[keep], z[keep]
