@@ -58,6 +58,9 @@ doc = [
     "markdown-include >= 0.6.0",
     "mkdocs-include-markdown-plugin",
     "mkdocs-exclude" ]
+mpi = [
+    "mpi4py>=3.1",
+]
 
 [build-system]
 requires      = ["setuptools>=61.0.0", "wheel"]
