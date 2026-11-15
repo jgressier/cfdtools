@@ -270,7 +270,7 @@ def vtkpack(argv=None):
     return outfilename  # needed for pytest
 
 
-def write_generic(argv, ext, writer, fname=None):
+def write_generic(argv, ext, writer, fname=None, writer_options=None):
     parser = cli_argparser(prog=fname)
     parser.addarg_filenameformat()
     parser.addarg_removedata()
@@ -313,7 +313,7 @@ def write_generic(argv, ext, writer, fname=None):
         cfdmesh.scale(parser.args().scale)
     if parser.args().info:
         cfdmesh.printinfo()
-    output = writer(cfdmesh)
+    output = writer(cfdmesh, **(writer_options or {}))
     output.write_data(file.filename)
     log.info(f"file {file.filename} written")
     return file.filename  # filename needed for pytest (for eventual rm)
@@ -322,7 +322,13 @@ def write_generic(argv, ext, writer, fname=None):
 @cli_header()
 def cfdwrite_ic3v2(argv=None):
     """Read all available formats and transform it to IC3.v2 format if available."""
-    return write_generic(argv, '.ic3', ic3.writerV2.writer, fname=__fname__)  # noqa: F821
+    return write_generic(
+        argv,
+        '.ic3',
+        ic3.writerV2.writer,
+        fname=__fname__,  # noqa: F821
+        writer_options={'face_connectivity_method': 'legacy'},
+    )
 
 
 @cli_header()
@@ -331,7 +337,13 @@ def cfdwrite_ic3v3(argv=None):
 
     `cfdwrite_ic3` is a shortname for last current IC3 writer, namely `cfdwrite_ic3v3`.
     """
-    return write_generic(argv, '.ic3', ic3.writerV3.writer, fname=__fname__)  # noqa: F821
+    return write_generic(
+        argv,
+        '.ic3',
+        ic3.writerV3.writer,
+        fname=__fname__,  # noqa: F821
+        writer_options={'face_connectivity_method': 'legacy'},
+    )
 
 
 @cli_header()

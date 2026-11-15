@@ -65,6 +65,19 @@ class indexlist:
         else:
             api.error_stop(f"unknown type: {self._type}")
 
+    def to_numpy(self, dtype=None):
+        """Return indices as a NumPy array without an intermediate Python list.
+
+        Range-backed indices are generated directly with :func:`numpy.arange`.
+        List-backed indices necessarily allocate an array but avoid making an
+        additional copy of the Python list first.
+        """
+        if self._type == "range":
+            return np.arange(self._range[0], self._range[1] + 1, dtype=dtype)
+        if self._type == "list":
+            return np.asarray(self._list, dtype=dtype)
+        api.error_stop(f"unknown type: {self._type}")
+
     def _listof(self, ilist):
         if isinstance(ilist, list):
             rlist = ilist
@@ -332,7 +345,7 @@ class elem_connectivity:
             self.add_elems(elem, elemtype["elem2node"], elemtype["index"])
 
     # @profile
-    def create_faces_from_elems(self):
+    def _create_faces_from_elems_legacy(self):
         # @profile
         def __build_face_and_neighbour():
             """Build a dict of face type to a list of tuples of each (oriented) face and its neighbors.
@@ -383,18 +396,18 @@ class elem_connectivity:
 
             Parameters
             ----------
-            faces_neighbour: `dict`
+            faces_neighbour: dict
                  description
 
             Returns
             -------
-            internalfaces: `elem_connectivity`
+            internalfaces: elem_connectivity
                 Connectivity of internal faces.
-            iface2cell: `indexindirection`
+            iface2cell: indexindirection
                 Cells of each internal face.
-            boundaryfaces: `elem_connectivity`
+            boundaryfaces: elem_connectivity
                 Connectivity of boundary faces.
-            bface2cell: `indexindirection`
+            bface2cell: indexindirection
                 Cells of each boundary face.
             """
             internalfaces = elem_connectivity()
@@ -457,6 +470,74 @@ class elem_connectivity:
 
         faces_neighbour = __build_face_and_neighbour()
         return __find_duplicates(faces_neighbour)
+
+    def create_faces_from_elems(self):
+        """Create face connectivity with NumPy grouping by canonical face nodes.
+
+        The first oriented occurrence of a face is kept, matching the former
+        insertion-order behaviour while avoiding millions of Python objects.
+        """
+        faces_by_type = {}
+        cells_by_type = {}
+        for elemtype, elemsdict in self._elem2node.items():
+            cell_nodes = elemsdict["elem2node"]
+            cell_indices = elemsdict["index"].to_numpy()
+            for ftype, face_of_elem in _elem.elem2faces[elemtype].items():
+                if not face_of_elem:
+                    continue
+                candidate_faces = np.concatenate(
+                    [cell_nodes[:, local_face] for local_face in face_of_elem], axis=0
+                )
+                candidate_cells = np.tile(cell_indices, len(face_of_elem))
+                faces_by_type.setdefault(ftype, []).append(candidate_faces)
+                cells_by_type.setdefault(ftype, []).append(candidate_cells)
+
+        internalfaces = elem_connectivity()
+        boundaryfaces = elem_connectivity()
+        iface2cell = indexindirection()
+        bface2cell = indexindirection()
+
+        for ftype, face_blocks in faces_by_type.items():
+            faces = np.concatenate(face_blocks, axis=0)
+            cells = np.concatenate(cells_by_type[ftype])
+            ncorner = _elem.ncorner_linear[ftype]
+            canonical_nodes = np.sort(faces[:, :ncorner], axis=1)
+            _, first, inverse, counts = np.unique(
+                canonical_nodes,
+                axis=0,
+                return_index=True,
+                return_inverse=True,
+                return_counts=True,
+            )
+            if np.any(counts > 2):
+                raise ValueError("non-manifold face found while building connectivity")
+
+            # NumPy sorts keys; restore first-occurrence order to preserve
+            # the numbering emitted by the former dictionary implementation.
+            group_order = np.argsort(first, kind="mergesort")
+            ordered_counts = counts[group_order]
+            boundary_groups = group_order[ordered_counts == 1]
+            internal_groups = group_order[ordered_counts == 2]
+
+            candidates_by_group = np.argsort(inverse, kind="mergesort")
+            group_starts = np.cumsum(counts) - counts
+            second = candidates_by_group[group_starts[internal_groups] + 1]
+
+            boundaryfaces.add_elems(ftype, faces[first[boundary_groups]])
+            bface2cell.append(
+                np.column_stack(
+                    (
+                        cells[first[boundary_groups]],
+                        -np.ones(boundary_groups.size, dtype=cells.dtype),
+                    )
+                )
+            )
+            internalfaces.add_elems(ftype, faces[first[internal_groups]])
+            iface2cell.append(
+                np.column_stack((cells[first[internal_groups]], cells[second]))
+            )
+
+        return internalfaces, iface2cell, boundaryfaces, bface2cell
 
     def nodelist(self):
         """Create list of (unique) nodes from element connectivity."""
