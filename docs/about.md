@@ -17,7 +17,7 @@ Help and discussion are available on [![Slack](https://img.shields.io/static/v1?
 
 Development workflow is helpfully made with
 
-* `poetry`
+* `pip` and `setuptools`
 * `tox` and `pyenv` [![PyPI pyversions](https://img.shields.io/pypi/pyversions/cfdtools.svg?style=flat)](https://pypi.org/pypi/cfdtools/)
 * `pytest` and coverage tools [![codecov](https://img.shields.io/codecov/c/github/jgressier/cfdtools.svg?style=flat)](https://codecov.io/gh/jgressier/cfdtools)
 * `mkdocs` and `mkdocs-material` [![Doc](https://readthedocs.org/projects/cfdtools/badge/?version=latest)](https://cfdtools.readthedocs.io/)
