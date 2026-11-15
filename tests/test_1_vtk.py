@@ -1,8 +1,10 @@
 import cfdtools.meshbase.simple as sm
+import cfdtools.vtk._vtk as _vtk
 from cfdtools.vtk import vtkMesh, vtkList
 from cfdtools.hdf5 import h5File
 
 import numpy as np
+import pyvista as pv
 from pathlib import Path
 import pytest
 
@@ -40,6 +42,90 @@ def test_vtkdump(datadir, builddir):
     vtkfile.importhdfgroup(h5file["mesh"])
     assert vtkfile.pyvista_grid.n_cells == 1000
     assert vtkfile.volumes().sum() == pytest.approx(1.0)
+
+
+@pytest.mark.parametrize('force_legacy_accessors', [False, True])
+def test_vtk_extract_cells_preserves_mixed_cell_order(
+    monkeypatch, force_legacy_accessors
+):
+    points = np.array(
+        [
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 1.0],
+            [2.0, 0.0, 0.0],
+            [3.0, 0.0, 0.0],
+            [3.0, 1.0, 0.0],
+            [2.0, 1.0, 0.0],
+            [2.0, 0.0, 1.0],
+            [3.0, 0.0, 1.0],
+            [3.0, 1.0, 1.0],
+            [2.0, 1.0, 1.0],
+        ]
+    )
+    grid = pv.UnstructuredGrid(
+        {
+            pv.CellType.TETRA: np.array([[0, 1, 2, 3]]),
+            pv.CellType.HEXAHEDRON: np.array([[4, 5, 6, 7, 8, 9, 10, 11]]),
+        },
+        points,
+    )
+    vtkmesh = vtkMesh(pvmesh=grid)
+    if force_legacy_accessors:
+        monkeypatch.setattr(_vtk, '_HAS_CELL_ARRAY_ACCESSORS', False)
+    extracted = vtkmesh.vtk_extract_cells([1, 0]).pyvista_grid
+
+    assert extracted.n_cells == 2
+    assert np.array_equal(
+        extracted.celltypes,
+        [pv.CellType.HEXAHEDRON, pv.CellType.TETRA],
+    )
+    assert [extracted.get_cell(i).n_points for i in range(2)] == [8, 4]
+    assert np.array_equal(extracted.points, points[[*range(4, 12), *range(4)]])
+
+
+def test_vtkdiag_generated_cube_returns_uniform_fields():
+    mesh = sm.Cube(3, 3, 3).export_mesh()
+    vtkmesh = vtkMesh(mesh)
+    vtkmesh.pyvista_grid.cell_data['original'] = np.arange(mesh.ncell)
+
+    diagnosed = vtkmesh.diag(data=True)
+
+    assert isinstance(diagnosed, vtkMesh)
+    assert 'original' in vtkmesh.pyvista_grid.cell_data
+    assert 'original' not in diagnosed.pyvista_grid.cell_data
+    assert set(diagnosed.pyvista_grid.cell_data) == {
+        'C_Volume',
+        'C_FaceVR',
+        'C_EdgeVR',
+        'C_NodeVR',
+    }
+    assert set(diagnosed.pyvista_grid.point_data) == {
+        'P_FaceVR',
+        'P_EdgeVR',
+        'P_NodeVR',
+    }
+    assert np.allclose(diagnosed.pyvista_grid.cell_data['C_Volume'], 1.0 / 27.0)
+    for name in ('C_FaceVR', 'C_EdgeVR', 'C_NodeVR'):
+        assert np.allclose(diagnosed.pyvista_grid.cell_data[name], 1.0)
+    for name in ('P_FaceVR', 'P_EdgeVR', 'P_NodeVR'):
+        assert np.allclose(diagnosed.pyvista_grid.point_data[name], 1.0)
+
+
+def test_vtkdiag_morphed_cube_returns_expected_volume_ratios():
+    cube = sm.Cube(4, 3, 2)
+    mesh = cube.export_mesh()
+    mesh.morph(lambda x, y, z: (x**2, y, z))
+
+    diagnosed = vtkMesh(mesh).diag(data=True).pyvista_grid
+
+    expected_volumes = np.repeat(np.array([1.0, 3.0, 5.0, 7.0]) / 96.0, 6)
+    expected_ratios = np.repeat(np.array([3.0, 3.0, 5.0 / 3.0, 7.0 / 5.0]), 6)
+    assert np.allclose(diagnosed.cell_data['C_Volume'], expected_volumes)
+    for name in ('C_FaceVR', 'C_EdgeVR', 'C_NodeVR'):
+        assert np.allclose(diagnosed.cell_data[name], expected_ratios)
+
 
 class Test_vtk_zconvolution():
     """Test the vtk_zconvolution function."""

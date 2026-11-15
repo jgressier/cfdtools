@@ -20,8 +20,14 @@ try:
     from pyvista import CellType
 
     importpyvista = True
+    # PyVista 0.49 introduced accessors for the unpadded cell arrays.
+    _HAS_CELL_ARRAY_ACCESSORS = all(
+        hasattr(pv.UnstructuredGrid, name)
+        for name in ('cell_offsets', 'cell_connectivity')
+    )
 except ImportError:
     importpyvista = False
+    _HAS_CELL_ARRAY_ACCESSORS = False
 
 import cfdtools.api as api
 import cfdtools.meshbase._connectivity as _conn
@@ -415,14 +421,19 @@ class vtkMesh:
         # Build and display histogram of ratios
         #
         min_rat_face = min(CellVolumeRatio['Face'])
-        lrat = np.log(max_rat_face/min_rat_face)
-        l10l = np.log10(lrat)
-        rw = 2 - max(-6, (np.floor(l10l - .3) + 0.5).astype(int))
-        nseg = max(2, 16 * min(1, lrat * 1E6))
-        hseg = np.logspace(
-                    np.log10(min_rat_face),
-                    np.log10(max_rat_face), nseg + 1)
-        hist = np.histogram(CellVolumeRatio['Face'], hseg)
+        if np.isclose(max_rat_face, min_rat_face):
+            rw = 2
+            hseg = np.array([min_rat_face, max_rat_face])
+            hist = (np.array([pvm.n_cells]), hseg)
+        else:
+            lrat = np.log(max_rat_face/min_rat_face)
+            l10l = np.log10(lrat)
+            rw = 2 - max(-6, (np.floor(l10l - .3) + 0.5).astype(int))
+            nseg = max(2, 16 * min(1, lrat * 1E6))
+            hseg = np.logspace(
+                        np.log10(min_rat_face),
+                        np.log10(max_rat_face), nseg + 1)
+            hist = np.histogram(CellVolumeRatio['Face'], hseg)
         hmax = max(hist[0])
         hw_0 = (np.ceil(np.log10(hmax)) + 0.5).astype(int)
         wmax = 56
@@ -525,24 +536,48 @@ class vtkMesh:
     def vtk_extract_cells(self, selected_cell_ids: list):
         """re-implementation of extract_cell because vtk/pyvista does not keep the order
         celltypes is the list a cell types codes (vtk based)
-        offsets is the list of offsets for each cell
-        cells is a coompound defintion of cells with concatenated (size, point ids)
+        cell_offsets locates each cell in the unpadded cell_connectivity array
         points is the list of points, shape (:,3)
         """
         with api.Timer("vtu extract slice"):
             mesh = self._grid
-            orig_cells = mesh.cells
+            selected_cell_ids = np.asarray(selected_cell_ids, dtype=np.int64)
             celltypes = mesh.celltypes
-            offsets = mesh.offset
             points = mesh.points
-            #
-            new_celltypes = [ celltypes[cid] for cid in selected_cell_ids ]
-            extract_vtex = np.concatenate([orig_cells[offsets[cid]+cid+1:offsets[cid+1]+cid+1] for cid in selected_cell_ids])
-            nvtex = np.array([orig_cells[offsets[cid]+cid] for cid in selected_cell_ids], dtype=np.uint8)
-            used_point_ids = list(set(extract_vtex))
-            # Create mapping for point ID reindexing
-            point_id_map = {old: new for new, old in enumerate(used_point_ids)}
-            new_vtex = np.array(list(map(lambda x: point_id_map[x], extract_vtex)), dtype=np.int64)
+
+            if _HAS_CELL_ARRAY_ACCESSORS:
+                offsets = mesh.cell_offsets
+                connectivity = mesh.cell_connectivity
+                selected_vertices = [
+                    connectivity[offsets[cid] : offsets[cid + 1]]
+                    for cid in selected_cell_ids
+                ]
+            else:  # pragma: no cover - compatibility with PyVista < 0.49
+                selected_vertices = [
+                    np.asarray(mesh.get_cell(int(cid)).point_ids, dtype=np.int64)
+                    for cid in selected_cell_ids
+                ]
+
+            new_celltypes = celltypes[selected_cell_ids]
+            extract_vtex = np.concatenate(selected_vertices)
+            nvtex = np.fromiter(
+                (vertices.size for vertices in selected_vertices),
+                dtype=np.int64,
+                count=selected_cell_ids.size,
+            )
+
+            # Keep points in first-occurrence order and build their new indices.
+            used_point_ids, first, inverse = np.unique(
+                extract_vtex,
+                return_index=True,
+                return_inverse=True,
+            )
+            occurrence_order = np.argsort(first, kind='stable')
+            sorted_to_occurrence = np.empty_like(occurrence_order)
+            sorted_to_occurrence[occurrence_order] = np.arange(occurrence_order.size)
+            new_vtex = sorted_to_occurrence[inverse]
+            used_point_ids = used_point_ids[occurrence_order]
+
             # Rebuild VTK-style cell array
             vtk_cells = np.empty(len(new_vtex)+len(new_celltypes), dtype=np.int64)
             i = int(0) ; j = 0
@@ -551,7 +586,7 @@ class vtkMesh:
                 vtk_cells[i+1:i+1+size] = new_vtex[j:j+size]
                 i += np.int64(size) + 1 # size + 1, size is uint8
                 j += np.int64(size)
-            new_celltypes = np.array(new_celltypes, dtype=np.uint8) # cell type is small
+            new_celltypes = np.asarray(new_celltypes, dtype=np.uint8) # cell type is small
             new_points = points[used_point_ids, :]
             # create extracted unstructured grid
             new_grid = pv.UnstructuredGrid(vtk_cells, new_celltypes, new_points)
