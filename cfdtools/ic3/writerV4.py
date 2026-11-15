@@ -31,9 +31,14 @@ class writer(writerV2.writer):
 
     __version__ = "4"
 
-    def __init__(self, mesh: _mesh.Mesh, endian="native"):
+    def __init__(
+        self,
+        mesh: _mesh.Mesh,
+        endian="native",
+        face_connectivity_method="current",
+    ):
         """Initialization of a ic3 restart file writer."""
-        super().__init__(mesh, endian)
+        super().__init__(mesh, endian, face_connectivity_method)
 
     def write_data(self, mesh_filename: str, solution_filename: str = None):
         """Write the ic3 restart file in the HDF5 format."""
