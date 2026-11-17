@@ -403,13 +403,66 @@ class elem_connectivity:
 
     # @profile
     def exportto_compressedindex(self) -> compressed_listofindex:
-        concat = self.index_elem_tuples()
-        concat.sort()
-        nnode_perface = [len(face) for _, face in concat]
-        index = np.concatenate(([0], np.cumsum(nnode_perface)))
-        value = np.array(list(chain(*[face for _, face in concat])))
-        zconn = compressed_listofindex(index, value)
-        return zconn
+        """Build a CSR-like (index, value) face->node connectivity with faces
+        ordered by ascending global face index.
+
+        Fully vectorised with numpy. It reproduces the historical
+        (index_elem_tuples -> list.sort -> chain) implementation exactly --
+        same face ordering and same flattened node order -- but without
+        materialising one Python tuple per face, which was the CPU/memory
+        bottleneck on large meshes. Global face indices are a unique
+        permutation of 0..N-1 (see ``check``), so a stable argsort on the
+        index reproduces the previous tuple sort.
+        """
+        # one global index per face; some readers store it as a list of
+        # single-element lists ([[0], [1], ...]), so flatten to 1-D ints
+        blocks = [
+            (
+                np.asarray(e2n["index"].list(), dtype=np.int64).reshape(-1),
+                e2n["elem2node"],
+            )
+            for _, e2n in self.items()
+        ]
+        if not blocks:
+            return compressed_listofindex(
+                np.zeros(1, dtype=np.int64), np.array([], dtype=np.int64)
+            )
+        all_idx = np.concatenate([ind for ind, _ in blocks])
+        # number of nodes per face, in per-type concatenation order
+        nnode_perface = np.concatenate(
+            [np.full(f2n.shape[0], f2n.shape[1], dtype=np.int64) for _, f2n in blocks]
+        )
+        # faces ordered by ascending global index
+        order = np.argsort(all_idx, kind="stable")
+        index = np.empty(all_idx.size + 1, dtype=np.int64)
+        index[0] = 0
+        np.cumsum(nnode_perface[order], out=index[1:])
+
+        # keep the native connectivity dtype (int32 when it fits); the IC3
+        # writers coerce to i4 on write, so the output file is unchanged
+        rdtype = np.result_type(*[f2n.dtype for _, f2n in blocks])
+
+        if len(blocks) == 1:
+            # single face type: a contiguous row gather, no scatter temporary
+            _, f2n = blocks[0]
+            value = np.ascontiguousarray(f2n[order]).reshape(-1).astype(
+                rdtype, copy=False
+            )
+            return compressed_listofindex(index, value)
+
+        # several face types with mixed nnode_perface: scatter each type's rows into
+        # their slots (destination offset = index at the face's sorted rank)
+        rank = np.empty(all_idx.size, dtype=np.int64)
+        rank[order] = np.arange(all_idx.size)
+        dest = index[rank]
+        value = np.empty(int(index[-1]), dtype=rdtype)
+        off = 0
+        for _, f2n in blocks:
+            nfaces, nnodes_offace = f2n.shape
+            cols = dest[off : off + nfaces, None] + np.arange(nnodes_offace)
+            value[cols.ravel()] = f2n.ravel()
+            off += nfaces
+        return compressed_listofindex(index, value)
 
     def importfrom_merge(self, list_elem):
         # computes size of all elem_connectivity
