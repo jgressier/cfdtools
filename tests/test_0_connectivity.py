@@ -136,6 +136,24 @@ class TestElem:
         elemc = self.set_elemcon(econ)
         assert elemc.check()
 
+    def test_destructive_fragment_assembly_releases_sources(self):
+        fragments = [
+            np.array([[10], [20]], dtype=np.int32),
+            np.array([[30]], dtype=np.int64),
+        ]
+        concatenated = _conn._concatenate_and_release(fragments)
+        assert fragments == []
+        assert concatenated.dtype == np.int64
+        assert np.array_equal(concatenated[:, 0], [10, 20, 30])
+
+        fragments = [np.array([[10], [20]]), np.array([[30]])]
+        destination_by_source = np.array([2, 0, 1])
+        ordered = _conn._assemble_ordered_fragments(
+            fragments, destination_by_source
+        )
+        assert fragments == []
+        assert np.array_equal(ordered[:, 0], [20, 30, 10])
+
     @pytest.mark.parametrize('econ', ['2quads', '2hexas'])
     def test_elem_createface(self, econ):
         elemc = self.set_elemcon(econ)
@@ -195,6 +213,51 @@ class TestElem:
             elemc._create_faces_from_elems_legacy(),
             elemc.create_faces_from_elems(),
         )
+
+    @pytest.mark.parametrize('nblocks', [2, 3, 10])
+    def test_multiblock_matches_monoblock_on_structured_cube(self, nblocks):
+        """Block boundaries reconnect to the exact monoblock connectivity."""
+        cube_mesh = _simple.Cube(3, 2, 2).export_mesh()
+        elemc = _conn.elem_connectivity()
+        elemc.add_elems('hexa8', cube_mesh._cell2node['hexa8'])
+        self.assert_results_equal(
+            elemc.create_faces_from_elems(),
+            elemc.create_faces_from_elems_multiblock(nblocks),
+        )
+
+    def test_multiblock_matches_monoblock_on_mixed_elements(self):
+        """A face shared by different element types may cross a block edge."""
+        # Different node-index dtypes also exercise promotion while pending
+        # faces from separate blocks are assembled.
+        hexa = np.arange(_elem.nnode_elem['hexa8'], dtype=np.int32)
+        prism = np.arange(20, 20 + _elem.nnode_elem['prism6'])
+        hexa_face = _elem.elem2faces['hexa8']['quad4'][0]
+        prism_face = _elem.elem2faces['prism6']['quad4'][0]
+        prism[prism_face] = hexa[hexa_face]
+        elemc = _conn.elem_connectivity()
+        elemc.add_elems('hexa8', hexa[np.newaxis, :])
+        elemc.add_elems('prism6', prism[np.newaxis, :])
+        self.assert_results_equal(
+            elemc.create_faces_from_elems(),
+            elemc.create_faces_from_elems_multiblock(2),
+        )
+
+    def test_multiblock_reports_block_progress(self, caplog):
+        elemc = self.set_elemcon('2hexas')
+        with caplog.at_level('INFO', logger='cfdtools.meshbase._connectivity'):
+            elemc.create_faces_from_elems_multiblock(2, verbose=True)
+        assert 'block' in caplog.text
+        assert 'candidates' in caplog.text
+        assert 'opened' in caplog.text
+        assert 'reconnected' in caplog.text
+        assert 'pending' in caplog.text
+        assert '1/2' in caplog.text
+
+    @pytest.mark.parametrize('nblocks', [0, 3])
+    def test_multiblock_rejects_invalid_block_count(self, nblocks):
+        elemc = self.set_elemcon('2hexas')
+        with pytest.raises(ValueError, match='nblocks'):
+            elemc.create_faces_from_elems_multiblock(nblocks)
 
     @pytest.mark.parametrize(
         'elemtype',
@@ -266,6 +329,8 @@ class TestElem:
         elemc.add_elems('quad4', np.tile(np.arange(4), (3, 1)))
         with pytest.raises(ValueError, match='non-manifold face'):
             elemc.create_faces_from_elems()
+        with pytest.raises(ValueError, match='non-manifold face'):
+            elemc.create_faces_from_elems_multiblock(2)
 
     def test_cell_indices_are_preserved_in_face_neighbours(self):
         elemc = _conn.elem_connectivity()
@@ -281,6 +346,10 @@ class TestElem:
         assert set(iface2cell.conn[0]) == {10, 42}
         assert set(bface2cell.conn[:, 0]) == {10, 42}
         assert np.array_equal(elemc['hexa8'], original)
+        self.assert_results_equal(
+            elemc.create_faces_from_elems(),
+            elemc.create_faces_from_elems_multiblock(2),
+        )
 
     def test_face_transformation_is_deterministic(self):
         elemc = self.set_elemcon('3quadsintri')
