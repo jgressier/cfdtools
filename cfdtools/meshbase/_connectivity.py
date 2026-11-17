@@ -1,3 +1,4 @@
+import builtins
 import logging
 from collections import OrderedDict, defaultdict
 from itertools import chain
@@ -8,6 +9,96 @@ import cfdtools.api as api
 import cfdtools.meshbase._elements as _elem
 
 log = logging.getLogger(__name__)
+_mprof_profile = getattr(builtins, "profile", lambda function: function)
+
+
+@_mprof_profile
+def _group_face_candidates(faces, ncorner, return_boundary_keys=False):
+    """Group ordered face candidates without changing face numbering.
+
+    This is the common topological kernel used by the monoblock and
+    multiblock builders.  Candidate order defines face orientation and final
+    numbering; canonical corner-node keys are used only to find duplicates.
+    """
+    canonical_nodes = np.sort(faces[:, :ncorner], axis=1)
+    _, first, inverse, counts = np.unique(
+        canonical_nodes,
+        axis=0,
+        return_index=True,
+        return_inverse=True,
+        return_counts=True,
+    )
+    if np.any(counts > 2):
+        raise ValueError("non-manifold face found while building connectivity")
+
+    # NumPy sorts canonical keys. Restore first-occurrence order to preserve
+    # orientation and numbering from the historical dictionary algorithm.
+    group_order = np.argsort(first, kind="mergesort")
+    ordered_counts = counts[group_order]
+    boundary_groups = group_order[ordered_counts == 1]
+    internal_groups = group_order[ordered_counts == 2]
+    boundary = first[boundary_groups]
+    internal_first = first[internal_groups]
+
+    candidates_by_group = np.argsort(inverse, kind="mergesort")
+    group_starts = np.cumsum(counts) - counts
+    internal_second = candidates_by_group[group_starts[internal_groups] + 1]
+    boundary_keys = (
+        canonical_nodes[boundary].copy() if return_boundary_keys else None
+    )
+    return boundary, internal_first, internal_second, boundary_keys
+
+
+def _concatenate_or_single(arrays):
+    """Return one candidate array directly, concatenating only when needed."""
+    return arrays[0] if len(arrays) == 1 else np.concatenate(arrays)
+
+
+def _concatenate_and_release(arrays):
+    """Concatenate axis-zero fragments and release each source after copying."""
+    if len(arrays) == 1:
+        return arrays.pop()
+
+    dtype = arrays[0].dtype
+    size = 0
+    trailing_shape = arrays[0].shape[1:]
+    for array in arrays:
+        dtype = np.promote_types(dtype, array.dtype)
+        size += array.shape[0]
+    result = np.empty((size, *trailing_shape), dtype=dtype)
+
+    offset = 0
+    for index in range(len(arrays)):
+        array = arrays[index]
+        last = offset + array.shape[0]
+        result[offset:last] = array
+        arrays[index] = None
+        offset = last
+    arrays.clear()
+    return result
+
+
+def _assemble_ordered_fragments(arrays, destination_by_source):
+    """Copy fragments directly into final order, releasing them one by one."""
+    dtype = arrays[0].dtype
+    trailing_shape = arrays[0].shape[1:]
+    size = 0
+    for array in arrays:
+        dtype = np.promote_types(dtype, array.dtype)
+        size += array.shape[0]
+    if size != destination_by_source.size:
+        raise ValueError("inconsistent multiblock assembly sizes")
+
+    result = np.empty((size, *trailing_shape), dtype=dtype)
+    offset = 0
+    for index in range(len(arrays)):
+        array = arrays[index]
+        last = offset + array.shape[0]
+        result[destination_by_source[offset:last]] = array
+        arrays[index] = None
+        offset = last
+    arrays.clear()
+    return result
 
 
 class indexlist:
@@ -477,67 +568,479 @@ class elem_connectivity:
         The first oriented occurrence of a face is kept, matching the former
         insertion-order behaviour while avoiding millions of Python objects.
         """
-        faces_by_type = {}
-        cells_by_type = {}
+        # Preallocate the complete candidate arrays.  The previous list-plus-
+        # concatenate approach temporarily retained both every source block
+        # and the concatenated copy, nearly doubling candidate storage.
+        candidate_counts = OrderedDict()
+        node_dtypes = {}
+        cell_dtypes = {}
+        cell_indices_by_type = {}
         for elemtype, elemsdict in self._elem2node.items():
             cell_nodes = elemsdict["elem2node"]
             cell_indices = elemsdict["index"].to_numpy()
+            cell_indices_by_type[elemtype] = cell_indices
             for ftype, face_of_elem in _elem.elem2faces[elemtype].items():
                 if not face_of_elem:
                     continue
-                candidate_faces = np.concatenate(
-                    [cell_nodes[:, local_face] for local_face in face_of_elem], axis=0
+                candidate_counts[ftype] = candidate_counts.get(ftype, 0) + (
+                    cell_nodes.shape[0] * len(face_of_elem)
                 )
-                candidate_cells = np.tile(cell_indices, len(face_of_elem))
-                faces_by_type.setdefault(ftype, []).append(candidate_faces)
-                cells_by_type.setdefault(ftype, []).append(candidate_cells)
+                node_dtypes.setdefault(ftype, []).append(cell_nodes.dtype)
+                cell_dtypes.setdefault(ftype, []).append(cell_indices.dtype)
+
+        faces_by_type = {
+            ftype: np.empty(
+                (count, _elem.nnode_elem[ftype]),
+                dtype=np.result_type(*node_dtypes[ftype]),
+            )
+            for ftype, count in candidate_counts.items()
+        }
+        cells_by_type = {
+            ftype: np.empty(
+                count, dtype=np.result_type(*cell_dtypes[ftype])
+            )
+            for ftype, count in candidate_counts.items()
+        }
+        offsets = {ftype: 0 for ftype in candidate_counts}
+        for elemtype, elemsdict in self._elem2node.items():
+            cell_nodes = elemsdict["elem2node"]
+            cell_indices = cell_indices_by_type[elemtype]
+            nelemtype = cell_nodes.shape[0]
+            for ftype, face_of_elem in _elem.elem2faces[elemtype].items():
+                for local_face in face_of_elem:
+                    first = offsets[ftype]
+                    last = first + nelemtype
+                    faces_by_type[ftype][first:last] = cell_nodes[:, local_face]
+                    cells_by_type[ftype][first:last] = cell_indices
+                    offsets[ftype] = last
+        del cell_indices_by_type
 
         internalfaces = elem_connectivity()
         boundaryfaces = elem_connectivity()
         iface2cell = indexindirection()
         bface2cell = indexindirection()
 
-        for ftype, face_blocks in faces_by_type.items():
-            faces = np.concatenate(face_blocks, axis=0)
-            cells = np.concatenate(cells_by_type[ftype])
-            ncorner = _elem.ncorner_linear[ftype]
-            canonical_nodes = np.sort(faces[:, :ncorner], axis=1)
-            _, first, inverse, counts = np.unique(
-                canonical_nodes,
-                axis=0,
-                return_index=True,
-                return_inverse=True,
-                return_counts=True,
+        for ftype, faces in faces_by_type.items():
+            cells = cells_by_type[ftype]
+            boundary, internal_first, internal_second, _ = (
+                _group_face_candidates(
+                    faces, _elem.ncorner_linear[ftype]
+                )
             )
-            if np.any(counts > 2):
-                raise ValueError("non-manifold face found while building connectivity")
-
-            # NumPy sorts keys; restore first-occurrence order to preserve
-            # the numbering emitted by the former dictionary implementation.
-            group_order = np.argsort(first, kind="mergesort")
-            ordered_counts = counts[group_order]
-            boundary_groups = group_order[ordered_counts == 1]
-            internal_groups = group_order[ordered_counts == 2]
-
-            candidates_by_group = np.argsort(inverse, kind="mergesort")
-            group_starts = np.cumsum(counts) - counts
-            second = candidates_by_group[group_starts[internal_groups] + 1]
-
-            boundaryfaces.add_elems(ftype, faces[first[boundary_groups]])
+            boundaryfaces.add_elems(ftype, faces[boundary])
             bface2cell.append(
                 np.column_stack(
                     (
-                        cells[first[boundary_groups]],
-                        -np.ones(boundary_groups.size, dtype=cells.dtype),
+                        cells[boundary],
+                        -np.ones(boundary.size, dtype=cells.dtype),
                     )
                 )
             )
-            internalfaces.add_elems(ftype, faces[first[internal_groups]])
+            internalfaces.add_elems(ftype, faces[internal_first])
             iface2cell.append(
-                np.column_stack((cells[first[internal_groups]], cells[second]))
+                np.column_stack(
+                    (cells[internal_first], cells[internal_second])
+                )
             )
 
         return internalfaces, iface2cell, boundaryfaces, bface2cell
+
+    @staticmethod
+    def _append_internal_face_records(records, ranks, faces, neighbours):
+        """Append one independently releasable batch of internal faces."""
+        records["ranks"].append(ranks)
+        records["faces"].append(faces)
+        records["neighbours"].append(neighbours)
+
+    @staticmethod
+    @_mprof_profile
+    def _assemble_multiblock_connectivity(face_order, internal_records, pending):
+        """Assemble final arrays while releasing block fragments progressively."""
+        internalfaces = elem_connectivity()
+        boundaryfaces = elem_connectivity()
+        iface2cell = indexindirection()
+        bface2cell = indexindirection()
+
+        for ftype in face_order:
+            records = internal_records[ftype]
+            if records["ranks"]:
+                ranks = _concatenate_and_release(records["ranks"])
+                order = np.argsort(ranks, kind="mergesort")
+                del ranks
+                destination_by_source = np.empty_like(order)
+                destination_by_source[order] = np.arange(
+                    order.size, dtype=order.dtype
+                )
+                del order
+
+                ordered_faces = _assemble_ordered_fragments(
+                    records["faces"], destination_by_source
+                )
+                internalfaces.add_elems(ftype, ordered_faces)
+                del ordered_faces
+
+                ordered_neighbours = _assemble_ordered_fragments(
+                    records["neighbours"], destination_by_source
+                )
+                del destination_by_source
+                iface2cell.append(ordered_neighbours)
+                del ordered_neighbours
+            else:
+                # Preserve the monoblock representation: a face type which
+                # occurs in elements is present even when it has no internal
+                # faces (for example prism triangular faces on a boundary).
+                internalfaces.add_elems(
+                    ftype, np.empty((0, _elem.nnode_elem[ftype]), dtype=int)
+                )
+                iface2cell.append(np.empty((0, 2), dtype=int))
+
+            open_faces = pending[ftype]
+            if open_faces:
+                nface = len(open_faces)
+                sample = next(iter(open_faces.values()))
+                rank_dtype = np.asarray(sample[0]).dtype
+                face_dtype = sample[1].dtype
+                cell_dtype = np.asarray(sample[2]).dtype
+                for record in open_faces.values():
+                    rank_dtype = np.promote_types(
+                        rank_dtype, np.asarray(record[0]).dtype
+                    )
+                    face_dtype = np.promote_types(
+                        face_dtype, record[1].dtype
+                    )
+                    cell_dtype = np.promote_types(
+                        cell_dtype, np.asarray(record[2]).dtype
+                    )
+                ranks = np.empty(nface, dtype=rank_dtype)
+                faces = np.empty(
+                    (nface, _elem.nnode_elem[ftype]),
+                    dtype=face_dtype,
+                )
+                cells = np.empty(nface, dtype=cell_dtype)
+                for index, record in enumerate(open_faces.values()):
+                    ranks[index], faces[index], cells[index] = record
+                open_faces.clear()
+
+                order = np.argsort(ranks, kind="mergesort")
+                del ranks
+                ordered_faces = faces[order]
+                del faces
+                ordered_cells = cells[order]
+                del cells, order
+                boundaryfaces.add_elems(ftype, ordered_faces)
+                del ordered_faces
+                bface2cell.append(
+                    np.column_stack(
+                        (
+                            ordered_cells,
+                            -np.ones(
+                                ordered_cells.size,
+                                dtype=ordered_cells.dtype,
+                            ),
+                        )
+                    )
+                )
+                del ordered_cells
+            else:
+                boundaryfaces.add_elems(
+                    ftype, np.empty((0, _elem.nnode_elem[ftype]), dtype=int)
+                )
+                bface2cell.append(np.empty((0, 2), dtype=int))
+
+        return internalfaces, iface2cell, boundaryfaces, bface2cell
+
+    @staticmethod
+    @_mprof_profile
+    def _validate_unique_final_faces(internalfaces, boundaryfaces):
+        """Reject non-manifold faces with bounded comparison temporaries."""
+        comparison_chunk = 1_000_000
+        for ftype, face_data in internalfaces.items():
+            face_arrays = [face_data["elem2node"]]
+            if ftype in boundaryfaces.elems():
+                face_arrays.append(boundaryfaces[ftype])
+            ncorner = _elem.ncorner_linear[ftype]
+            nface = sum(array.shape[0] for array in face_arrays)
+            canonical_nodes = np.empty(
+                (nface, ncorner), dtype=face_arrays[0].dtype
+            )
+            offset = 0
+            for array in face_arrays:
+                last = offset + array.shape[0]
+                canonical_nodes[offset:last] = array[:, :ncorner]
+                canonical_nodes[offset:last].sort(axis=1)
+                offset = last
+
+            order = np.lexsort(
+                tuple(
+                    canonical_nodes[:, column]
+                    for column in range(ncorner - 1, -1, -1)
+                )
+            )
+            for first in range(0, max(nface - 1, 0), comparison_chunk):
+                last = min(first + comparison_chunk, nface - 1)
+                left = canonical_nodes[order[first:last]]
+                right = canonical_nodes[order[first + 1 : last + 1]]
+                if np.any(np.all(left == right, axis=1)):
+                    raise ValueError(
+                        "non-manifold face found while building connectivity"
+                    )
+            del canonical_nodes, order
+
+    @_mprof_profile
+    def create_faces_from_elems_multiblock(self, nblocks, verbose=False):
+        """Create face connectivity by processing consecutive cell blocks.
+
+        Unlike :meth:`create_faces_from_elems`, this method only retains face
+        candidates for one block at a time.  A compact dictionary records the
+        faces which are still open at a block boundary; a later block either
+        reconnects one of them or adds another open face.  Final face and
+        neighbour arrays are, of course, retained as they are the result of
+        the operation.
+
+        Cells are partitioned in increasing cell-index order. Consequently,
+        locality of these indices matters for memory use: a spatially ordered
+        mesh keeps a small interface between blocks, whereas a scrambled
+        numbering can make the open-face registry large.
+
+        Args:
+            nblocks: Number of non-empty consecutive cell-index blocks.
+            verbose: Log per-block candidate, creation and reconnection
+                counts at ``INFO`` level.
+        """
+        if not isinstance(nblocks, (int, np.integer)) or nblocks < 1:
+            raise ValueError("nblocks must be a positive integer")
+        if self.nelem == 0:
+            raise ValueError("cannot build faces from an empty connectivity")
+        if nblocks > self.nelem:
+            raise ValueError("nblocks cannot exceed the number of cells")
+
+        if verbose:
+            log.info("multiblock face connectivity (%d blocks)", nblocks)
+            log.info(
+                "  %9s %15s %10s %12s %10s %12s %10s",
+                "block",
+                "cell ranks",
+                "cells",
+                "candidates",
+                "opened",
+                "reconnected",
+                "pending",
+            )
+
+        # The monoblock implementation is the established, fully vectorized
+        # reference.  Keep it on this path both for speed and exact legacy
+        # ordering.
+        if nblocks == 1:
+            result = self.create_faces_from_elems()
+            if verbose:
+                ncandidate = sum(
+                    len(local_faces) * elemsdict["elem2node"].shape[0]
+                    for elemtype, elemsdict in self._elem2node.items()
+                    for local_faces in _elem.elem2faces[elemtype].values()
+                )
+                log.info(
+                    "  %9s %15s %10d %12d %10d %12d %10d",
+                    "1/1",
+                    "0:{}".format(self.nelem),
+                    self.nelem,
+                    ncandidate,
+                    result[2].nelem,
+                    result[0].nelem,
+                    result[2].nelem,
+                )
+            return result
+
+        # ``rank`` reproduces the first-occurrence ordering of the monoblock
+        # implementation even though candidates are visited block by block.
+        # It is used only for the final result, not to retain candidates.
+        face_order = OrderedDict()
+        rank_bases = {}
+        for elemtype, elemsdict in self._elem2node.items():
+            nelemtype = elemsdict["elem2node"].shape[0]
+            for ftype, local_faces in _elem.elem2faces[elemtype].items():
+                if not local_faces:
+                    continue
+                rank_bases[(elemtype, ftype)] = face_order.get(ftype, 0)
+                face_order[ftype] = face_order.get(ftype, 0) + (
+                    len(local_faces) * nelemtype
+                )
+
+        ordered_cell_indices = np.sort(
+            np.concatenate(
+                [
+                    elemsdict["index"].to_numpy()
+                    for elemsdict in self._elem2node.values()
+                ]
+            )
+        )
+        block_edges = np.linspace(0, self.nelem, nblocks + 1, dtype=int)
+        pending = {ftype: {} for ftype in face_order}
+        internal_records = {
+            ftype: {"ranks": [], "faces": [], "neighbours": []}
+            for ftype in face_order
+        }
+
+        for iblock, (first_rank, last_rank) in enumerate(
+            zip(block_edges[:-1], block_edges[1:]), start=1
+        ):
+            block_cell_indices = ordered_cell_indices[first_rank:last_rank]
+            face_blocks = {ftype: [] for ftype in face_order}
+            cell_blocks = {ftype: [] for ftype in face_order}
+            rank_blocks = {ftype: [] for ftype in face_order}
+
+            for elemtype, elemsdict in self._elem2node.items():
+                all_cells = elemsdict["index"].to_numpy()
+                selected = np.isin(all_cells, block_cell_indices)
+                if not np.any(selected):
+                    continue
+                row_indices = np.flatnonzero(selected)
+                cell_nodes = elemsdict["elem2node"][selected]
+                cell_indices = all_cells[selected]
+                for ftype, local_faces in _elem.elem2faces[elemtype].items():
+                    if not local_faces:
+                        continue
+                    face_blocks[ftype].append(
+                        np.concatenate(
+                            [
+                                cell_nodes[:, local_face]
+                                for local_face in local_faces
+                            ],
+                            axis=0,
+                        )
+                    )
+                    cell_blocks[ftype].append(
+                        np.tile(cell_indices, len(local_faces))
+                    )
+                    rank_base = rank_bases[(elemtype, ftype)]
+                    rank_blocks[ftype].append(
+                        np.concatenate(
+                            [
+                                rank_base
+                                + ilocal * all_cells.size
+                                + row_indices
+                                for ilocal in range(len(local_faces))
+                            ]
+                        )
+                    )
+
+            block_candidates = block_opened = block_reconnected = 0
+            for ftype in face_order:
+                if not face_blocks[ftype]:
+                    continue
+                faces = _concatenate_or_single(face_blocks[ftype])
+                cells = _concatenate_or_single(cell_blocks[ftype])
+                ranks = _concatenate_or_single(rank_blocks[ftype])
+                # Release source arrays immediately when concatenation made a
+                # copy. Candidate ranks are already in monoblock order.
+                face_blocks[ftype] = None
+                cell_blocks[ftype] = None
+                rank_blocks[ftype] = None
+                (
+                    boundary,
+                    internal_first,
+                    internal_second,
+                    boundary_keys,
+                ) = _group_face_candidates(
+                    faces,
+                    _elem.ncorner_linear[ftype],
+                    return_boundary_keys=True,
+                )
+                if internal_first.size:
+                    self._append_internal_face_records(
+                        internal_records[ftype],
+                        ranks[internal_first],
+                        faces[internal_first],
+                        np.column_stack(
+                            (
+                                cells[internal_first],
+                                cells[internal_second],
+                            )
+                        ),
+                    )
+                    block_reconnected += internal_first.size
+
+                matched_ranks = []
+                matched_faces = []
+                matched_neighbours = []
+                for candidate, canonical_key in zip(boundary, boundary_keys):
+                    key = tuple(canonical_key)
+                    current = (
+                        ranks[candidate], faces[candidate], cells[candidate]
+                    )
+                    previous = pending[ftype].pop(key, None)
+                    if previous is None:
+                        # A row slice is a view of the full candidate block.
+                        # Copying this small face is essential: retaining the
+                        # view would retain the entire block in memory.
+                        pending[ftype][key] = (
+                            current[0], current[1].copy(), current[2]
+                        )
+                        block_opened += 1
+                    else:
+                        if previous[0] <= current[0]:
+                            first_face, second_face = previous, current
+                        else:
+                            first_face, second_face = current, previous
+                        matched_ranks.append(first_face[0])
+                        matched_faces.append(first_face[1])
+                        matched_neighbours.append(
+                            (first_face[2], second_face[2])
+                        )
+                        block_reconnected += 1
+                if matched_ranks:
+                    self._append_internal_face_records(
+                        internal_records[ftype],
+                        np.asarray(matched_ranks),
+                        np.asarray(matched_faces),
+                        np.asarray(matched_neighbours),
+                    )
+                block_candidates += faces.shape[0]
+                # Do not retain views or temporary arrays from the last face
+                # type until final assembly.
+                current = previous = first_face = second_face = None
+                canonical_key = key = None
+                del (
+                    faces,
+                    cells,
+                    ranks,
+                    boundary,
+                    internal_first,
+                    internal_second,
+                    boundary_keys,
+                    matched_ranks,
+                    matched_faces,
+                    matched_neighbours,
+                )
+
+            if verbose:
+                log.info(
+                    "  %9s %15s %10d %12d %10d %12d %10d",
+                    "{}/{}".format(iblock, nblocks),
+                    "{}:{}".format(first_rank, last_rank),
+                    last_rank - first_rank,
+                    block_candidates,
+                    block_opened,
+                    block_reconnected,
+                    sum(len(open_faces) for open_faces in pending.values()),
+                )
+
+        # Python loop variables remain alive after a loop. Explicitly release
+        # the last block selections and candidate containers before allocating
+        # final arrays.
+        block_cell_indices = face_blocks = cell_blocks = rank_blocks = None
+        all_cells = selected = row_indices = None
+        cell_nodes = cell_indices = None
+        ordered_cell_indices = block_edges = None
+
+        result = self._assemble_multiblock_connectivity(
+            face_order, internal_records, pending
+        )
+        internal_records = pending = None
+
+        # A face completed in an earlier block may be encountered again only
+        # later. Detect that non-manifold case after final assembly.
+        self._validate_unique_final_faces(result[0], result[2])
+        return result
 
     def nodelist(self):
         """Create list of (unique) nodes from element connectivity."""

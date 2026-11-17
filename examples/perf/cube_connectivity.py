@@ -13,6 +13,11 @@ Run from an installed checkout:
 Use a smaller cube while developing:
 
     python examples/perf/cube_connectivity.py --size 20
+
+Select implementations and explicit multiblock counts:
+
+    python examples/perf/cube_connectivity.py \
+        --implementation mono multi --blocks 1 2 5 10
 """
 
 import argparse
@@ -91,19 +96,38 @@ def parse_args():
     parser.add_argument(
         "--size",
         type=int,
-        default=128,
+        default=100,
         help="cells in each direction; default: %(default)s",
     )
     parser.add_argument(
         "--implementation",
-        choices=("new", "legacy", "both"),
-        default="both",
-        help="face-connectivity implementation to benchmark; default: %(default)s",
+        choices=("legacy", "mono", "multi"),
+        nargs="+",
+        default=("mono", "multi"),
+        help=(
+            "one or more face-connectivity implementations to benchmark; "
+            "default: mono multi"
+        ),
     )
     parser.add_argument(
         "--skip-faces",
         action="store_true",
         help="measure cube allocation only",
+    )
+    parser.add_argument(
+        "--blocks",
+        type=int,
+        nargs="+",
+        default=(1, 2, 3, 4, 5, 6, 7, 8, 9, 10),
+        help=(
+            "block counts used by the multi implementation; "
+            "default: 1 2 3 4 5 6 7 8 9 10"
+        ),
+    )
+    parser.add_argument(
+        "--quiet-blocks",
+        action="store_true",
+        help="do not show candidate/open/reconnected counts for every block",
     )
     parser.add_argument(
         "--json",
@@ -117,11 +141,16 @@ def main():
     args = parse_args()
     if args.size < 1:
         raise SystemExit("--size must be positive")
+    if any(nblocks < 1 for nblocks in args.blocks):
+        raise SystemExit("--blocks values must be positive")
 
     nx = ny = nz = args.size
     ncell = nx * ny * nz
     nnode = (nx + 1) * (ny + 1) * (nz + 1)
     ninternal, nboundary = expected_face_counts(nx, ny, nz)
+    selected = tuple(dict.fromkeys(args.implementation))
+    if "multi" in selected and any(nblocks > ncell for nblocks in args.blocks):
+        raise SystemExit("--blocks values cannot exceed the number of cells")
     measurements = Measurements()
 
     print("Cube connectivity benchmark")
@@ -131,6 +160,7 @@ def main():
             ninternal, nboundary, ninternal + nboundary
         )
     )
+    sys.stdout.flush()
 
     mesh = measurements.measure(
         "build structured cube",
@@ -140,11 +170,10 @@ def main():
     signatures = {}
     if not args.skip_faces:
         methods = {
-            "new": mesh._cell2node.create_faces_from_elems,
+            "mono": mesh._cell2node.create_faces_from_elems,
             "legacy": mesh._cell2node._create_faces_from_elems_legacy,
         }
-        selected = ("new", "legacy") if args.implementation == "both" else (args.implementation,)
-        for implementation in selected:
+        for implementation in (name for name in selected if name != "multi"):
             result = measurements.measure(
                 "{} face connectivity".format(implementation),
                 methods[implementation],
@@ -159,9 +188,32 @@ def main():
             del result
             gc.collect()
 
-        if args.implementation == "both":
-            assert signatures["new"] == signatures["legacy"], (
-                "new and legacy face connectivities differ"
+        if "multi" in selected:
+            for nblocks in args.blocks:
+                label = "multi:{}".format(nblocks)
+                result = measurements.measure(
+                    "multiblock ({} {})".format(
+                        nblocks, "block" if nblocks == 1 else "blocks"
+                    ),
+                    lambda nblocks=nblocks: (
+                        mesh._cell2node.create_faces_from_elems_multiblock(
+                            nblocks, verbose=not args.quiet_blocks
+                        )
+                    ),
+                )
+                counts, signature = connectivity_signature(result)
+                assert counts == (ninternal, nboundary), (
+                    "unexpected multiblock face counts with {} blocks: got {}, "
+                    "expected {}".format(nblocks, counts, (ninternal, nboundary))
+                )
+                signatures[label] = signature
+                del result
+                gc.collect()
+
+        reference_name, reference_signature = next(iter(signatures.items()))
+        for name, signature in signatures.items():
+            assert signature == reference_signature, (
+                "{} connectivity differs from {}".format(name, reference_name)
             )
 
     print("\nMeasurements (process peak RSS includes NumPy and Python allocations):")
@@ -171,12 +223,23 @@ def main():
             "  (delta {peak_rss_delta_mib:+9.1f} MiB)".format(**phase)
         )
 
-    if args.implementation == "both" and not args.skip_faces:
+    if {"legacy", "mono"}.issubset(selected) and not args.skip_faces:
         elapsed = {phase["name"]: phase["seconds"] for phase in measurements.phases}
-        speedup = elapsed["legacy face connectivity"] / elapsed["new face connectivity"]
+        speedup = elapsed["legacy face connectivity"] / elapsed["mono face connectivity"]
         print("\nComparison:")
-        print("  results: new and legacy connectivities are identical")
-        print("  new implementation speed-up: {:.2f}x".format(speedup))
+        print("  results: mono and legacy connectivities are identical")
+        print("  mono implementation speed-up: {:.2f}x".format(speedup))
+
+    if "multi" in selected and not args.skip_faces:
+        print(
+            "  multiblock results: identical for block counts {}".format(
+                ", ".join(str(nblocks) for nblocks in args.blocks)
+            )
+        )
+        print(
+            "  note: RSS is a process high-water mark; run one configuration "
+            "per process when comparing memory peaks strictly."
+        )
 
     if args.json:
         print("\n" + json.dumps(measurements.phases, indent=2))

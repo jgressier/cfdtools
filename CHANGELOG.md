@@ -16,6 +16,31 @@ pip show cfdtools
 
 ## Versions
 
+### Unreleased
+
+#### changes
+
+- add a multiblock face-connectivity builder, with tabular progress logging
+  and a cube benchmark selecting `legacy`, `mono`, or `multi` implementations
+  and an explicit list of block counts
+- share the face-candidate grouping kernel between monoblock and multiblock
+  connectivity, preallocate monoblock candidates, and prevent pending faces
+  from retaining complete multiblock candidate arrays; progressively release
+  final assembly fragments, write them directly in final sorted positions,
+  and bound non-manifold validation temporaries; expose block grouping, final
+  assembly, and validation phases to `mprof`
+- modernize GitHub Actions to `actions/checkout@v5` and
+  `actions/setup-python@v6`, removing the Node.js 20 runtime deprecation
+- expand the test matrix through Python 3.14 while retaining legacy Python
+  versions on compatible runners
+- cache pip dependencies, restrict workflow permissions to repository reads,
+  and cancel superseded CI runs
+- build PyPI distributions with Python 3.11
+
+#### fix
+
+- exclude archived `*.nogit` Python 2 sources from CI linting
+
 ### [0.6.0](https://pypi.org/project/cfdtools/) (2024-04-14)
 
 #### new
