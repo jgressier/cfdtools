@@ -932,6 +932,13 @@ class elem_connectivity:
             ftype: {"ranks": [], "faces": [], "neighbours": []}
             for ftype in face_order
         }
+        # Materialise the full cell-index arrays once; they are reused by
+        # every block.  Keeping this outside the loop avoids re-allocating
+        # the (potentially large) index array on each iteration.
+        all_cells_by_type = {
+            elemtype: elemsdict["index"].to_numpy()
+            for elemtype, elemsdict in self._elem2node.items()
+        }
 
         for iblock, (first_rank, last_rank) in enumerate(
             zip(block_edges[:-1], block_edges[1:]), start=1
@@ -942,7 +949,7 @@ class elem_connectivity:
             rank_blocks = {ftype: [] for ftype in face_order}
 
             for elemtype, elemsdict in self._elem2node.items():
-                all_cells = elemsdict["index"].to_numpy()
+                all_cells = all_cells_by_type[elemtype]
                 selected = np.isin(all_cells, block_cell_indices)
                 if not np.any(selected):
                     continue
