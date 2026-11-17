@@ -24,9 +24,22 @@ class writer:
 
     __version__ = "2"
 
-    def __init__(self, mesh, endian="native", face_connectivity_method="current"):
+    def __init__(
+        self,
+        mesh,
+        endian="native",
+        face_connectivity_method="current",
+        face_connectivity_nblocks=None,
+    ):
         """
         Initialization of a ic3 restart file writer.
+
+        Args:
+            face_connectivity_method: One of ``"current"``, ``"legacy"`` or
+                ``"multiblock"``.
+            face_connectivity_nblocks: Number of consecutive cell-index
+                blocks. Required when ``face_connectivity_method`` is
+                ``"multiblock"``; ignored otherwise.
         """
         log.info("> Initialization of IC3 writer V" + self.__version__)
         if endian not in struct_endian.keys():
@@ -34,6 +47,7 @@ class writer:
         else:
             self.endian = endian
         self._face_connectivity_method = face_connectivity_method
+        self._face_connectivity_nblocks = face_connectivity_nblocks
         # self.vars = {"nodes": {}, "cells": {}}
         self._mesh = mesh
         self.params = {}
@@ -54,7 +68,8 @@ class writer:
         if not self._mesh._faces:  # empty dict of faces
             with api.Timer(task="  generate all faces"):
                 self._mesh.make_face_connectivity(
-                    method=self._face_connectivity_method
+                    method=self._face_connectivity_method,
+                    nblocks=self._face_connectivity_nblocks,
                 )
         if any([boco.nodebased() for boco in self._mesh._bocos.values()]):
             with api.Timer(task="  change boco marks (node to face)"):

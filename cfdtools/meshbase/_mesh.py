@@ -459,20 +459,36 @@ class Mesh:
         #    assert etype in _elem.elem2faces.keys()
         return True
 
-    def make_face_connectivity(self, method="current"):
-        """Build faces from cells with the selected connectivity implementation."""
-        methods = {
-            "current": self._cell2node.create_faces_from_elems,
-            "legacy": self._cell2node._create_faces_from_elems_legacy,
-        }
-        if method not in methods:
-            raise ValueError(f"unknown face connectivity method: {method}")
-        (
-            intfaces,
-            intf2c,
-            boundfaces,
-            boundf2c,
-        ) = methods[method]()
+    def make_face_connectivity(self, method="current", nblocks=None):
+        """Build faces from cells with the selected connectivity implementation.
+
+        Args:
+            method: One of ``"current"``, ``"legacy"`` or ``"multiblock"``.
+            nblocks: Number of consecutive cell-index blocks. Required when
+                ``method="multiblock"``; ignored otherwise.
+        """
+        if method == "multiblock":
+            if nblocks is None:
+                raise ValueError("nblocks is required when method='multiblock'")
+            (
+                intfaces,
+                intf2c,
+                boundfaces,
+                boundf2c,
+            ) = self._cell2node.create_faces_from_elems_multiblock(nblocks)
+        else:
+            methods = {
+                "current": self._cell2node.create_faces_from_elems,
+                "legacy": self._cell2node._create_faces_from_elems_legacy,
+            }
+            if method not in methods:
+                raise ValueError(f"unknown face connectivity method: {method}")
+            (
+                intfaces,
+                intf2c,
+                boundfaces,
+                boundf2c,
+            ) = methods[method]()
         self.pop_faces("mixed")  # remove if it exists
         self.add_faces("internal", intfaces, intf2c)
         self.add_faces("boundary", boundfaces, boundf2c)

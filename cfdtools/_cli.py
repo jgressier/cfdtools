@@ -100,6 +100,18 @@ class cli_argparser:
     def addarg_transform(self):
         self.add_argument('--extrude', type=int, help="total number of planes")
         self.add_argument('--scale', nargs=3, type=float, help="x, y, z scaling coefficients")
+        self.add_argument(
+            '--face-method',
+            dest='face_connectivity_method',
+            choices=['current', 'legacy', 'multiblock'],
+            help="face connectivity implementation (default: current)",
+        )
+        self.add_argument(
+            '--nblocks',
+            dest='face_connectivity_nblocks',
+            type=int,
+            help="number of consecutive cell-index blocks for multiblock method",
+        )
 
     def parse_cli_args(self, argv):
         self._args = self._parser.parse_args(argv)
@@ -313,7 +325,14 @@ def write_generic(argv, ext, writer, fname=None, writer_options=None):
         cfdmesh.scale(parser.args().scale)
     if parser.args().info:
         cfdmesh.printinfo()
-    output = writer(cfdmesh, **(writer_options or {}))
+    output_options = dict(writer_options or {})
+    if parser.args().face_connectivity_method is not None:
+        output_options['face_connectivity_method'] = parser.args().face_connectivity_method
+    if parser.args().face_connectivity_nblocks is not None:
+        output_options['face_connectivity_nblocks'] = parser.args().face_connectivity_nblocks
+    if parser.args().face_connectivity_method == 'multiblock' and parser.args().face_connectivity_nblocks is None:
+        api.error_stop("--nblocks is required with --face-method multiblock")
+    output = writer(cfdmesh, **output_options)
     output.write_data(file.filename)
     log.info(f"file {file.filename} written")
     return file.filename  # filename needed for pytest (for eventual rm)
