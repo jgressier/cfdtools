@@ -5,16 +5,16 @@ geodim = {"point": 0, "line": 1, "surface": 2, "volume": 3}
 # Declare all element types here.
 # itype, name of the element, number of nodes, geometry dimension, element given by the extrusion of the element
 elem_properties = [
-    (0, "   node1", 1, 0, "    bar2"),
-    (0, "    bar2", 2, 1, "   quad4"),
-    (0, "    bar3", 3, 1, "   quad9"),
-    (0, "    tri3", 3, 2, "  penta6"),
-    (0, "   quad4", 4, 2, "   hexa8"),
-    (0, "   quad9", 9, 2, "  hexa27"),
-    (0, "  tetra4", 4, 3, "    none"),
-    (0, "   pyra5", 5, 3, "    none"),
-    (0, "  prism6", 6, 3, "    none"),
-    (0, "   hexa8", 8, 3, "    none"),
+    (0, "   node1",  1, 0, "    bar2"),
+    (0, "    bar2",  2, 1, "   quad4"),
+    (0, "    bar3",  3, 1, "   quad9"),
+    (0, "    tri3",  3, 2, "  penta6"),
+    (0, "   quad4",  4, 2, "   hexa8"),
+    (0, "   quad9",  9, 2, "  hexa27"),
+    (0, "  tetra4",  4, 3, "    none"),
+    (0, "   pyra5",  5, 3, "    none"),
+    (0, "  prism6",  6, 3, "    none"),
+    (0, "   hexa8",  8, 3, "    none"),
     (0, "  hexa27", 27, 3, "    none"),
 ]
 # remove leading spaces of strings
@@ -26,6 +26,24 @@ dim_elem = {e: d for _, e, _, d, _ in elem_properties}
 nnode_elem = {e: n for _, e, n, _, _ in elem_properties}
 face_from_nnode = {n: e for _, e, n, d, _ in elem_properties if d <= 2}
 extruded_face = {e: x for _, e, _, d, x in elem_properties if d <= 2}
+
+# Permutation to reorder a tripled 2D element into CGNS 3D element node order.
+# For quad9 -> hexa27: tripled layout is [bottom(0-8), middle(9-17), top(18-26)]
+# where each layer follows quad9 order: corners(0-3), edge mids(4-7), face center(8).
+# CGNS hexa27: corners(0-7), mid-edges(8-19), mid-faces(20-25), center(26).
+extrude_permutation = {
+    "quad9": [
+        0, 1, 2, 3,         # bottom corners
+        18, 19, 20, 21,     # top corners
+        4, 5, 6, 7,         # bottom edge mids
+        22, 23, 24, 25,     # top edge mids
+        9, 10, 11, 12,      # vertical edge mids (middle layer)
+        8,                  # bottom face center
+        26,                 # top face center
+        13, 14, 15, 16,     # side face centers (middle layer)
+        17,                 # volume center (middle layer)
+    ],
+}
 
 del elem_properties
 

@@ -267,34 +267,69 @@ class Mesh:
         return newmesh
 
     def export_extruded(self, direction=None, extrude=None, domain="fluid"):
+        import cfdtools.meshbase._elements as _elem
+
         if direction is None:
             direction = np.array([0.0, 0.0, 1.0])
+        else:
+            direction = np.array(direction)
         if extrude is None:
             extrude = [0.0, 1.0]
         extrude_range = np.array(extrude)
-        nrange = extrude_range.size
-        assert nrange > 1, "extrusion only possible for at least 2 planes"
-        newmesh = Mesh(ncell=self.ncell * nrange, nnode=self.nnode * nrange)
-        # SHOULD CHECK DIRECTION AND MESH ORIENTATION
-        # extrude nodes
+        nplanes = extrude_range.size
+        if nplanes <= 1:
+            raise ValueError(f"Extrusion only possible for at least 2 planes. Actual: {nplanes}")
+
+        # determine if quadratic
+        etype = next(iter(self._cell2node.elems()))
+        # number of nodes of the source element
+        fnnode = _elem.nnode_elem[etype]
+        target_type = _elem.extruded_face[etype]
+        target_nnode = _elem.nnode_elem[target_type]
+        is_quadratic = target_nnode == 3 * fnnode
+
         ntotnode = self.nnode
-        newcoords = np.tile(self.nodescoord(ndarray=True), (nrange, 1))
-        for i, s in enumerate(extrude_range):
-            newcoords[i * ntotnode : (i + 1) * ntotnode, :] += s * np.array(direction)
+        # total nodes: for quadratic, there's a middle layer between each pair of planes
+        if is_quadratic:
+            nnewnode = ntotnode * (2 * nplanes - 1)
+        else:
+            nnewnode = ntotnode * nplanes
+        newmesh = Mesh(ncell=self.ncell * (nplanes - 1), nnode=nnewnode)
+
+        # extrude nodes
+        coords = self.nodescoord(ndarray=True)
+        newcoords = np.zeros((nnewnode, 3))
+        if is_quadratic:
+            # layout: plane0, mid01, plane1, mid12, plane2, ...
+            for i, s in enumerate(extrude_range):
+                newcoords[2 * i * ntotnode : (2 * i + 1) * ntotnode, :] = (
+                    coords + s * direction
+                )
+                if i < nplanes - 1:
+                    mid_s = 0.5 * (s + extrude_range[i + 1])
+                    newcoords[(2 * i + 1) * ntotnode : (2 * i + 2) * ntotnode, :] = (
+                        coords + mid_s * direction
+                    )
+        else:
+            for i, s in enumerate(extrude_range):
+                newcoords[i * ntotnode : (i + 1) * ntotnode, :] = (
+                    coords + s * direction
+                )
         newmesh.set_nodescoord_nd(newcoords)
-        # extrude cells
-        newmesh.set_cell2node(self._cell2node.extrude(nrange, ntotnode))
+        # extrude cells (inodeshift is always ntotnode)
+        newmesh.set_cell2node(self._cell2node.extrude(nplanes, ntotnode))
         # extrude faces if any
         # extrude/extend existing marks
-        for _, boco in self._bocos.items():
+        plane_step = 2 * ntotnode if is_quadratic else ntotnode
+        for boco in self._bocos.values():
             assert boco.nodebased(), "extrusion only possible with node marks"
             newboco = submeshmark(boco.name)
             newboco.geodim = boco.geodim
             newboco.type = boco.type
-            index = np.tile(boco.index.list(), (nrange))
+            index = np.tile(boco.index.list(), (nplanes))
             nbcnode = boco.index.size
-            for i in range(nrange):
-                index[i * nbcnode : (i + 1) * nbcnode] += i * ntotnode
+            for i in range(nplanes):
+                index[i * nbcnode : (i + 1) * nbcnode] += i * plane_step
             newboco.index = _conn.indexlist(ilist=index.tolist())
             newmesh.add_boco(newboco)
         # create initial 2D domain as boco
@@ -308,7 +343,7 @@ class Mesh:
         newboco = submeshmark(name=domain + "1")
         newboco.geodim = "bdnode"
         newboco.type = "boundary"
-        index = (np.array(index) + (nrange - 1) * ntotnode).tolist()
+        index = (np.array(index) + (nplanes - 1) * plane_step).tolist()
         newboco.index = _conn.indexlist(ilist=index)
         newmesh.add_boco(newboco)
         return newmesh

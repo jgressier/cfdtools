@@ -473,20 +473,43 @@ class elem_connectivity:
             inodeshift (int): number of nodes of each plane
         """
         assert nplanes > 1
-        ncell = nplanes - 1
+        nlayers = nplanes - 1
         newcon = elem_connectivity()
         for etype, econ in self.items():
             nelem = econ["elem2node"].shape[0]
-            elemcon = np.tile(econ["elem2node"], (ncell, 2))
+            # number of nodes of the source element
             fnnode = _elem.nnode_elem[etype]
-            elemcon[:, fnnode : 2 * fnnode] += inodeshift
-            for i in range(ncell):
-                elemcon[i * nelem : (i + 1) * nelem, :] += i * inodeshift
-            # print(etype, econ['elem2node'], elemcon)
-            index = np.tile(econ["index"].list(), (ncell))
-            for i in range(ncell):
-                index[i * nelem : (i + 1) * nelem] += i * inodeshift
-            newcon.add_elems(
-                _elem.extruded_face[etype], elemcon, indexlist(ilist=index.tolist())
-            )
+            target_type = _elem.extruded_face[etype]
+            target_nnode = _elem.nnode_elem[target_type]
+
+            is_quadratic = target_nnode == 3 * fnnode
+            if not is_quadratic:
+                # linear: double tile (quad4->hexa8, tri3->penta6)
+                elemcon = np.tile(econ["elem2node"], (nlayers, 2))
+                # shift new nodes by the number of nodes of the source mesh
+                elemcon[:, fnnode : 2 * fnnode] += inodeshift
+            elif is_quadratic:
+                # quadratic: triple tile + permute to CGNS order (quad9->hexa27)
+                elemcon = np.tile(econ["elem2node"], (nlayers, 3))
+                # shift new nodes by the number of nodes of the source mesh
+                elemcon[:, fnnode : 2 * fnnode] += inodeshift
+                # shift new nodes by 2 times the number of nodes of the source mesh
+                elemcon[:, 2 * fnnode : 3 * fnnode] += 2 * inodeshift
+                # permutation on nodes to stick to CGNS convention
+                perm = _elem.extrude_permutation[etype]
+                elemcon = elemcon[:, perm]
+            else:
+                api.error_stop(
+                    f"unsupported extrusion: {etype} -> {target_type} "
+                    f"({fnnode} -> {target_nnode} nodes)"
+                )
+
+            # step between consecutive elements (plane to plane)
+            step = 2 * inodeshift if is_quadratic else inodeshift
+            for i in range(nlayers):
+                elemcon[i * nelem : (i + 1) * nelem, :] += i * step
+            index = np.tile(econ["index"].list(), (nlayers))
+            for i in range(nlayers):
+                index[i * nelem : (i + 1) * nelem] += i * step
+            newcon.add_elems(target_type, elemcon, indexlist(ilist=index.tolist()))
         return newcon
