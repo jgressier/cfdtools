@@ -85,7 +85,7 @@ def connectivity_signature(result):
         for elemtype, elemdata in connectivity.items():
             digest.update(elemtype.encode())
             digest.update(np.ascontiguousarray(elemdata["elem2node"]).tobytes())
-            digest.update(np.ascontiguousarray(elemdata["index"].to_numpy()).tobytes())
+            digest.update(np.ascontiguousarray(elemdata["index"].to_list()).tobytes())
     for neighbours in (iface2cell.conn, bface2cell.conn):
         digest.update(np.ascontiguousarray(neighbours).tobytes())
     return (internalfaces.nelem, boundaryfaces.nelem), digest.hexdigest()

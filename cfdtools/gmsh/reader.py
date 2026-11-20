@@ -45,14 +45,28 @@ class reader(api._files):
         # Read file (streaming for v4, legacy whole-file parse for v2).
         version = self.__peek_version(self.filename)
         if version >= 4:
-            (families, bctype, x, y, z, connectivity, connect_bc,
-             bnd, bnd2fam, self._maxdim, self._ncell) = self.__read_v4_stream(self.filename)
+            (
+                families,
+                bctype,
+                x,
+                y,
+                z,
+                connectivity,
+                connect_bc,
+                bnd,
+                bnd2fam,
+                self._maxdim,
+                self._ncell,
+            ) = self.__read_v4_stream(self.filename)
         elif version <= 2:
             families, bctype, x, y, z, elts = self.__read_v2_stream(self.filename)
-            (connectivity, connect_bc, bnd, bnd2fam,
-             self._maxdim, self._ncell) = self.__build_connectivity(elts)
+            (connectivity, connect_bc, bnd, bnd2fam, self._maxdim, self._ncell) = (
+                self.__build_connectivity(elts)
+            )
         else:
-            api.error_stop(f"unexpected mesh version: {version} (expected <= 2 or >= 4)")
+            api.error_stop(
+                f"unexpected mesh version: {version} (expected <= 2 or >= 4)"
+            )
 
         # Check for 3D
         if self._maxdim < 2 or self._maxdim > 3:
@@ -72,12 +86,14 @@ class reader(api._files):
         )
         if idtype != np.int64:
             for elt_type in connectivity:
-                connectivity[elt_type] = connectivity[elt_type].astype(idtype, copy=False)
+                connectivity[elt_type] = connectivity[elt_type].astype(
+                    idtype, copy=False
+                )
             for bnd_tag in connect_bc:
                 for elt_type in connect_bc[bnd_tag]:
-                    connect_bc[bnd_tag][elt_type] = connect_bc[bnd_tag][elt_type].astype(
-                        idtype, copy=False
-                    )
+                    connect_bc[bnd_tag][elt_type] = connect_bc[bnd_tag][
+                        elt_type
+                    ].astype(idtype, copy=False)
 
         # Initialize returned variables
         boundaries = {}
@@ -88,7 +104,9 @@ class reader(api._files):
             x = np.asarray(x)
             y = np.asarray(y)
             z = np.asarray(z)
-            x, y, z, point27 = self.__remove_27th_point_hexa27(connect_bc, connectivity, x, y, z)
+            x, y, z, point27 = self.__remove_27th_point_hexa27(
+                connect_bc, connectivity, x, y, z
+            )
             self.celldata.add_data("point27", point27)
 
         # Fill the dictionary of boundary conditions
@@ -121,9 +139,11 @@ class reader(api._files):
             "type": "internal",
             "periodic_transform": np.zeros((16,), dtype=np.float64),
         }
-        for elt_type in connectivity:
-            raveled = np.unique(connectivity[elt_type].ravel())
-            boundaries["int_fluid"]["slicing"] = np.concatenate((boundaries["int_fluid"]["slicing"], raveled))
+        boundaries["int_fluid"]["slicing"] = np.unique(
+            np.concatenate(
+                [connectivity[elt_type].ravel() for elt_type in connectivity]
+            )
+        )
 
         self._coords = (x, y, z)
         self._cellconnectivity = connectivity
@@ -162,20 +182,14 @@ class reader(api._files):
         # Loop to concatenate multiple faces/entities into the same boundary (For complex geometries)
 
         if fff in self._famm:
-            # Temporary list to be merged below
-            bc2 = {"slicing": None}
-            bc2["slicing"] = []
-            # existing array is tranformed into a list and back to array
             bc = boundaries[family]
             bc["type"] = "None"
             bc["periodic_transform"] = "None"
-            bc["slicing"] = bc["slicing"].tolist()
-            for elt_type in connectivity.keys():
-                raveled = np.unique(connectivity[elt_type].ravel())
-                bc2["slicing"] += raveled.tolist()
-            # log.info(bc["slicing"])
-            bc["slicing"] += bc2["slicing"]
-            bc["slicing"] = np.unique(bc["slicing"])
+            # merge new node ids into the existing slicing array
+            new_nodes = np.concatenate(
+                [connectivity[elt_type].ravel() for elt_type in connectivity]
+            )
+            bc["slicing"] = np.unique(np.concatenate([bc["slicing"], new_nodes]))
             bc["type"] = "boundary"
             bc["periodic_transform"] = np.zeros((16,), dtype=np.float64)
 
@@ -187,10 +201,11 @@ class reader(api._files):
             }
 
             bc = boundaries[family]
-            bc["slicing"] = np.array([], dtype=np.int64)
-            for elt_type in connectivity.keys():
-                raveled = np.unique(connectivity[elt_type].ravel())
-                bc["slicing"] = np.concatenate((bc["slicing"], raveled))
+            bc["slicing"] = np.unique(
+                np.concatenate(
+                    [connectivity[elt_type].ravel() for elt_type in connectivity]
+                )
+            )
             bc["type"] = "boundary"
             bc["periodic_transform"] = np.zeros((16,), dtype=np.float64)
             self._famm.append(fff)
@@ -269,7 +284,9 @@ class reader(api._files):
             connectivity[elt_type] = np.array(connectivity[elt_type]) - 1
         for bnd_tag in connect_bc:
             for elt_type in connect_bc[bnd_tag]:
-                connect_bc[bnd_tag][elt_type] = np.array(connect_bc[bnd_tag][elt_type]) - 1
+                connect_bc[bnd_tag][elt_type] = (
+                    np.array(connect_bc[bnd_tag][elt_type]) - 1
+                )
 
         return connectivity, connect_bc, bnd, bnd2fam, maxdim, ncell
 
@@ -445,7 +462,19 @@ class reader(api._files):
                 bnd2fam[ent_tag] = self.__find_ent_v4(entities, ent_tag)
         log.info(f"    tags are {bnd2fam}")
 
-        return fam, bctype, x, y, z, connectivity, connect_bc, bnd, bnd2fam, maxdim, ncell
+        return (
+            fam,
+            bctype,
+            x,
+            y,
+            z,
+            connectivity,
+            connect_bc,
+            bnd,
+            bnd2fam,
+            maxdim,
+            ncell,
+        )
 
     def __remove_27th_point_hexa27(self, conn_bc, conn_vol, x, y, z):
         """Remove the 27th local node of each HEXA27 element.
@@ -477,7 +506,9 @@ class reader(api._files):
         removed_nodes = conn[:, 26]
 
         # Store the actual coordinates of those centre points (for celldata)
-        removed_coords = np.column_stack((x[removed_nodes], y[removed_nodes], z[removed_nodes]))
+        removed_coords = np.column_stack(
+            (x[removed_nodes], y[removed_nodes], z[removed_nodes])
+        )
 
         # Keep mask
         initial_nb_nodes = len(x)
