@@ -43,6 +43,7 @@ cfdwrite_ic3v3 = 'cfdtools._cli:cfdwrite_ic3v3'
 cfdwrite_ic3 = 'cfdtools._cli:cfdwrite_ic3v3'
 cfdwrite_vtk = 'cfdtools._cli:cfdwrite_vtk'
 vtkbrief = 'cfdtools._cli:vtkbrief'
+vtkdiag = 'cfdtools._cli:vtkdiag'
 vtkpack = 'cfdtools._cli:vtkpack'
 
 [project.optional-dependencies]
@@ -57,6 +58,9 @@ doc = [
     "markdown-include >= 0.6.0",
     "mkdocs-include-markdown-plugin",
     "mkdocs-exclude" ]
+mpi = [
+    "mpi4py>=3.1",
+]
 
 [build-system]
 requires      = ["setuptools>=61.0.0", "wheel"]
