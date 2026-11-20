@@ -59,6 +59,26 @@ class reader(api._files):
             api.error_stop(f"unexpected max element dimension: {self._maxdim}")
         log.info("%dD mesh", self._maxdim)
 
+        # Choose the integer dtype for connectivity (node and cell indices).
+        # Signed int32 halves the memory and is safe as long as every node and
+        # cell index fits (indices are 0-based, so the largest is count - 1);
+        # it must stay *signed* because -1 is used as a sentinel (boundary face
+        # neighbour, 27th-point removal). Fall back to int64 above the limit.
+        nnode = len(x)
+        idtype = (
+            np.int32
+            if max(nnode, self._ncell) - 1 <= np.iinfo(np.int32).max
+            else np.int64
+        )
+        if idtype != np.int64:
+            for elt_type in connectivity:
+                connectivity[elt_type] = connectivity[elt_type].astype(idtype, copy=False)
+            for bnd_tag in connect_bc:
+                for elt_type in connect_bc[bnd_tag]:
+                    connect_bc[bnd_tag][elt_type] = connect_bc[bnd_tag][elt_type].astype(
+                        idtype, copy=False
+                    )
+
         # Initialize returned variables
         boundaries = {}
         self._nboco = 0
@@ -469,8 +489,9 @@ class reader(api._files):
         y = y[keep]
         z = z[keep]
 
-        # Renumber map old -> new
-        new_id = -np.ones(initial_nb_nodes, dtype=int)
+        # Renumber map old -> new (keep the connectivity dtype; -1 sentinel
+        # requires a signed type)
+        new_id = -np.ones(initial_nb_nodes, dtype=conn.dtype)
         new_id[keep] = np.arange(np.sum(keep))
 
         # Renumber connectivity

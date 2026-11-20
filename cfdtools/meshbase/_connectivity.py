@@ -630,7 +630,10 @@ class elem_connectivity:
         cell_indices_by_type = {}
         for elemtype, elemsdict in self._elem2node.items():
             cell_nodes = elemsdict["elem2node"]
-            cell_indices = elemsdict["index"].to_numpy()
+            # cell indices follow the connectivity dtype, so face->cell stays
+            # int32 when the connectivity is (the reader guarantees cell indices
+            # fit); -1 boundary sentinel is safe on a signed type
+            cell_indices = elemsdict["index"].to_numpy(dtype=cell_nodes.dtype)
             cell_indices_by_type[elemtype] = cell_indices
             for ftype, face_of_elem in _elem.elem2faces[elemtype].items():
                 if not face_of_elem:
@@ -936,7 +939,7 @@ class elem_connectivity:
         # every block.  Keeping this outside the loop avoids re-allocating
         # the (potentially large) index array on each iteration.
         all_cells_by_type = {
-            elemtype: elemsdict["index"].to_numpy()
+            elemtype: elemsdict["index"].to_numpy(dtype=elemsdict["elem2node"].dtype)
             for elemtype, elemsdict in self._elem2node.items()
         }
 
