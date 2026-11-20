@@ -12,6 +12,21 @@ log = logging.getLogger(__name__)
 _mprof_profile = getattr(builtins, "profile", lambda function: function)
 
 
+def _smallest_int_array(values):
+    """Build a 1-D signed-integer array from a Python list of ints.
+
+    Uses ``int32`` when every value fits (mirroring the gmsh reader's rule of
+    keeping the smallest type that is safe), else ``int64``. An empty list
+    defaults to ``int64``.
+    """
+    arr = np.asarray(values)
+    if arr.size:
+        info = np.iinfo(np.int32)
+        if info.min <= int(arr.min()) and int(arr.max()) <= info.max:
+            return arr.astype(np.int32)
+    return arr.astype(np.int64)
+
+
 @_mprof_profile
 def _group_face_candidates(faces, ncorner, return_boundary_keys=False):
     """Group ordered face candidates without changing face numbering.
@@ -43,9 +58,7 @@ def _group_face_candidates(faces, ncorner, return_boundary_keys=False):
     candidates_by_group = np.argsort(inverse, kind="mergesort")
     group_starts = np.cumsum(counts) - counts
     internal_second = candidates_by_group[group_starts[internal_groups] + 1]
-    boundary_keys = (
-        canonical_nodes[boundary].copy() if return_boundary_keys else None
-    )
+    boundary_keys = canonical_nodes[boundary].copy() if return_boundary_keys else None
     return boundary, internal_first, internal_second, boundary_keys
 
 
@@ -102,16 +115,46 @@ def _assemble_ordered_fragments(arrays, destination_by_source):
 
 
 class indexlist:
-    """class of different implementation of list of index
+    """A list of element/face/node indices, stored as one of two types.
 
-    Returns:
-        _type_: _description_
+    - ``"range"``: a contiguous inclusive interval ``[first, last]``,
+      held as two ints with no per-index storage. This is the cheap form and
+      is what the IC3 writers require (they store only the bounds).
+    - ``"list"``: an arbitrary set of indices, held internally as a 1-D
+      signed-integer :class:`numpy.ndarray` (``int32`` or ``int64``).
+
+    The integer dtype is preserved from the input where possible so that the
+    indices stay consistent with the connectivity arrays they index into (for
+    example the gmsh reader keeps ``int32`` when the mesh is small enough).
+    A range-backed indexlist carries an explicit ``dtype`` (default ``int64``)
+    so that :meth:`to_list` can emit the right type.
+
+    Construct with exactly one of ``irange=[first, last]`` or ``ilist=...``.
+    Use :meth:`to_list` to obtain the indices as a 1-D array without an
+    intermediate Python list.
     """
 
     __available_types = ["list", "range"]
 
-    def __init__(self, irange=None, ilist=None):
+    def __init__(self, irange=None, ilist=None, dtype=None):
+        """Create an empty indexlist, then set it via ``irange`` or ``ilist``.
+
+        Exactly one of ``irange`` (``[first, last]``, inclusive) or
+        ``ilist`` (list or 1-D ndarray of indices) may be given.
+
+        Args:
+        ----
+            irange: two-element ``[first, last]`` index range (both inclusive).
+            ilist: list or 1-D ndarray of element indices.
+            dtype: integer dtype for a range-backed indexlist (ignored for a
+                list, which inherits the dtype of ``ilist``). Defaults to
+                ``int64``.
+
+        """
         self._type = None
+        self._list = None
+        self._range = None
+        self._dtype = np.dtype(dtype) if dtype is not None else np.dtype(np.int64)
         assert (irange is None) or (ilist is None)
         if irange is not None:
             self.set_range(irange)
@@ -120,12 +163,19 @@ class indexlist:
 
     @property
     def type(self):
+        """Return ``"range"`` or ``"list"`` (or ``None`` if unset)."""
         return self._type
 
     @property
+    def dtype(self):
+        """Integer dtype of the indices (``int32`` or ``int64``)."""
+        return self._dtype
+
+    @property
     def size(self):
+        """Number of indices represented."""
         return (
-            len(self._list)
+            self._list.size
             if self.type == "list"
             else self._range[1] - self._range[0] + 1
         )
@@ -135,92 +185,167 @@ class indexlist:
         self._list = None
         self._range = None
 
-    # @property
     def range(self):
+        """Return ``[first, last]`` (inclusive) for a range-backed indexlist.
+
+        Raises an error for a list-backed indexlist, which has no single range.
+        """
         if self._type == "range":
             return self._range
         else:
             api.error_stop("unable to get range from list connectivity")
 
-    def set_range(self, irange):
-        """define range of index with first and last included"""
+    def set_range(self, irange, dtype=None):
+        """Set this indexlist to a contiguous range ``[first, last]`` (both inclusive).
+
+        Args:
+        ----
+            irange: two-element ``[first, last]`` index range (both inclusive).
+            dtype: integer dtype to use when materializing the range; kept for
+                consistency with the connectivity arrays. Defaults to the
+                dtype given at construction (``int64``) if not provided.
+
+        """
         self._delete()
         self._type = "range"
         self._range = [*irange]
+        if dtype is not None:
+            self._dtype = np.dtype(dtype)
 
-    def list(self):
-        if self._type == "range":
-            return list(range(self._range[0], self._range[1] + 1))
-        elif self._type == "list":
-            return list(self._list)  # ensure list if may be
-        else:
-            api.error_stop(f"unknown type: {self._type}")
+    def to_list(self, dtype=None):
+        """Return the indices as a 1-D array.
 
-    def to_numpy(self, dtype=None):
-        """Return indices as a NumPy array without an intermediate Python list.
+        For a range-backed indexlist the array is generated with
+        :func:`numpy.arange` in the requested dtype (defaulting to the
+        indexlist's own dtype). For a list-backed one the internal array is
+        returned directly (no copy) when ``dtype`` is ``None`` or matches;
+        a converted copy is returned otherwise. Note that for the list case
+        the returned array is the internal storage, so mutating it mutates
+        this indexlist.
 
-        Range-backed indices are generated directly with :func:`numpy.arange`.
-        List-backed indices necessarily allocate an array but avoid making an
-        additional copy of the Python list first.
+        Args:
+        ----
+            dtype: optional NumPy dtype; defaults to the indexlist's own dtype.
+
         """
+        if dtype is None:
+            dtype = self._dtype
         if self._type == "range":
             return np.arange(self._range[0], self._range[1] + 1, dtype=dtype)
         if self._type == "list":
-            return np.asarray(self._list, dtype=dtype)
+            if np.dtype(dtype) != self._list.dtype:
+                return self._list.astype(dtype)
+            return self._list
         api.error_stop(f"unknown type: {self._type}")
 
     def _listof(self, ilist):
+        """Convert ``ilist`` to a 1-D signed-integer array, preserving dtype.
+
+        Accepts a Python list or a NumPy array. An integer array keeps its own
+        dtype (returned unchanged when it is already 1-D and owns its data,
+        otherwise ravel/copied). A Python list (which carries no dtype
+        information) becomes the smallest signed int that fits its values
+        (``int32`` when possible, else ``int64``). Raises an error for any
+        other type.
+        """
+        if isinstance(ilist, np.ndarray):
+            if not np.issubdtype(ilist.dtype, np.signedinteger):
+                return np.asarray(ilist).astype(np.int64).ravel()
+            if ilist.ndim == 1 and ilist.flags.owndata:
+                return ilist
+            return ilist.ravel().copy()
         if isinstance(ilist, list):
-            rlist = ilist
-        elif isinstance(ilist, np.ndarray):
-            rlist = self._list = ilist.tolist()
-        else:
-            log.error(f"{type(ilist)}")
-            api.error_stop("unknown type in indexlist class")
-        return rlist
+            return _smallest_int_array(ilist)
+        log.error(f"{type(ilist)}")
+        api.error_stop("unknown type in indexlist class")
 
     def set_list(self, ilist):
+        """Set this indexlist to an arbitrary list of indices.
+
+        ``ilist`` may be a Python list or a NumPy array; it is converted to a
+        1-D signed-integer array preserving its dtype (see :meth:`_listof`),
+        and the indexlist's dtype is set to match.
+        """
         self._delete()
         self._type = "list"
         self._list = self._listof(ilist)
+        self._dtype = self._list.dtype
 
     def append(self, ilist: list):
-        # assert self._type == 'list'
-        # self._list.extend(self._listof(ilist))
-        self.set_list(self.list() + self._listof(ilist))
+        """Append indices to this indexlist (result is always list-backed).
+
+        The dtype is promoted to the common type of both when they differ.
+        """
+        arr = self._listof(ilist)
+        if arr.dtype != self._dtype:
+            arr = arr.astype(np.result_type(self._dtype, arr.dtype))
+        self.set_list(np.concatenate((self.to_list(), arr)))
 
     def shift(self, i):
+        """Return a new indexlist with every index offset by ``i``.
+
+        The range representation and dtype are preserved.
+        """
         if self._type == "range":
-            return indexlist(irange=[self._range[0] + i, self._range[1] + i])
+            return indexlist(
+                irange=[self._range[0] + i, self._range[1] + i], dtype=self._dtype
+            )
         elif self._type == "list":
-            return indexlist(ilist=[j + i for j in self._list])
+            return indexlist(ilist=self._list + i)
 
     def compress(self):
-        """try to make it a range"""
-        if self._type == "list":
-            if np.all(
-                self._list == np.arange(self._list[0], self._list[0] + len(self._list))
-            ):
-                self.set_range([self._list[0], self._list[-1]])
+        """Convert to a range if the indices are exactly contiguous.
+
+        A list-backed indexlist whose values are ``[v0, v0+1, ..., v0+n-1]``
+        becomes the range ``[v0, v0+n-1]``. Otherwise (including a range-backed
+        indexlist) the indexlist is left unchanged.
+        """
+        if self._type == "list" and np.all(
+            self._list == np.arange(self._list[0], self._list[0] + self._list.size)
+        ):
+            self.set_range([self._list[0], self._list[-1]], dtype=self._dtype)
         # else no error, keep list
 
-    def __getitem__(self, indices):  # caution: may be highly costly
-        return self.list()[indices]
+    def __getitem__(self, indices):
+        """Index into the indices, returning a NumPy array.
+
+        Supports integer, slice, and (fancy/boolean) array indexing because
+        the lookup is done on the NumPy array. Materializes the full array
+        first, so it may be costly for large range-backed indexlists.
+        """
+        return self.to_list()[indices]
 
     def __add__(self, other):
-        # TODO: may be optimized to keep ranges
-        return indexlist(ilist=self.list() + other.list())
+        """Concatenate two indexlists.
+
+        Two adjacent ranges (in either order) merge into a single range, which
+        the IC3 writers rely on. Any other combination yields a list-backed
+        indexlist containing the concatenated indices.
+        """
+        if self.type == "range" and other.type == "range":
+            if self._range[1] + 1 == other._range[0]:
+                return indexlist(
+                    irange=[self._range[0], other._range[1]],
+                    dtype=np.result_type(self._dtype, other._dtype),
+                )
+            if other._range[1] + 1 == self._range[0]:
+                return indexlist(
+                    irange=[other._range[0], self._range[1]],
+                    dtype=np.result_type(self._dtype, other._dtype),
+                )
+        return indexlist(ilist=np.concatenate((self.to_list(), other.to_list())))
 
     def __str__(self):
+        """Return a short human-readable summary of the indexlist."""
         if self._type == "range":
             return f"range {self._range[0]} to {self._range[1]}"
         elif self._type == "list":
-            n = np.array(self._list)
+            n = self._list
             return "list min:max:size = {}:{}:{}".format(n.min(), n.max(), n.size)
 
 
 class indexindirection:
-    """class for a genuine connectivity, regular which size = nelem x 2"""
+    """Class for a genuine connectivity, regular which size = nelem x 2."""
 
     def __init__(self, array: np.ndarray = None):
         self.conn = array  # setter
@@ -259,11 +384,7 @@ class indexindirection:
 
 
 class compressed_listofindex:
-    """class for a compressed list of index (CSR like)
-
-    Returns:
-        _type_: _description_
-    """
+    """Class for a compressed list of index (CSR like)."""
 
     def __init__(self, index, value) -> None:
         self.set(index, value)
@@ -294,14 +415,18 @@ class elem_connectivity:
 
     def add_elems(self, etype: str, elem2node: np.ndarray, index: indexlist = None):
         dim = elem2node.shape[0]
+        # a range-backed index inherits the connectivity dtype so the indices
+        # stay consistent with the elem2node array they index into
         ind = (
-            indexlist(irange=[self._nelem, self._nelem + dim - 1])
+            indexlist(
+                irange=[self._nelem, self._nelem + dim - 1], dtype=elem2node.dtype
+            )
             if index is None
             else index
         )
         self._nelem += dim
         if etype in self.elems():
-            self._elem2node[etype]["index"].append(ind.list())
+            self._elem2node[etype]["index"].append(ind.to_list())
             self._elem2node[etype]["elem2node"] = np.concatenate(
                 (self._elem2node[etype]["elem2node"], elem2node), axis=0
             )
@@ -320,6 +445,9 @@ class elem_connectivity:
     def items(self):
         return self._elem2node.items()
 
+    def values(self):
+        return self._elem2node.values()
+
     def elems(self):
         return self._elem2node.keys()
 
@@ -331,8 +459,11 @@ class elem_connectivity:
 
     def check(self):
         # check uniqueness of all index
+        # promote mixed dtypes (e.g. int32 + int64) to a common type first,
+        # since np.concatenate does not promote on its own
+        common = np.result_type(*[e2n["index"].dtype for e2n in self.values()])
         index = np.concatenate(
-            tuple(e2n["index"].list() for _, e2n in self._elem2node.items())
+            [e2n["index"].to_list(dtype=common) for e2n in self.values()]
         )
         uniq = np.unique(index)
         assert index.min() == 0
@@ -346,49 +477,35 @@ class elem_connectivity:
     #     return e2n
 
     def print(self, prefix="", detailed=False):
-        for elemtype, elemco in self._elem2node.items():
+        for elemtype, elemco in self.items():
             log.info(
                 prefix
                 + f"{elemtype}: {elemco['elem2node'].shape} with index {elemco['index']}",
             )
             if detailed:
-                log.info(prefix + f"  index: {elemco['index'].list()}")
+                log.info(prefix + f"  index: {elemco['index'].to_list()}")
                 log.info(prefix + f"  faces: {elemco['elem2node']}")
 
     def all_index(self):
-        return list(sum([econ["index"].list() for _, econ in self.items()], []))
-
-    # def index_elem_tuples(self):
-    #     # optim: here, .list() is not mandatory but avoid massively calling .list().getitem()
-    #     return list( (i, face.ravel().tolist())
-    #                 for _, e2n in self.items()
-    #                     for i, face in zip(e2n['index'].list(), np.vsplit(e2n['elem2node'], e2n['elem2node'].shape[0]))
-    #             )
-    def index_elem_tuples(self):
-        """creates a list of tuple (index of face, nodes of faces)"""
-        list_of_tuples = []
-        for _, e2n in self.items():
-            # optim: here, .list() is not mandatory but avoid massively calling .list().getitem()
-            ind = e2n["index"].list()
-            f2n = e2n["elem2node"]
-            list_of_tuples.extend(
-                [(ind[i], f2n[i, :].ravel().tolist()) for i in range(f2n.shape[0])]
-            )
-
-        return list_of_tuples
+        return np.concatenate([e2n["index"].to_list() for e2n in self.values()])
 
     def nodes_of_indexlist(self, elemlist):
-        """get list of nodes given list of index of elements"""
-        ind = []
-        f2n = []
-        for _, e2n in self.items():
-            ind.extend(e2n["index"].list())
-            f2n.extend(e2n["elem2node"].tolist())
-        # joinlist = list(
-        #     chain.from_iterable([tnod[1] for tnod in filter(lambda tup: tup[0] in elemlist, zip(ind, f2n))])
-        # )
-        joinlist = list(chain.from_iterable(map(dict(zip(ind, f2n)).get, elemlist)))
-        return list(set(joinlist))  # make unique
+        """Get list of nodes given list of index of elements."""
+        # promote mixed dtypes to a common type before concatenating
+        common = np.result_type(*[e2n["index"].dtype for e2n in self.values()])
+        ind = np.concatenate(
+            [e2n["index"].to_list(dtype=common) for e2n in self.values()]
+        )
+        # one node-array per element (keeps the per-element grouping)
+        f2n = list(chain.from_iterable(e2n["elem2node"] for e2n in self.values()))
+        # node dtype (may differ from the index dtype)
+        ndtype = np.result_type(*[e2n["elem2node"].dtype for e2n in self.values()])
+        # map element index -> its nodes, then gather the requested elements
+        elem2node = dict(zip(ind, f2n))
+        joinlist = np.fromiter(
+            chain.from_iterable(map(elem2node.get, elemlist)), dtype=ndtype
+        )
+        return np.unique(joinlist)
 
     def importfrom_compressedindex(self, zconn: compressed_listofindex):
         # there is no test but must only applied to faces
@@ -403,11 +520,12 @@ class elem_connectivity:
 
     # @profile
     def exportto_compressedindex(self) -> compressed_listofindex:
-        """Build a CSR-like (index, value) face->node connectivity with faces
-        ordered by ascending global face index.
+        """Build a CSR-like (index, value) face->node connectivity.
+
+        Faces are ordered by ascending global face index.
 
         Fully vectorised with numpy. It reproduces the historical
-        (index_elem_tuples -> list.sort -> chain) implementation exactly --
+        (per-face tuples -> list.sort -> chain) implementation exactly --
         same face ordering and same flattened node order -- but without
         materialising one Python tuple per face, which was the CPU/memory
         bottleneck on large meshes. Global face indices are a unique
@@ -418,10 +536,10 @@ class elem_connectivity:
         # single-element lists ([[0], [1], ...]), so flatten to 1-D ints
         blocks = [
             (
-                np.asarray(e2n["index"].list(), dtype=np.int64).reshape(-1),
+                e2n["index"].to_list(dtype=np.int64).reshape(-1),
                 e2n["elem2node"],
             )
-            for _, e2n in self.items()
+            for e2n in self.values()
         ]
         if not blocks:
             return compressed_listofindex(
@@ -445,8 +563,8 @@ class elem_connectivity:
         if len(blocks) == 1:
             # single face type: a contiguous row gather, no scatter temporary
             _, f2n = blocks[0]
-            value = np.ascontiguousarray(f2n[order]).reshape(-1).astype(
-                rdtype, copy=False
+            value = (
+                np.ascontiguousarray(f2n[order]).reshape(-1).astype(rdtype, copy=False)
             )
             return compressed_listofindex(index, value)
 
@@ -467,14 +585,14 @@ class elem_connectivity:
     def importfrom_merge(self, list_elem):
         # computes size of all elem_connectivity
         sizes = [
-            np.sum([np.array(e2n["index"].list()).size for _, e2n in elemcon.items()])
+            sum(e2n["index"].to_list().size for e2n in elemcon.values())
             for elemcon in list_elem
         ]
         sizes = [0] + sizes[:-1]  # start with 0, last is useless
         mergedict = defaultdict(dict)
         for shift, elemcon in zip(sizes, list_elem):
             for key, elemtype in elemcon.items():
-                if key in mergedict.keys():
+                if key in mergedict:
                     mergedict[key]["index"] = mergedict[key]["index"] + elemtype[
                         "index"
                     ].shift(shift)
@@ -495,16 +613,19 @@ class elem_connectivity:
             """Build a dict of face type to a list of tuples of each (oriented) face and its neighbors.
 
             Args:
+            ----
                 elems (dict): dict of elements with node definition
 
             Returns:
+            -------
                 _type_: dict of face type
+
             """
             faces_neighbour = defaultdict(list)
             # elemtype: 'hexa8', elemsarray: ndarray[nelem,8]
             for elemtype, elemsdict in self._elem2node.items():
                 # cell/element indices
-                index = elemsdict["index"].list()  # call export to list now
+                index = elemsdict["index"].to_list()  # element indices as array
                 elemsarray = elemsdict["elem2node"]
                 # V0
                 # for ielem in range(elemsarray.shape[0]):
@@ -538,21 +659,23 @@ class elem_connectivity:
         def __find_duplicates(faces_neighbour: dict):
             """Find duplicated faces and build unique face/node face/cell connectivity.
 
-            Parameters
-            ----------
-            faces_neighbour: dict
-                 description
+            Args:
+            ----
+                faces_neighbour: dict of face type to a list of
+                    ``(face_node_tuple, element_index)`` tuples, as built by
+                    ``__build_face_and_neighbour``.
 
-            Returns
+            Returns:
             -------
-            internalfaces: elem_connectivity
-                Connectivity of internal faces.
-            iface2cell: indexindirection
-                Cells of each internal face.
-            boundaryfaces: elem_connectivity
-                Connectivity of boundary faces.
-            bface2cell: indexindirection
-                Cells of each boundary face.
+                internalfaces: elem_connectivity
+                    Connectivity of internal faces.
+                iface2cell: indexindirection
+                    Cells of each internal face.
+                boundaryfaces: elem_connectivity
+                    Connectivity of boundary faces.
+                bface2cell: indexindirection
+                    Cells of each boundary face.
+
             """
             internalfaces = elem_connectivity()
             boundaryfaces = elem_connectivity()
@@ -633,7 +756,7 @@ class elem_connectivity:
             # cell indices follow the connectivity dtype, so face->cell stays
             # int32 when the connectivity is (the reader guarantees cell indices
             # fit); -1 boundary sentinel is safe on a signed type
-            cell_indices = elemsdict["index"].to_numpy(dtype=cell_nodes.dtype)
+            cell_indices = elemsdict["index"].to_list(dtype=cell_nodes.dtype)
             cell_indices_by_type[elemtype] = cell_indices
             for ftype, face_of_elem in _elem.elem2faces[elemtype].items():
                 if not face_of_elem:
@@ -652,9 +775,7 @@ class elem_connectivity:
             for ftype, count in candidate_counts.items()
         }
         cells_by_type = {
-            ftype: np.empty(
-                count, dtype=np.result_type(*cell_dtypes[ftype])
-            )
+            ftype: np.empty(count, dtype=np.result_type(*cell_dtypes[ftype]))
             for ftype, count in candidate_counts.items()
         }
         offsets = {ftype: 0 for ftype in candidate_counts}
@@ -678,10 +799,8 @@ class elem_connectivity:
 
         for ftype, faces in faces_by_type.items():
             cells = cells_by_type[ftype]
-            boundary, internal_first, internal_second, _ = (
-                _group_face_candidates(
-                    faces, _elem.ncorner_linear[ftype]
-                )
+            boundary, internal_first, internal_second, _ = _group_face_candidates(
+                faces, _elem.ncorner_linear[ftype]
             )
             boundaryfaces.add_elems(ftype, faces[boundary])
             bface2cell.append(
@@ -694,9 +813,7 @@ class elem_connectivity:
             )
             internalfaces.add_elems(ftype, faces[internal_first])
             iface2cell.append(
-                np.column_stack(
-                    (cells[internal_first], cells[internal_second])
-                )
+                np.column_stack((cells[internal_first], cells[internal_second]))
             )
 
         return internalfaces, iface2cell, boundaryfaces, bface2cell
@@ -724,9 +841,7 @@ class elem_connectivity:
                 order = np.argsort(ranks, kind="mergesort")
                 del ranks
                 destination_by_source = np.empty_like(order)
-                destination_by_source[order] = np.arange(
-                    order.size, dtype=order.dtype
-                )
+                destination_by_source[order] = np.arange(order.size, dtype=order.dtype)
                 del order
 
                 ordered_faces = _assemble_ordered_fragments(
@@ -761,9 +876,7 @@ class elem_connectivity:
                     rank_dtype = np.promote_types(
                         rank_dtype, np.asarray(record[0]).dtype
                     )
-                    face_dtype = np.promote_types(
-                        face_dtype, record[1].dtype
-                    )
+                    face_dtype = np.promote_types(face_dtype, record[1].dtype)
                     cell_dtype = np.promote_types(
                         cell_dtype, np.asarray(record[2]).dtype
                     )
@@ -816,9 +929,7 @@ class elem_connectivity:
                 face_arrays.append(boundaryfaces[ftype])
             ncorner = _elem.ncorner_linear[ftype]
             nface = sum(array.shape[0] for array in face_arrays)
-            canonical_nodes = np.empty(
-                (nface, ncorner), dtype=face_arrays[0].dtype
-            )
+            canonical_nodes = np.empty((nface, ncorner), dtype=face_arrays[0].dtype)
             offset = 0
             for array in face_arrays:
                 last = offset + array.shape[0]
@@ -828,8 +939,7 @@ class elem_connectivity:
 
             order = np.lexsort(
                 tuple(
-                    canonical_nodes[:, column]
-                    for column in range(ncorner - 1, -1, -1)
+                    canonical_nodes[:, column] for column in range(ncorner - 1, -1, -1)
                 )
             )
             for first in range(0, max(nface - 1, 0), comparison_chunk):
@@ -859,9 +969,11 @@ class elem_connectivity:
         numbering can make the open-face registry large.
 
         Args:
+        ----
             nblocks: Number of non-empty consecutive cell-index blocks.
             verbose: Log per-block candidate, creation and reconnection
                 counts at ``INFO`` level.
+
         """
         if not isinstance(nblocks, (int, np.integer)) or nblocks < 1:
             raise ValueError("nblocks must be a positive integer")
@@ -923,23 +1035,19 @@ class elem_connectivity:
 
         ordered_cell_indices = np.sort(
             np.concatenate(
-                [
-                    elemsdict["index"].to_numpy()
-                    for elemsdict in self._elem2node.values()
-                ]
+                [elemsdict["index"].to_list() for elemsdict in self._elem2node.values()]
             )
         )
         block_edges = np.linspace(0, self.nelem, nblocks + 1, dtype=int)
         pending = {ftype: {} for ftype in face_order}
         internal_records = {
-            ftype: {"ranks": [], "faces": [], "neighbours": []}
-            for ftype in face_order
+            ftype: {"ranks": [], "faces": [], "neighbours": []} for ftype in face_order
         }
         # Materialise the full cell-index arrays once; they are reused by
         # every block.  Keeping this outside the loop avoids re-allocating
         # the (potentially large) index array on each iteration.
         all_cells_by_type = {
-            elemtype: elemsdict["index"].to_numpy(dtype=elemsdict["elem2node"].dtype)
+            elemtype: elemsdict["index"].to_list(dtype=elemsdict["elem2node"].dtype)
             for elemtype, elemsdict in self._elem2node.items()
         }
 
@@ -964,23 +1072,16 @@ class elem_connectivity:
                         continue
                     face_blocks[ftype].append(
                         np.concatenate(
-                            [
-                                cell_nodes[:, local_face]
-                                for local_face in local_faces
-                            ],
+                            [cell_nodes[:, local_face] for local_face in local_faces],
                             axis=0,
                         )
                     )
-                    cell_blocks[ftype].append(
-                        np.tile(cell_indices, len(local_faces))
-                    )
+                    cell_blocks[ftype].append(np.tile(cell_indices, len(local_faces)))
                     rank_base = rank_bases[(elemtype, ftype)]
                     rank_blocks[ftype].append(
                         np.concatenate(
                             [
-                                rank_base
-                                + ilocal * all_cells.size
-                                + row_indices
+                                rank_base + ilocal * all_cells.size + row_indices
                                 for ilocal in range(len(local_faces))
                             ]
                         )
@@ -1027,16 +1128,16 @@ class elem_connectivity:
                 matched_neighbours = []
                 for candidate, canonical_key in zip(boundary, boundary_keys):
                     key = tuple(canonical_key)
-                    current = (
-                        ranks[candidate], faces[candidate], cells[candidate]
-                    )
+                    current = (ranks[candidate], faces[candidate], cells[candidate])
                     previous = pending[ftype].pop(key, None)
                     if previous is None:
                         # A row slice is a view of the full candidate block.
                         # Copying this small face is essential: retaining the
                         # view would retain the entire block in memory.
                         pending[ftype][key] = (
-                            current[0], current[1].copy(), current[2]
+                            current[0],
+                            current[1].copy(),
+                            current[2],
                         )
                         block_opened += 1
                     else:
@@ -1046,9 +1147,7 @@ class elem_connectivity:
                             first_face, second_face = current, previous
                         matched_ranks.append(first_face[0])
                         matched_faces.append(first_face[1])
-                        matched_neighbours.append(
-                            (first_face[2], second_face[2])
-                        )
+                        matched_neighbours.append((first_face[2], second_face[2]))
                         block_reconnected += 1
                 if matched_ranks:
                     self._append_internal_face_records(
@@ -1106,18 +1205,34 @@ class elem_connectivity:
         return result
 
     def nodelist(self):
-        """Create list of (unique) nodes from element connectivity."""
-        nodeset = set()
-        for _, econ in self.items():
-            nodeset.update(econ["elem2node"].ravel().tolist())
-        return list(nodeset)
+        """Create array of unique node ids from element connectivity."""
+        return np.unique(
+            np.concatenate([e2n["elem2node"].ravel() for e2n in self.values()])
+        )
 
     def extrude(self, nplanes: int, inodeshift: int):
-        """_summary_
+        """Extrude this element connectivity into a volume.
+
+        Each source element is repeated for ``nplanes - 1`` layers, producing
+        the extruded element type (e.g. ``quad4`` -> ``hexa8``, ``quad9`` ->
+        ``hexa27``). Node indices of each new layer are shifted by
+        ``inodeshift`` (``2 * inodeshift`` for quadratic elements) to refer
+        to the duplicated node set; element indices are shifted by the same
+        step per layer, so each layer keeps its own copy of the original
+        indices.
 
         Args:
-            n (int): number of planes
-            inodeshift (int): number of nodes of each plane
+        ----
+            nplanes (int): number of planes the source mesh is extruded
+                through (must be greater than 1); the result contains
+                ``nplanes - 1`` layers of elements.
+            inodeshift (int): number of nodes of the source mesh, i.e. the
+                offset added to the node indices of each duplicated plane.
+
+        Returns:
+        -------
+            elem_connectivity: the extruded element connectivity.
+
         """
         assert nplanes > 1
         nlayers = nplanes - 1
@@ -1155,8 +1270,8 @@ class elem_connectivity:
             step = 2 * inodeshift if is_quadratic else inodeshift
             for i in range(nlayers):
                 elemcon[i * nelem : (i + 1) * nelem, :] += i * step
-            index = np.tile(econ["index"].list(), (nlayers))
+            index = np.tile(econ["index"].to_list(), (nlayers))
             for i in range(nlayers):
                 index[i * nelem : (i + 1) * nelem] += i * step
-            newcon.add_elems(target_type, elemcon, indexlist(ilist=index.tolist()))
+            newcon.add_elems(target_type, elemcon, indexlist(ilist=index))
         return newcon

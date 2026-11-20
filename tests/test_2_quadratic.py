@@ -56,7 +56,7 @@ def _boco_point_sets(mesh):
     """Map each boundary patch to its (order-invariant) set of node coordinates."""
     pts = _points(mesh)
     return {
-        name: _sorted_points(pts[np.asarray(boco.index.list())])
+        name: _sorted_points(pts[boco.index.to_list()])
         for name, boco in mesh._bocos.items()
     }
 
