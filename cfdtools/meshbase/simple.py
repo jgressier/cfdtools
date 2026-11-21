@@ -1,9 +1,10 @@
 # simple subpackage
-import cfdtools.api as api
-import cfdtools.meshbase._mesh as _mesh
-import cfdtools.meshbase._connectivity as _conn
 from itertools import product
+
 import numpy as np
+
+import cfdtools.meshbase._connectivity as _conn
+from cfdtools.meshbase import _mesh
 
 
 class Cube:
@@ -18,7 +19,9 @@ class Cube:
         return list(product(range(self._nx), range(self._ny), range(self._nz)))
 
     def nodes_ijk(self):
-        return list(product(range(self._nx + 1), range(self._ny + 1), range(self._nz + 1)))
+        return list(
+            product(range(self._nx + 1), range(self._ny + 1), range(self._nz + 1))
+        )
 
     def nodes_xyz(self, i, j, k):
         return (i / float(self._nx), j / float(self._ny), k / float(self._nz))
@@ -54,7 +57,7 @@ class Cube:
         # set cell connectivity
         cell2node = _conn.elem_connectivity()
         hexanode, ielem = self._elems()
-        cell2node.add_elems('hexa8', hexanode, _conn.indexlist(ilist=ielem))
+        cell2node.add_elems("hexa8", hexanode, _conn.indexlist(ilist=ielem))
         meshdata.set_cell2node(cell2node)
         # set node coordinates
         ni, nj, nk = np.indices(
@@ -65,17 +68,17 @@ class Cube:
         meshdata.set_nodescoord_xyz(x, y, z)
         # boco
         boundary_values = {
-            'imin': (0, 0),
-            'imax': (0, self._nx),
-            'jmin': (1, 0),
-            'jmax': (1, self._ny),
-            'kmin': (2, 0),
-            'kmax': (2, self._nz),
+            "imin": (0, 0),
+            "imax": (0, self._nx),
+            "jmin": (1, 0),
+            "jmax": (1, self._ny),
+            "kmin": (2, 0),
+            "kmax": (2, self._nz),
         }
         for name, (axis, value) in boundary_values.items():
             bcmark = _mesh.submeshmark(name)
-            bcmark.geodim = 'bdnode'
-            bcmark.type = 'boundary'
+            bcmark.geodim = "bdnode"
+            bcmark.type = "boundary"
             ranges = [
                 np.arange(self._nx + 1),
                 np.arange(self._ny + 1),
@@ -83,10 +86,10 @@ class Cube:
             ]
             ranges[axis] = np.array([value])
             ni, nj, nk = (
-                array.ravel() for array in np.meshgrid(*ranges, indexing='ij')
+                array.ravel() for array in np.meshgrid(*ranges, indexing="ij")
             )
             nodes = self.nodeglobindex_ijk(ni, nj, nk)
-            bcmark.index = _conn.indexlist(ilist=nodes.tolist())
+            bcmark.index = _conn.indexlist(ilist=nodes)
             meshdata.add_boco(bcmark)
         return meshdata
 

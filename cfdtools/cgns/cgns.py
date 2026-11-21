@@ -12,21 +12,29 @@ except ImportError:
 
 import numpy as np
 
-from cfdtools.api import error_stop, fileformat_reader  # , memoize
-from cfdtools.hdf5 import h5File, h5_str
-from cfdtools.meshbase._mesh import Mesh, submeshmark
 import cfdtools.data as _data
 import cfdtools.meshbase._connectivity as _conn
 import cfdtools.meshbase._elements as _elem
+from cfdtools.api import error_stop, fileformat_reader  # , memoize
+from cfdtools.hdf5 import h5_str, h5File
+from cfdtools.meshbase._mesh import Mesh, submeshmark
 
 log = logging.getLogger(__name__)
 
 cgtype = {}
-ele_cgns2local = {2: 'node1', 3: 'bar2', 5: 'tri3', 7: 'quad4', 9: 'quad9', 17: 'hexa8', 19: 'hexa27'}
+ele_cgns2local = {
+    2: "node1",
+    3: "bar2",
+    5: "tri3",
+    7: "quad4",
+    9: "quad9",
+    17: "hexa8",
+    19: "hexa27",
+}
 
 
 def cgnstype(obj):
-    cgnsdatatype = obj.attrs.get('label')
+    cgnsdatatype = obj.attrs.get("label")
     return cgnsdatatype
 
 
@@ -45,7 +53,6 @@ def cg_gridlocation(bc):
 
 
 class cgnszone:
-
     def __init__(self, zone, geodim=None) -> None:
         self._zone = zone
         self._zonetype = h5_str(zone["ZoneType/ data"])
@@ -53,27 +60,27 @@ class cgnszone:
         if self._zonetype != "Unstructured":
             error_stop("Only Unstructured zone expected")
         # look for Elements
-        self._elems = dict_cgnstype(zone, b'Elements_t')
+        self._elems = dict_cgnstype(zone, b"Elements_t")
         # look for ZoneBC and BC
-        self._zonebc = dict_cgnstype(zone, b'ZoneBC_t')
+        self._zonebc = dict_cgnstype(zone, b"ZoneBC_t")
         self._zonebc.update(dict_cgnstype(zone, b"ZoneGridConnectivity_t"))
         self._BCs = {}
         for zbc in self._zonebc.values():
-            self._BCs.update(dict_cgnstype(zbc, b'BC_t'))
-            self._BCs.update(dict_cgnstype(zbc, b'GridConnectivity_t'))
+            self._BCs.update(dict_cgnstype(zbc, b"BC_t"))
+            self._BCs.update(dict_cgnstype(zbc, b"GridConnectivity_t"))
 
     @property
     def nnode(self):
-        return self._zone[' data'][0, 0]
+        return self._zone[" data"][0, 0]
 
     @property
     def ncell(self):
-        return self._zone[' data'][1, 0]
+        return self._zone[" data"][1, 0]
 
     def coords(self):
-        x = self._zone['GridCoordinates']['CoordinateX/ data'][:]
-        y = self._zone['GridCoordinates']['CoordinateY/ data'][:]
-        z = self._zone['GridCoordinates']['CoordinateZ/ data'][:]
+        x = self._zone["GridCoordinates"]["CoordinateX/ data"][:]
+        y = self._zone["GridCoordinates"]["CoordinateY/ data"][:]
+        z = self._zone["GridCoordinates"]["CoordinateZ/ data"][:]
         return x, y, z
 
     def elemcon(self, geodim):
@@ -108,19 +115,19 @@ class cgnszone:
         else:
             name = Path(BC.name).name  # extract final name of
         boco = submeshmark(name)
-        boco.geodim = 'node'  # don't know if node, intnode or bdnode
-        boco.type = 'boundary'
-        boco.properties['BCtype'] = h5_str(BC[" data"])
-        boco.properties['periodic_transform'] = None
+        boco.geodim = "node"  # don't know if node, intnode or bdnode
+        boco.type = "boundary"
+        boco.properties["BCtype"] = h5_str(BC[" data"])
+        boco.properties["periodic_transform"] = None
         if "PointList" in BC.keys():
-            indexlist = (BC["PointList/ data"][:] - 1).ravel().tolist()
+            indexlist = (BC["PointList/ data"][:] - 1).ravel()
             gridloc = cg_gridlocation(BC)
         elif "ElementList" in BC.keys():  # not in CGNS norm
-            indexlist = (BC["ElementList/ data"][:] - 1).ravel().tolist()
+            indexlist = (BC["ElementList/ data"][:] - 1).ravel()
             gridloc = "FaceCenter"
             if len(indexlist) == self.ncell:
                 gridloc = "CellCenter"
-                boco.type = 'internal'
+                boco.type = "internal"
         else:
             error_stop(f"Unknown indexing of BC mark: {name}")
         # convert to node marks
@@ -129,12 +136,12 @@ class cgnszone:
         elif gridloc == "Vertex":
             nodelist = indexlist
             if len(nodelist) == self.nnode:
-                boco.type = 'internal'
+                boco.type = "internal"
         elif gridloc == "CellCenter":
             nodelist = indexlist  # cells indeed
-            boco.geodim = 'cell'
+            boco.geodim = "cell"
         else:
-            error_stop(f'unknown gridlocation {gridloc}')
+            error_stop(f"unknown gridlocation {gridloc}")
         boco.index = _conn.indexlist(ilist=nodelist)  # must start at 0
         return boco
 
@@ -146,16 +153,20 @@ class cgnsfile(h5File):
 
     def open(self):
         super().open()
-        self._cgnsver = self._h5file['CGNSLibraryVersion'][' data'][0]
+        self._cgnsver = self._h5file["CGNSLibraryVersion"][" data"][0]
 
     def printinfo(self):
         super().printinfo()
 
     def list_bases(self):
-        return [bname for bname, base in self._h5file.items() if cgnstype(base) == b'CGNSBase_t']
+        return [
+            bname
+            for bname, base in self._h5file.items()
+            if cgnstype(base) == b"CGNSBase_t"
+        ]
 
 
-@fileformat_reader('CGNS', '.cgns')
+@fileformat_reader("CGNS", ".cgns")
 class cgnsMesh:
     def __init__(self, filename) -> None:
         self._filename = filename
@@ -180,7 +191,7 @@ class cgnsMesh:
         # get BASE list
         self._bases = self._file.list_bases()
         for base in self._bases:
-            self._zones = dict_cgnstype(self._file._h5file[base], b'Zone_t')
+            self._zones = dict_cgnstype(self._file._h5file[base], b"Zone_t")
         # geo dimension from base
         self._geodim = self._file._h5file[self._bases[0]][" data"][0]
         if zone is None:
@@ -217,7 +228,7 @@ class cgnsMesh:
         for _, bc in cgzone._BCs.items():
             boco = cgzone.export_BC(bc)
             # filter full domain
-            if boco.type in ['internal']:
+            if boco.type in ["internal"]:
                 log.info(f"  filter internal mark {boco.name}")
             else:
                 bocos.append(boco)
@@ -260,16 +271,20 @@ class cgnsMesh:
         x : ndarray
             Coordinates without point27
         """
-        if 'hexa27' not in cellcon.elems():
-            log.warning("exclude_center_points: no hexa27 element found, nothing to remove")
+        if "hexa27" not in cellcon.elems():
+            log.warning(
+                "exclude_center_points: no hexa27 element found, nothing to remove"
+            )
             return x, y, z
-        conn = cellcon['hexa27']
+        conn = cellcon["hexa27"]
 
         # Nodes in 27th column
         removed_nodes = conn[:, 26]
 
         # Store the actual coordinates of those centre points (for celldata)
-        removed_coords = np.column_stack((x[removed_nodes], y[removed_nodes], z[removed_nodes]))
+        removed_coords = np.column_stack(
+            (x[removed_nodes], y[removed_nodes], z[removed_nodes])
+        )
 
         # Keep mask
         initial_nb_nodes = len(x)
@@ -284,10 +299,10 @@ class cgnsMesh:
 
         # Renumber connectivity
         # reduce HEXA27 to its first 26 nodes and renumber
-        cellcon._elem2node['hexa27']['elem2node'] = new_id[conn[:, :26]]
+        cellcon._elem2node["hexa27"]["elem2node"] = new_id[conn[:, :26]]
         for boco in bocos:
             if boco.nodebased():
-                boco.index = _conn.indexlist(ilist=new_id[np.asarray(boco.index.list())].tolist())
+                boco.index = _conn.indexlist(ilist=new_id[boco.index.to_list()])
         self._celldata.add_data("point27", removed_coords)
         log.info(f"  excluded {len(removed_nodes)} hexa27 center nodes")
         return x[keep], y[keep], z[keep]
