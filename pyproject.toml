@@ -43,20 +43,24 @@ cfdwrite_ic3v3 = 'cfdtools._cli:cfdwrite_ic3v3'
 cfdwrite_ic3 = 'cfdtools._cli:cfdwrite_ic3v3'
 cfdwrite_vtk = 'cfdtools._cli:cfdwrite_vtk'
 vtkbrief = 'cfdtools._cli:vtkbrief'
+vtkdiag = 'cfdtools._cli:vtkdiag'
 vtkpack = 'cfdtools._cli:vtkpack'
 
 [project.optional-dependencies]
-dev = [ 
-    "pytest >= 6.0", 
+dev = [
+    "pytest >= 6.0",
     "pytest-cov >= 2.11.1",
     "pylint >= 2.6.0" ]
-doc = [ 
+doc = [
     "mkdocs >= 1.1",
-    "mkdocs-material >= 6.2.5", 
+    "mkdocs-material >= 6.2.5",
     "mkdocs-jupyter >= 0.15",
     "markdown-include >= 0.6.0",
     "mkdocs-include-markdown-plugin",
     "mkdocs-exclude" ]
+mpi = [
+    "mpi4py>=3.1",
+]
 
 [build-system]
 requires      = ["setuptools>=61.0.0", "wheel"]
@@ -84,3 +88,6 @@ push = true
 [tool.black]
 line-length = 110
 skip-string-normalization = true
+
+[tool.ruff.lint]
+select = ["D"]

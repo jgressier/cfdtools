@@ -1,28 +1,53 @@
 import numpy as np
 
-geodim = {'point': 0, 'line': 1, 'surface': 2, 'volume': 3}
+geodim = {"point": 0, "line": 1, "surface": 2, "volume": 3}
 
-# Declare all element types here.
-# itype, name of the element, number of nodes, geometry dimension, element given by the extrusion of the element
-elem_properties = [
-    (0, '   node1', 1, 0, '    bar2'),
-    (0, '    bar2', 2, 1, '   quad4'),
-    (0, '    tri3', 3, 2, '  penta6'),
-    (0, '   quad4', 4, 2, '   hexa8'),
-    (0, '  tetra4', 4, 3, '    none'),
-    (0, '   pyra5', 5, 3, '    none'),
-    (0, '  prism6', 6, 3, '    none'),
-    (0, '   hexa8', 8, 3, '    none'),
+# Declare all element types here. Properties are, in order:
+# internal type id, name, total node count, linear corner count, geometry
+# dimension, and element obtained by extrusion. Corner nodes must be stored
+# first in every connectivity; face matching relies on this ordering.
+_elem_properties = [
+    (0, "   node1", 1, 1, 0, "    bar2"),
+    (0, "    bar2", 2, 2, 1, "   quad4"),
+    (0, "    bar3", 3, 2, 1, "   quad9"),
+    (0, "    tri3", 3, 3, 2, "  penta6"),
+    (0, "   quad4", 4, 4, 2, "   hexa8"),
+    (0, "   quad9", 9, 4, 2, "  hexa27"),
+    (0, "  tetra4", 4, 4, 3, "    none"),
+    (0, "   pyra5", 5, 5, 3, "    none"),
+    (0, "  prism6", 6, 6, 3, "    none"),
+    (0, "   hexa8", 8, 8, 3, "    none"),
+    (0, "  hexa27", 27, 8, 3, "    none"),
 ]
 # remove leading spaces of strings
-elem_properties = [tuple(i.lstrip() if isinstance(i, str) else i for i in u) for u in elem_properties]
+_elem_properties = [
+    tuple(i.lstrip() if isinstance(i, str) else i for i in properties)
+    for properties in _elem_properties
+]
 
-dim_elem = {e: d for _, e, _, d, _ in elem_properties}
-nnode_elem = {e: n for _, e, n, _, _ in elem_properties}
-face_from_nnode = {n: e for _, e, n, d, _ in elem_properties if d <= 2}
-extruded_face = {e: x for _, e, _, d, x in elem_properties if d <= 2}
+dim_elem = {e: d for _, e, _, _, d, _ in _elem_properties}
+nnode_elem = {e: n for _, e, n, _, _, _ in _elem_properties}
+ncorner_linear = {e: nc for _, e, _, nc, _, _ in _elem_properties}
+face_from_nnode = {n: e for _, e, n, _, d, _ in _elem_properties if d <= 2}
+extruded_face = {e: x for _, e, _, _, d, x in _elem_properties if d <= 2}
 
-del elem_properties
+# Permutation to reorder a tripled 2D element into CGNS 3D element node order.
+# For quad9 -> hexa27: tripled layout is [bottom(0-8), middle(9-17), top(18-26)]
+# where each layer follows quad9 order: corners(0-3), edge mids(4-7), face center(8).
+# CGNS hexa27: corners(0-7), mid-edges(8-19), mid-faces(20-25), center(26).
+extrude_permutation = {
+    "quad9": [
+        0, 1, 2, 3,         # bottom corners
+        18, 19, 20, 21,     # top corners
+        4, 5, 6, 7,         # bottom edge mids
+        22, 23, 24, 25,     # top edge mids
+        9, 10, 11, 12,      # vertical edge mids (middle layer)
+        8,                  # bottom face center
+        26,                 # top face center
+        13, 14, 15, 16,     # side face centers (middle layer)
+        17,                 # volume center (middle layer)
+    ],
+}
 
 ###############################################################################
 # CGNS convention uses the convention of outward normal for element faces.
@@ -35,7 +60,7 @@ del elem_properties
 def set_starting_index_to_zero(face_nodes):
     # face_nodes gives nodes associated to a face as in the CGNS convention
     # take from cgns and remove 1 to indices to start at 0
-    return [[int(x.replace('N', '')) - 1 for x in node] for node in face_nodes.values()]
+    return [[int(x.replace("N", "")) - 1 for x in node] for node in face_nodes.values()]
 
 
 def set_inward_normal(connectivity):
@@ -52,8 +77,8 @@ def group_faces_by_type(connectivity):
     # only tri3 and quad4
     # no error check
     return {
-        'tri3': [elt for elt in connectivity if len(elt) == 3],
-        'quad4': [elt for elt in connectivity if len(elt) == 4],
+        "tri3": [elt for elt in connectivity if len(elt) == 3],
+        "quad4": [elt for elt in connectivity if len(elt) == 4],
     }
 
 
@@ -62,7 +87,8 @@ def group_faces_by_type(connectivity):
 # see https://cgns.github.io/CGNS_docs_current/sids/conv.html#unst_quad
 # QUAD 4 2D
 cgns_elem2faces = {
-    'quad4': {'bar2': [[0, 1], [1, 2], [2, 3], [3, 0]]},
+    # https://cgns.github.io/CGNS_docs_current/sids/conv.html#unst_quad
+    "quad4": {"bar2": [[0, 1], [1, 2], [2, 3], [3, 0]]},
 }
 
 ###############################################################################
@@ -71,30 +97,30 @@ cgns_elem2faces = {
 # HEXA 8 3D
 face_corners = {
     # Face  Corner Nodes
-    'F1': ['N1', 'N4', 'N3', 'N2'],
-    'F2': ['N1', 'N2', 'N6', 'N5'],
-    'F3': ['N2', 'N3', 'N7', 'N6'],
-    'F4': ['N3', 'N4', 'N8', 'N7'],
-    'F5': ['N1', 'N5', 'N8', 'N4'],
-    'F6': ['N5', 'N6', 'N7', 'N8'],
+    "F1": ["N1", "N4", "N3", "N2"],
+    "F2": ["N1", "N2", "N6", "N5"],
+    "F3": ["N2", "N3", "N7", "N6"],
+    "F4": ["N3", "N4", "N8", "N7"],
+    "F5": ["N1", "N5", "N8", "N4"],
+    "F6": ["N5", "N6", "N7", "N8"],
 }
 
 connectivity_hexa8 = set_starting_index_to_zero(face_corners)
-connectivity_hexa8 = set_inward_normal(connectivity_hexa8)
+# connectivity_hexa8 = set_inward_normal(connectivity_hexa8)
 
 # List of quad4 faces for a hexa8 element.
-cgns_elem2faces['hexa8'] = group_faces_by_type(connectivity_hexa8)
+cgns_elem2faces["hexa8"] = group_faces_by_type(connectivity_hexa8)
 
 ###############################################################################
 # HEXA 27 3D
 face_midedge = {
     # Face  Mid-Edge Nodes
-    'F1': ['N12', 'N11', 'N10', 'N9'],
-    'F2': ['N9', 'N14', 'N17', 'N13'],
-    'F3': ['N10', 'N15', 'N18', 'N14'],
-    'F4': ['N11', 'N16', 'N19', 'N15'],
-    'F5': ['N13', 'N20', 'N16', 'N12'],
-    'F6': ['N17', 'N18', 'N19', 'N20'],
+    "F1": ["N12", "N11", "N10", "N9"],
+    "F2": ["N9", "N14", "N17", "N13"],
+    "F3": ["N10", "N15", "N18", "N14"],
+    "F4": ["N11", "N16", "N19", "N15"],
+    "F5": ["N13", "N20", "N16", "N12"],
+    "F6": ["N17", "N18", "N19", "N20"],
 }
 
 connectivity_midedge_hexa27 = set_starting_index_to_zero(face_midedge)
@@ -102,22 +128,24 @@ connectivity_midedge_hexa27 = set_starting_index_to_zero(face_midedge)
 
 face_midface = {
     # Mid-Face Node
-    'F1': ['N21'],
-    'F2': ['N22'],
-    'F3': ['N23'],
-    'F4': ['N24'],
-    'F5': ['N25'],
-    'F6': ['N26'],
+    "F1": ["N21"],
+    "F2": ["N22"],
+    "F3": ["N23"],
+    "F4": ["N24"],
+    "F5": ["N25"],
+    "F6": ["N26"],
 }
 
 connectivity_midface_hexa27 = set_starting_index_to_zero(face_midface)
 
 connectivity_hexa27 = [
     [*a, *b, *c]
-    for a, b, c in zip(connectivity_hexa8, connectivity_midedge_hexa27, connectivity_midface_hexa27)
+    for a, b, c in zip(
+        connectivity_hexa8, connectivity_midedge_hexa27, connectivity_midface_hexa27
+    )
 ]
 
-cgns_elem2faces['hexa27'] = {'quad9': connectivity_hexa27}
+cgns_elem2faces["hexa27"] = {"quad9": connectivity_hexa27}
 
 ###############################################################################
 # From CGNS
@@ -125,18 +153,18 @@ cgns_elem2faces['hexa27'] = {'quad9': connectivity_hexa27}
 # PENTA 6 3D
 face_corners = {
     # Face  Corner Nodes
-    'F1': ['N1', 'N2', 'N5', 'N4'],
-    'F2': ['N2', 'N3', 'N6', 'N5'],
-    'F3': ['N3', 'N1', 'N4', 'N6'],
-    'F4': ['N1', 'N3', 'N2'],
-    'F5': ['N4', 'N5', 'N6'],
+    "F1": ["N1", "N2", "N5", "N4"],
+    "F2": ["N2", "N3", "N6", "N5"],
+    "F3": ["N3", "N1", "N4", "N6"],
+    "F4": ["N1", "N3", "N2"],
+    "F5": ["N4", "N5", "N6"],
 }
 
 connectivity_prism6 = set_starting_index_to_zero(face_corners)
 connectivity_prism6 = set_inward_normal(connectivity_prism6)
 
 # List of quad4 and tri3 faces for a prism6 element.
-cgns_elem2faces['prism6'] = group_faces_by_type(connectivity_prism6)
+cgns_elem2faces["prism6"] = group_faces_by_type(connectivity_prism6)
 
 ###############################################################################
 # From CGNS
@@ -144,17 +172,17 @@ cgns_elem2faces['prism6'] = group_faces_by_type(connectivity_prism6)
 # TETRA 4 3D
 face_corners = {
     # Face  Corner Nodes
-    'F1': ['N1', 'N3', 'N2'],
-    'F2': ['N1', 'N2', 'N4'],
-    'F3': ['N2', 'N3', 'N4'],
-    'F4': ['N3', 'N1', 'N4'],
+    "F1": ["N1", "N3", "N2"],
+    "F2": ["N1", "N2", "N4"],
+    "F3": ["N2", "N3", "N4"],
+    "F4": ["N3", "N1", "N4"],
 }
 
 connectivity_tetra4 = set_starting_index_to_zero(face_corners)
 connectivity_tetra4 = set_inward_normal(connectivity_tetra4)
 
 # List of tri3 faces for a tetra4 element.
-cgns_elem2faces['tetra4'] = group_faces_by_type(connectivity_tetra4)
+cgns_elem2faces["tetra4"] = group_faces_by_type(connectivity_tetra4)
 
 ###############################################################################
 # From CGNS
@@ -162,18 +190,18 @@ cgns_elem2faces['tetra4'] = group_faces_by_type(connectivity_tetra4)
 # PYRA 5 3D
 face_corners = {
     # Face  Corner Nodes
-    'F1': ['N1', 'N4', 'N3', 'N2'],
-    'F2': ['N1', 'N2', 'N5'],
-    'F3': ['N2', 'N3', 'N5'],
-    'F4': ['N3', 'N4', 'N5'],
-    'F5': ['N4', 'N1', 'N5'],
+    "F1": ["N1", "N4", "N3", "N2"],
+    "F2": ["N1", "N2", "N5"],
+    "F3": ["N2", "N3", "N5"],
+    "F4": ["N3", "N4", "N5"],
+    "F5": ["N4", "N1", "N5"],
 }
 
 connectivity_pyra5 = set_starting_index_to_zero(face_corners)
 connectivity_pyra5 = set_inward_normal(connectivity_pyra5)
 
 # List of quad4 and tri3 faces for a pyra5 element.
-cgns_elem2faces['pyra5'] = group_faces_by_type(connectivity_pyra5)
+cgns_elem2faces["pyra5"] = group_faces_by_type(connectivity_pyra5)
 
 ###############################################################################
 # Nodes are ordered with the CGNS convention
@@ -215,13 +243,13 @@ gmsh_connectivity_tetra4 = cgns2gmsh(tetra4_cgns2gmsh, connectivity_tetra4)
 gmsh_connectivity_pyra5 = cgns2gmsh(pyra5_cgns2gmsh, connectivity_pyra5)
 
 gmsh_elem2faces = {
-    'tri3': {'bar2': [[0, 1], [1, 2], [2, 0]]},
-    'quad4': {'bar2': [[0, 1], [1, 2], [2, 3], [3, 0]]},
-    'hexa8': group_faces_by_type(gmsh_connectivity_hexa8),
-    'hexa27': {'quad9': gmsh_connectivity_hexa27},
-    'prism6': group_faces_by_type(gmsh_connectivity_prism6),
-    'pyra5': group_faces_by_type(gmsh_connectivity_pyra5),
-    'tetra4': group_faces_by_type(gmsh_connectivity_tetra4),
+    "tri3": {"bar2": [[0, 1], [1, 2], [2, 0]]},
+    "quad4": {"bar2": [[0, 1], [1, 2], [2, 3], [3, 0]]},
+    "hexa8": group_faces_by_type(gmsh_connectivity_hexa8),
+    "hexa27": {"quad9": gmsh_connectivity_hexa27},
+    "prism6": group_faces_by_type(gmsh_connectivity_prism6),
+    "pyra5": group_faces_by_type(gmsh_connectivity_pyra5),
+    "tetra4": group_faces_by_type(gmsh_connectivity_tetra4),
 }
 
 # either CGNS or GMSH to be set in the reader. Default is CGNS.

@@ -1,4 +1,5 @@
 import cfdtools._cli as cli
+import cfdtools.meshbase.simple as simplemesh
 from pathlib import Path
 import pytest
 
@@ -57,9 +58,107 @@ def test_ic3writev3(datadir, builddir, filename):
     Path(file1).unlink()
 
 
+@pytest.mark.parametrize(
+    'command, writer_class',
+    [
+        (cli.cfdwrite_ic3v2, cli.ic3.writerV2.writer),
+        (cli.cfdwrite_ic3v3, cli.ic3.writerV3.writer),
+    ],
+)
+def test_cfdwrite_ic3_selects_legacy_connectivity(
+    monkeypatch, command, writer_class
+):
+    captured = {}
+
+    def fake_write_generic(
+        argv, ext, writer, fname=None, writer_options=None
+    ):
+        captured.update(
+            argv=argv,
+            ext=ext,
+            writer=writer,
+            writer_options=writer_options,
+        )
+        return 'output.ic3'
+
+    monkeypatch.setattr(cli, 'write_generic', fake_write_generic)
+    assert command(['input.mesh']) == 'output.ic3'
+    assert captured['ext'] == '.ic3'
+    assert captured['writer'] is writer_class
+    assert captured['writer_options'] == {
+        'face_connectivity_method': 'legacy'
+    }
+
+
+@pytest.mark.parametrize(
+    'writer_class',
+    [cli.ic3.writerV2.writer, cli.ic3.writerV3.writer],
+)
+def test_ic3_writer_propagates_legacy_connectivity(monkeypatch, writer_class):
+    mesh = simplemesh.Cube(2, 2, 2).export_mesh()
+    selected_methods = []
+    make_face_connectivity = mesh.make_face_connectivity
+
+    def record_method(method='current', nblocks=None):
+        selected_methods.append((method, nblocks))
+        return make_face_connectivity(method=method, nblocks=nblocks)
+
+    monkeypatch.setattr(mesh, 'make_face_connectivity', record_method)
+    writer_class(mesh, face_connectivity_method='legacy')
+    assert selected_methods == [('legacy', None)]
+
+
+@pytest.mark.parametrize(
+    'writer_class',
+    [cli.ic3.writerV2.writer, cli.ic3.writerV3.writer],
+)
+def test_ic3_writer_propagates_multiblock_connectivity(monkeypatch, writer_class):
+    mesh = simplemesh.Cube(2, 2, 2).export_mesh()
+    selected = []
+    make_face_connectivity = mesh.make_face_connectivity
+
+    def record_method(method='current', nblocks=None):
+        selected.append((method, nblocks))
+        return make_face_connectivity(method=method, nblocks=nblocks)
+
+    monkeypatch.setattr(mesh, 'make_face_connectivity', record_method)
+    writer_class(
+        mesh, face_connectivity_method='multiblock', face_connectivity_nblocks=2
+    )
+    assert selected == [('multiblock', 2)]
+
+
+def test_cfdwrite_ic3v2_multiblock_cli(datadir, builddir):
+    """CLI --face-method multiblock --nblocks writes a valid IC3 file."""
+    builddir.mkdir(exist_ok=True)
+    filepath = str(datadir / "Box3x3x2v2.ic3")
+    outpath = str(builddir)
+    file1 = cli.cfdwrite_ic3v2(
+        [filepath, "--outpath", outpath, "--face-method", "multiblock", "--nblocks", "2"]
+    )
+    assert file1
+    assert Path(file1).exists()
+    Path(file1).unlink()
+
+
+def test_cfdwrite_ic3v2_multiblock_requires_nblocks(datadir, builddir):
+    """CLI rejects --face-method multiblock without --nblocks."""
+    builddir.mkdir(exist_ok=True)
+    filepath = str(datadir / "Box3x3x2v2.ic3")
+    with pytest.raises(RuntimeError, match="--nblocks is required"):
+        cli.cfdwrite_ic3v2(
+            [filepath, "--outpath", str(builddir), "--face-method", "multiblock"]
+        )
+
+
 def test_vtkbrief(datadir: Path):
     file = "cubemixed0000.vtu"
     assert cli.vtkbrief([str(datadir / file)])
+
+
+def test_vtkdiag(datadir: Path):
+    file = "cubemixed0000.vtu"
+    assert cli.vtkdiag([str(datadir / file)])
 
 
 def test_vtkpack(datadir: Path):

@@ -1,9 +1,10 @@
 # simple subpackage
-import cfdtools.api as api
-import cfdtools.meshbase._mesh as _mesh
-import cfdtools.meshbase._connectivity as _conn
 from itertools import product
+
 import numpy as np
+
+import cfdtools.meshbase._connectivity as _conn
+from cfdtools.meshbase import _mesh
 
 
 class Cube:
@@ -18,7 +19,9 @@ class Cube:
         return list(product(range(self._nx), range(self._ny), range(self._nz)))
 
     def nodes_ijk(self):
-        return list(product(range(self._nx + 1), range(self._ny + 1), range(self._nz + 1)))
+        return list(
+            product(range(self._nx + 1), range(self._ny + 1), range(self._nz + 1))
+        )
 
     def nodes_xyz(self, i, j, k):
         return (i / float(self._nx), j / float(self._ny), k / float(self._nz))
@@ -32,56 +35,61 @@ class Cube:
         return k + self._nz * (j + self._ny * i)
 
     def _elems(self):
-        ei, ej, ek = map(np.array, zip(*self.elem_ijk()))
-        hexa2node = np.array(
-            list(
-                zip(
-                    *tuple(
-                        c.tolist()
-                        for c in [
-                            self.nodeglobindex_ijk(ei, ej, ek),
-                            self.nodeglobindex_ijk(ei + 1, ej, ek),
-                            self.nodeglobindex_ijk(ei + 1, ej + 1, ek),
-                            self.nodeglobindex_ijk(ei, ej + 1, ek),
-                            self.nodeglobindex_ijk(ei, ej, ek + 1),
-                            self.nodeglobindex_ijk(ei + 1, ej, ek + 1),
-                            self.nodeglobindex_ijk(ei + 1, ej + 1, ek + 1),
-                            self.nodeglobindex_ijk(ei, ej + 1, ek + 1),
-                        ]
-                    )
-                )
-            )
+        ei, ej, ek = np.indices((self._nx, self._ny, self._nz), dtype=np.int64)
+        ei, ej, ek = (array.ravel() for array in (ei, ej, ek))
+        hexa2node = np.column_stack(
+            [
+                self.nodeglobindex_ijk(ei, ej, ek),
+                self.nodeglobindex_ijk(ei + 1, ej, ek),
+                self.nodeglobindex_ijk(ei + 1, ej + 1, ek),
+                self.nodeglobindex_ijk(ei, ej + 1, ek),
+                self.nodeglobindex_ijk(ei, ej, ek + 1),
+                self.nodeglobindex_ijk(ei + 1, ej, ek + 1),
+                self.nodeglobindex_ijk(ei + 1, ej + 1, ek + 1),
+                self.nodeglobindex_ijk(ei, ej + 1, ek + 1),
+            ]
         )
         index = self.elemglobindex_ijk(ei, ej, ek)
-        return hexa2node, index.tolist()
+        return hexa2node, index
 
     def export_mesh(self):
         meshdata = _mesh.Mesh(ncell=self.ncell, nnode=self.nnode)
         # set cell connectivity
         cell2node = _conn.elem_connectivity()
         hexanode, ielem = self._elems()
-        cell2node.add_elems('hexa8', np.array(hexanode), _conn.indexlist(ilist=ielem))
+        cell2node.add_elems("hexa8", hexanode, _conn.indexlist(ilist=ielem))
         meshdata.set_cell2node(cell2node)
         # set node coordinates
-        ni, nj, nk = np.array(self.nodes_ijk()).T
+        ni, nj, nk = np.indices(
+            (self._nx + 1, self._ny + 1, self._nz + 1), dtype=np.int64
+        )
+        ni, nj, nk = (array.ravel() for array in (ni, nj, nk))
         x, y, z = self.nodes_xyz(ni, nj, nk)
         meshdata.set_nodescoord_xyz(x, y, z)
         # boco
-        tasks = {
-            'imin': {'ijknodes': product([0], range(self._ny + 1), range(self._nz + 1))},
-            'imax': {'ijknodes': product([self._nx], range(self._ny + 1), range(self._nz + 1))},
-            'jmin': {'ijknodes': product(range(self._nx + 1), [0], range(self._nz + 1))},
-            'jmax': {'ijknodes': product(range(self._nx + 1), [self._ny], range(self._nz + 1))},
-            'kmin': {'ijknodes': product(range(self._nx + 1), range(self._ny + 1), [0])},
-            'kmax': {'ijknodes': product(range(self._nx + 1), range(self._ny + 1), [self._nz])},
+        boundary_values = {
+            "imin": (0, 0),
+            "imax": (0, self._nx),
+            "jmin": (1, 0),
+            "jmax": (1, self._ny),
+            "kmin": (2, 0),
+            "kmax": (2, self._nz),
         }
-        for name, task in tasks.items():
+        for name, (axis, value) in boundary_values.items():
             bcmark = _mesh.submeshmark(name)
-            bcmark.geodim = 'bdnode'
-            bcmark.type = 'boundary'
-            ni, nj, nk = np.array(list(task['ijknodes'])).T
+            bcmark.geodim = "bdnode"
+            bcmark.type = "boundary"
+            ranges = [
+                np.arange(self._nx + 1),
+                np.arange(self._ny + 1),
+                np.arange(self._nz + 1),
+            ]
+            ranges[axis] = np.array([value])
+            ni, nj, nk = (
+                array.ravel() for array in np.meshgrid(*ranges, indexing="ij")
+            )
             nodes = self.nodeglobindex_ijk(ni, nj, nk)
-            bcmark.index = _conn.indexlist(ilist=nodes.tolist())
+            bcmark.index = _conn.indexlist(ilist=nodes)
             meshdata.add_boco(bcmark)
         return meshdata
 

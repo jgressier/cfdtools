@@ -10,8 +10,6 @@ import cfdtools.api as api
 
 # readers and writers - must be imported to update api format dict
 import cfdtools.ic3 as ic3  # .reader_legacy # needed to map readers
-import cfdtools.gmsh as gmsh  # .reader_legacy # needed to map readers
-import cfdtools.cgns as cgns  # .reader_legacy # needed to map readers
 import cfdtools.vtk as vtk
 
 #
@@ -102,6 +100,18 @@ class cli_argparser:
     def addarg_transform(self):
         self.add_argument('--extrude', type=int, help="total number of planes")
         self.add_argument('--scale', nargs=3, type=float, help="x, y, z scaling coefficients")
+        self.add_argument(
+            '--face-method',
+            dest='face_connectivity_method',
+            choices=['current', 'legacy', 'multiblock'],
+            help="face connectivity implementation (default: current)",
+        )
+        self.add_argument(
+            '--nblocks',
+            dest='face_connectivity_nblocks',
+            type=int,
+            help="number of consecutive cell-index blocks for multiblock method",
+        )
 
     def parse_cli_args(self, argv):
         self._args = self._parser.parse_args(argv)
@@ -113,7 +123,7 @@ class cli_argparser:
         return vars(self._args)
 
     def parse_filenameformat(self):
-        """parse args to get filename, automatic or specified format"""
+        """Parse args to get filename, automatic or specified format."""
         if self.args().fmt is None:
             ext = Path(self._args.filename).suffix
             thisfmt = list(filter(lambda n: api._fileformat_map[n]['ext'] == ext, api._fileformat_map))
@@ -130,9 +140,10 @@ class cli_argparser:
 
 @cli_header()
 def cfdinfo(argv=None):
-    """ fully reads all supported formats, 
-    converts to an internal mesh and data structure 
-    and prints a sum up of available information.
+    """Read all supported formats.
+
+    Convert to an internal mesh and data structure
+    and print a sum up of available information.
     """
     parser = cli_argparser(prog=__fname__)  # noqa: F821
     parser.addarg_filenameformat()
@@ -149,7 +160,7 @@ def cfdinfo(argv=None):
 
 @cli_header()
 def ic3brief(argv=None):
-    """reads IC3 related format (v2, v3 and soon v4)
+    """Read IC3 related format (v2, v3 and soon v4)
     and print information on headers (mesh and variables)
     without reading data itself (faster)
     """
@@ -165,42 +176,113 @@ def ic3brief(argv=None):
 
 @cli_header()
 def vtkbrief(argv=None):
-    """reads all pyvista-available formats and prints information on mesh and data
-    """
+    """Read all pyvista-available formats and print information on mesh and data."""
     parser = cli_argparser()
     parser.addarg_filenameformat(format="VTK")
     parser.parse_cli_args(argv)
     parser.parse_filenameformat()
     #
-    r = vtk.vtkMesh()
-    r.read(parser.args().filename)
-    r.brief()
+    vtkm = vtk.vtkMesh()
+    vtkm.read(parser.args().filename)
+    vtkm.brief()
     return True  # needed for pytest
 
 
 @cli_header()
+def vtkdiag(argv=None):
+    """reads all pyvista-available formats and prints full information on mesh and data
+    """
+    parser = cli_argparser(prog=f"[temp] {__fname__}")  # noqa: F821
+    parser.addarg_filenameformat(format="VTK")
+    file_group = parser._parser.add_mutually_exclusive_group()
+    file_group.add_argument(
+        "-o",
+        action="store",
+        dest="ratfilename",
+        type=str,
+        help="name of output file",
+    )
+    file_group.add_argument(
+        "-O",
+        action="store_true",
+        dest="ratfilename",
+        help="name of output file based on name input file",
+    )
+    file_group.add_argument(
+        "-d", "--data",
+        action="store_true",
+        dest="return_data",
+        help="return vtkmesh data for processing (implied with -o/-O)",
+        # return_data: could choose which variable(s) for plot
+    )
+    parser.parse_cli_args(argv)
+    parser.parse_filenameformat()
+
+    filename = parser.args().filename
+    ratfilename = parser.args().ratfilename
+    return_data = parser.args().return_data
+
+    isout = bool(ratfilename)
+    if isout:
+        if ratfilename is True:
+            fpath = Path(filename)
+            fsufx = fpath.suffix
+            ratpath = Path(f"{fpath.with_suffix('')}-VolRat").with_suffix(fsufx)
+            ratfilename = str(ratpath)
+        else:
+            ratpath = Path(ratfilename)
+        if ratpath.exists():
+            if ratpath.is_dir():
+                istype = "a directory"
+            elif ratpath.is_file():
+                istype = "a regular file"
+            else:
+                istype = "of unknown type"
+            log.info(f"Path {ratfilename!r} exists and is {istype}")
+            log.info("")
+            return False
+    return_data = return_data or isout
+
+    vtkm = vtk.vtkMesh()
+    vtkm.read(filename)
+
+    nvtkm = vtkm.diag(data=return_data)
+    if return_data:
+        if isout:
+            try:
+                nvtkm.write_data(ratfilename)
+                log.info(f"File {ratfilename!r} written")
+            except:
+                raise
+        nvtkm.plot()
+    return True  # needed for pytest
+
+@cli_header()
 def vtkpack(argv=None):
-    """reads a list of VTK-like files and 
-    packs it to an cfdtools hdf5 format
+    """Read a list of VTK-like files and
+    pack it to an cfdtools hdf5 format
     (mesh consistency will be checked and data reordered if necessary)
     """
     parser = cli_argparser()
     parser.addarg_filelist()
+    parser.addarg_removedata()
     parser.parse_cli_args(argv)
+
+    args = parser.args()
     #
-    log.info(f"> number of files: {len(parser.args().filelist)}")
-    vtklist = vtk.vtkList(parser.args().filelist, verbose=True)
+    log.info(f"> number of files: {len(args.filelist)}")
+    vtklist = vtk.vtkList(args.filelist, verbose=True)
     if vtklist.allexist():
         log.info("  all files exist")
     else:
         api.error_stop("some files are missing")
-    vtklist.read()
-    outfilename = vtklist.dumphdf("dumped.h5")
+    vtklist.read(filterdata=args.remove_cell_data)
+    outfilename = vtklist.dumphdf("dumped.h5", xdmf=True)
     log.info(f"> mesh and data dumped to {outfilename}")
     return outfilename  # needed for pytest
 
 
-def write_generic(argv, ext, writer, fname=None):
+def write_generic(argv, ext, writer, fname=None, writer_options=None):
     parser = cli_argparser(prog=fname)
     parser.addarg_filenameformat()
     parser.addarg_removedata()
@@ -243,7 +325,14 @@ def write_generic(argv, ext, writer, fname=None):
         cfdmesh.scale(parser.args().scale)
     if parser.args().info:
         cfdmesh.printinfo()
-    output = writer(cfdmesh)
+    output_options = dict(writer_options or {})
+    if parser.args().face_connectivity_method is not None:
+        output_options['face_connectivity_method'] = parser.args().face_connectivity_method
+    if parser.args().face_connectivity_nblocks is not None:
+        output_options['face_connectivity_nblocks'] = parser.args().face_connectivity_nblocks
+    if parser.args().face_connectivity_method == 'multiblock' and parser.args().face_connectivity_nblocks is None:
+        api.error_stop("--nblocks is required with --face-method multiblock")
+    output = writer(cfdmesh, **output_options)
     output.write_data(file.filename)
     log.info(f"file {file.filename} written")
     return file.filename  # filename needed for pytest (for eventual rm)
@@ -251,38 +340,48 @@ def write_generic(argv, ext, writer, fname=None):
 
 @cli_header()
 def cfdwrite_ic3v2(argv=None):
-    """reads all available formats and transform it to IC3.v2 format
-    if available
-    """
-    return write_generic(argv, '.ic3', ic3.writerV2.writer, fname=__fname__)  # noqa: F821
+    """Read all available formats and transform it to IC3.v2 format if available."""
+    return write_generic(
+        argv,
+        '.ic3',
+        ic3.writerV2.writer,
+        fname=__fname__,  # noqa: F821
+        writer_options={'face_connectivity_method': 'legacy'},
+    )
 
 
 @cli_header()
 def cfdwrite_ic3v3(argv=None):
-    """reads all available formats and transform it to IC3.v3 format
-    if available
+    """Read all available formats and transform it to IC3.v3 format if available.
+
     `cfdwrite_ic3` is a shortname for last current IC3 writer, namely `cfdwrite_ic3v3`.
     """
-    return write_generic(argv, '.ic3', ic3.writerV3.writer, fname=__fname__)  # noqa: F821
+    return write_generic(
+        argv,
+        '.ic3',
+        ic3.writerV3.writer,
+        fname=__fname__,  # noqa: F821
+        writer_options={'face_connectivity_method': 'legacy'},
+    )
 
 
 @cli_header()
 def cfdwrite_vtk(argv=None):
-    """reads all available formats and transform it to VTU format
-    if available (IC3.v3 to VTK not yet available)
+    """Read all available formats and transform it to VTU format if available.
+
+    (IC3.v3 to VTK not yet available)
     """
     return write_generic(argv, '.vtu', vtk.vtkMesh, fname=__fname__)  # noqa: F821
 
 
 @cli_header()
 def cfdwritecube(argv=None):
-    """creates a cartesian mesh, converts it to an unstrutured hexa mesh
-    and save it to specific format
+    """Create a cartesian mesh, convert it to an unstrutured hexa mesh and save it to specific format.
 
-        Options:
+    Options:
 
-            --nx --ny --nz : mesh sizes (default: 10)
-            --fmt : file format
+        --nx --ny --nz : mesh sizes (default: 10)
+        --fmt : file format
     """
     parser = cli_argparser(prog=__fname__)  # noqa: F821
     parser.addarg_filenameformat()
@@ -326,16 +425,16 @@ def cfdwritecube(argv=None):
 
 @cli_header()
 def ic3probe_plotline(argv=None):
-    """parse an IC3 set of (csv files) probe line and a time or frequency map
+    """Parse an IC3 set of (csv files) probe line and a time or frequency map.
 
-        Options:
+    Options:
 
-            --data: variable to analyze and plot
-            --axis: coordinate on x-axis of the map
-            --map: 'time' or 'frequency'
-            --cmap: matplotlib name of colormap
-            --cmaplevels: number of levels
-            --check: performs some verifications
+        --data: variable to analyze and plot
+        --axis: coordinate on x-axis of the map
+        --map: 'time' or 'frequency'
+        --cmap: matplotlib name of colormap
+        --cmaplevels: number of levels
+        --check: performs some verifications
 
     """
     parser = cli_argparser(description="Process line probes from IC3")

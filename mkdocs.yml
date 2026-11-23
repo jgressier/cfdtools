@@ -8,8 +8,8 @@ theme:
   icon:
     repo: fontawesome/brands/github
   language: en
-  features:
-    #- navigation.tabs
+  # features: # to enable first level navigation as tabs
+  #   - navigation.tabs
   font:
     text: Helvetica
     code: Menlo
@@ -20,8 +20,9 @@ extra_css:
 nav:
   - Home: index.md
   - User Guide:
-    - command line tools: cli.md
-    - format detection: format-detection.md
+    - Command Line Interface: cli.md
+    - Format Detection: format-detection.md
+    - Extrusion: extrusion.md
     #- Models: userguide/models.md
     #- Numerical methods: userguide/num.md
   - Examples:
@@ -39,6 +40,8 @@ nav:
 plugins:
   - search
   - include-markdown
+  - autorefs:
+      link_titles: auto
   - mkdocs-jupyter:
       execute: True
       include_source: False
